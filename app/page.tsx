@@ -5,9 +5,9 @@ export default function Home() {
     <main className="min-h-screen bg-black text-money-green font-mono flex flex-col items-center justify-center p-4">
       <div className="border-2 border-money-green p-10 max-w-md w-full shadow-[0_0_20px_rgba(0,255,65,0.2)]">
         
-        <h1 className="text-3xl font-bold mb-2 tracking-tighter text-center uppercase">
-          Young Investors
-        </h1>
+<h1 className="text-7xl md:text-9xl font-[900] tracking-[-0.07em] uppercase leading-[0.85]">
+  Young<br/>Investors
+</h1>
         <p className="text-[10px] mb-8 text-center opacity-70 uppercase tracking-widest">
           Sandboxed Wealth Academy
         </p>

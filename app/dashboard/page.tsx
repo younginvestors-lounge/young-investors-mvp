@@ -7,8 +7,8 @@ export default function Dashboard() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [prices, setPrices] = useState({ sasol: 184.50, capitec: 2150.00 });
   const [logs, setLogs] = useState([
-    { id: 1, time: '23:14:01', msg: 'SYSTEM_ENCRYPTED', type: 'info' },
-    { id: 2, time: '23:15:12', msg: 'SECURE_CHANNEL_OPEN', type: 'success' }
+    { id: 1, time: '23:14:01', msg: 'ENCRYPTED_SESSION_START', type: 'info' },
+    { id: 2, time: '23:15:12', msg: 'LIQUIDITY_BUFFER_OK', type: 'success' }
   ]);
 
   useEffect(() => {
@@ -17,112 +17,85 @@ export default function Dashboard() {
         sasol: prev.sasol + (Math.random() * 0.4 - 0.2),
         capitec: prev.capitec + (Math.random() * 2 - 1)
       }));
-      
-      if (Math.random() > 0.8) {
-        const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-        setLogs(prev => [{ id: Date.now(), time, msg: 'VOLATILITY_SYNC_OK', type: 'info' }, ...prev].slice(0, 5));
-      }
     }, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleVote = () => {
-    if (userLevel < 2) return;
-    setVotes(v => Math.min(5, v + 1));
+  const handleCertification = () => {
+    setUserLevel(2);
+    setShowQuiz(false);
     const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-    setLogs(prev => [{ id: Date.now(), time, msg: 'QUORUM_VOTE_RECORDED', type: 'success' }, ...prev]);
+    setLogs(prev => [{ id: Date.now(), time, msg: 'CHEF_Z_CREDENTIALS_VERIFIED', type: 'success' }, ...prev]);
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white px-6">
-      
-      {/* HEADER */}
-      <nav className="max-w-7xl mx-auto h-20 flex justify-between items-center border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-white rounded flex items-center justify-center">
-             <div className="w-3 h-3 bg-black rounded-sm"></div>
-          </div>
-          <span className="apple-bold text-lg uppercase tracking-tighter">YOUNG INVESTORS</span>
+    <div className="min-h-screen bg-black text-white px-6 font-sans">
+      <nav className="max-w-7xl mx-auto h-24 flex justify-between items-center border-b border-white/10">
+        <div className="flex flex-col leading-none">
+          <span className="text-3xl font-[900] tracking-[-0.07em] uppercase">Young</span>
+          <span className="text-3xl font-[900] tracking-[-0.07em] uppercase">Investors</span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-[10px] font-black uppercase tracking-widest bg-[#00FF41]/10 text-[#00FF41] px-3 py-1.5 rounded-full border border-[#00FF41]/20">
-            {userLevel === 1 ? 'Lvl 1: Apprentice' : 'Lvl 2: Sous-Chef'}
-          </span>
+        <div className={`px-4 py-2 rounded-sm text-[10px] font-[900] uppercase tracking-tighter ${userLevel >= 2 ? 'bg-[#00FF41] text-black' : 'bg-zinc-800 text-zinc-400'}`}>
+          {userLevel === 1 ? 'Apprentice' : 'Sous-Chef'}
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-10 grid grid-cols-12 gap-8">
-        
-        {/* LEFT: MARKET DATA */}
+      <main className="max-w-7xl mx-auto py-12 grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8 space-y-8">
-          <div className="precision-card p-10">
-            <p className="text-zinc-500 apple-bold text-[11px] uppercase tracking-widest mb-4">Total Portfolio Balance</p>
-            <div className="flex items-baseline gap-4 mb-12">
-              <h2 className="text-7xl apple-bold tracking-tighter">R 85,240<span className="text-zinc-800">.00</span></h2>
-              <div className="bg-[#00FF41] text-black text-[10px] font-black px-2 py-0.5 rounded">+2.4%</div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-12 border-t border-white/5 pt-10">
-              <div className="space-y-1">
-                <p className="text-zinc-500 apple-bold text-[10px] uppercase tracking-widest font-bold">$SOL (Sasol)</p>
-                <p className="text-3xl apple-bold">R{prices.sasol.toFixed(2)}</p>
+          <div className="bg-zinc-950 border border-white/5 p-12 rounded-lg">
+            <p className="text-zinc-500 font-[900] text-[12px] uppercase tracking-widest mb-6">Portfolio Balance</p>
+            <h2 className="text-8xl font-[900] tracking-[-0.08em] mb-12">R 85,240<span className="opacity-10">.00</span></h2>
+            
+            <div className="grid grid-cols-2 gap-12 pt-10 border-t border-white/5">
+              <div>
+                <p className="text-zinc-500 font-[900] text-[10px] uppercase mb-2">$SOL</p>
+                <p className="text-4xl font-[900] tracking-[-0.05em]">R{prices.sasol.toFixed(2)}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-zinc-500 apple-bold text-[10px] uppercase tracking-widest font-bold">$CPI (Capitec)</p>
-                <p className="text-3xl apple-bold">R{prices.capitec.toFixed(2)}</p>
+              <div>
+                <p className="text-zinc-500 font-[900] text-[10px] uppercase mb-2">$CPI</p>
+                <p className="text-4xl font-[900] tracking-[-0.05em]">R{prices.capitec.toFixed(2)}</p>
               </div>
             </div>
           </div>
 
-          {/* EXCHANGE FEED LOG */}
-          <div className="precision-card p-6 bg-black/20">
-             <div className="flex items-center gap-2 mb-6">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41] animate-pulse"></div>
-                <h3 className="apple-bold text-[10px] text-zinc-400 uppercase tracking-widest">Exchange_Feed_v1.0</h3>
-             </div>
-             <div className="space-y-3 font-mono">
+          <div className="bg-zinc-950/50 p-8 border border-white/5 rounded-lg font-mono">
+            <h3 className="text-[10px] font-[900] uppercase text-zinc-500 mb-6 tracking-[0.2em]">Live_Exchange_Feed</h3>
+            <div className="space-y-3">
               {logs.map(log => (
-                <div key={log.id} className="flex gap-4 items-center text-[10px] opacity-70 border-l-2 border-white/5 pl-4 py-1">
-                  <span className="text-zinc-600 font-bold">{log.time}</span>
-                  <span className={log.type === 'success' ? 'text-[#00FF41]' : 'text-zinc-100'}>
-                    {log.msg}
-                  </span>
+                <div key={log.id} className="text-[10px] flex gap-4 opacity-50">
+                  <span className="text-zinc-600">[{log.time}]</span>
+                  <span className={log.type === 'success' ? 'text-[#00FF41]' : 'text-white'}>{log.msg}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* RIGHT: GOVERNANCE */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
-          <div className="precision-card p-8 min-h-[450px] flex flex-col justify-between border-t-2 border-[#00FF41]">
+        <div className="col-span-12 lg:col-span-4">
+          <div className="bg-white text-black p-8 rounded-lg min-h-[400px] flex flex-col justify-between">
             <div>
-              <h3 className="apple-bold text-[11px] uppercase tracking-widest text-zinc-500 mb-10">Consensus Engine</h3>
+              <h3 className="text-lg font-[900] uppercase tracking-[-0.05em] mb-8">Consensus</h3>
               
               {showQuiz ? (
-                <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                  <p className="text-sm apple-bold leading-tight">Identify the primary benefit of a Stop-Loss order?</p>
-                  <button onClick={() => {setUserLevel(2); setShowQuiz(false);}} className="w-full text-left p-4 bg-white/5 rounded-xl border border-white/10 hover:border-[#00FF41] text-[11px] apple-bold transition-all">
-                    Risk Mitigation & Loss Caps
+                <div className="space-y-6">
+                  <p className="text-sm font-[900] leading-tight uppercase tracking-tight">Confirm: Stop-loss is used to mitigate capital risk?</p>
+                  <button onClick={handleCertification} className="w-full bg-black text-white py-4 font-[900] text-xs uppercase tracking-widest hover:bg-[#00FF41] hover:text-black transition-colors">
+                    Confirm & Verify
                   </button>
                 </div>
               ) : (
-                <div className="space-y-10">
+                <div className="space-y-8">
                   <div className="space-y-2">
-                    <p className="apple-bold text-xs uppercase tracking-tighter">Proposal #104: Execute $SOL</p>
-                    <p className="text-[10px] text-zinc-500 font-medium">Group approval required for broker release.</p>
+                    <p className="text-[10px] font-[900] uppercase text-zinc-400">Proposal #104</p>
+                    <p className="text-2xl font-[900] uppercase tracking-tighter leading-none">Execute $SOL Order</p>
                   </div>
-
                   <div className="space-y-4">
-                    <div className="flex justify-between items-end apple-bold text-[10px] uppercase">
-                      <span className="text-zinc-500">Quorum Progress</span>
-                      <span className="text-[#00FF41]">{votes}/5 Verified</span>
+                    <div className="flex justify-between font-[900] text-[10px] uppercase">
+                      <span>Quorum</span>
+                      <span>{votes}/5</span>
                     </div>
-                    <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#00FF41] shadow-[0_0_20px_#00FF41] transition-all duration-1000"
-                        style={{ width: `${(votes/5)*100}%` }}
-                      ></div>
+                    <div className="h-4 bg-black/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-black transition-all duration-1000" style={{ width: `${(votes/5)*100}%` }}></div>
                     </div>
                   </div>
                 </div>
@@ -130,14 +103,17 @@ export default function Dashboard() {
             </div>
 
             <button 
-              onClick={() => userLevel === 1 ? setShowQuiz(true) : handleVote()}
-              className="w-full py-5 bg-white text-black apple-bold text-[12px] uppercase tracking-[0.1em] rounded-xl hover:bg-[#00FF41] transition-all"
+              disabled={userLevel < 2}
+              onClick={() => setVotes(v => Math.min(5, v+1))}
+              className={`w-full py-5 font-[900] text-sm uppercase tracking-widest transition-all ${userLevel >= 2 ? 'bg-black text-white' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'}`}
             >
-              {userLevel === 1 ? 'Unlock Terminal' : 'Cast Approval Vote'}
+              {userLevel === 1 ? 'Locked' : 'Approve Order'}
             </button>
+            {userLevel === 1 && !showQuiz && (
+              <button onClick={() => setShowQuiz(true)} className="mt-4 text-[10px] font-[900] uppercase underline text-center w-full">Begin Certification</button>
+            )}
           </div>
         </div>
-
       </main>
     </div>
   );
