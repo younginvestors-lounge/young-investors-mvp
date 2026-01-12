@@ -1,3 +1,7 @@
+// Inside your Governance card, replace the progress bar section with this:
+<div className="w-full bg-zinc-800/50 h-3 rounded-full overflow-hidden p-[px] border border-white/5">
+  {/* ... content ... */}
+</div>
 "use client"
 import React, { useState, useEffect } from 'react';
 
@@ -48,7 +52,7 @@ export default function Dashboard() {
               <p className="text-lg font-medium">R {prices.sasol.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-zinc-500 uppercase">Capitec ($CPI)</p>
+              <p className="text-[10px] text-zinc-500 uppercase">Capitec ()</p>
               <p className="text-lg font-medium">R {prices.capitec.toFixed(2)}</p>
             </div>
           </div>
@@ -58,19 +62,25 @@ export default function Dashboard() {
         <div className="glass-card p-8 flex flex-col justify-between border-yi-green/20">
           <div>
             <h3 className="text-sm font-bold mb-1">Active Proposal</h3>
-            <p className="text-xs text-zinc-400 mb-6">Execution of $SOL Position</p>
+            <p className="text-xs text-zinc-400 mb-6">Execution of  Position</p>
             
             <div className="space-y-4 mb-8">
               <div className="flex justify-between text-[10px] font-bold uppercase">
                 <span className="text-zinc-500">Quorum Progress</span>
                 <span className="text-yi-green">{votes}/5 Members</span>
               </div>
-              <div className="w-full bg-zinc-800/50 h-3 rounded-full overflow-hidden p-[2px]">
+              
+              {/* Corrected Progress Bar Section */}
+              <div className="w-full bg-zinc-800/50 h-3 rounded-full overflow-hidden p-[1px] border border-white/5">
                 <div 
-                  className="bg-yi-green h-full rounded-full neon-glow transition-all duration-1000" 
-                  style={{ width: `${(votes / 5) * 100}%` }}
+                  className="bg-[#00FF41] h-full rounded-full transition-all duration-700 ease-out" 
+                  style={{ 
+                    width: `${(votes / 5) * 100}%`,
+                    boxShadow: '0 0 15px rgba(0, 255, 65, 0.5)' 
+                  }}
                 ></div>
               </div>
+
             </div>
           </div>
 
