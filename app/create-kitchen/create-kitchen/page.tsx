@@ -39,7 +39,7 @@ export default function CreateKitchen() {
           ))}
         </div>
 
-        <Link href="/dashboard">
+        <Link href={`/create-kitchen/${selectedStyle}/setup`}>
           <button className="w-full py-5 bg-white text-black font-[900] text-sm uppercase tracking-widest rounded-lg hover:bg-[#00FF41] transition-all">
             Initialize Kitchen
           </button>
