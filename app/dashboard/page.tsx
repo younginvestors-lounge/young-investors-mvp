@@ -29,8 +29,31 @@ if (Math.random() > 0.85) {
     setUserLevel(2);
     setShowQuiz(false);
     const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-    setLogs(prev => [{ id: Date.now(), time, msg: 'CHEF_Z_CREDENTIALS_VERIFIED', type: 'success' }, ...prev]);
-  };
+    setLogs(prev => [{ id: Date.now(), time, msg: 'CHEF_ZANNY_CREDENTIALS_VERIFIED', type: 'success' }, ...prev]);
+  }
+
+  {/* KITCHEN CONSTITUTION BOX */}
+<div className="precision-card p-6 bg-[#00FF41]/5 border-[#00FF41]/20 mb-6">
+  <div className="flex justify-between items-center mb-4">
+    <h3 className="text-[10px] font-[900] uppercase tracking-widest text-[#00FF41]">Active_Constitution</h3>
+    <span className="text-[8px] bg-[#00FF41] text-black px-2 py-0.5 font-black rounded-sm uppercase">Hedge_Fund_Style</span>
+  </div>
+  <ul className="space-y-2 text-[10px] font-medium text-zinc-400">
+    <li className="flex justify-between border-b border-white/5 pb-1">
+      <span>Min. Approval Quorum</span>
+      <span className="text-white">60% (3/5)</span>
+    </li>
+    <li className="flex justify-between border-b border-white/5 pb-1">
+      <span>Max. Asset Exposure</span>
+      <span className="text-white">R15,000 / Trade</span>
+    </li>
+    <li className="flex justify-between">
+      <span>Asset Universe</span>
+      <span className="text-white">JSE_TOP_40 + TECH</span>
+    </li>
+  </ul>
+</div>
+
 
   return (
     <div className="min-h-screen bg-black text-white px-6 font-sans">
