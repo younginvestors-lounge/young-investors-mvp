@@ -2,27 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* We are defining your "Young Investors" brand colors manually here */
 :root {
   --money-green: #00FF41;
-  --background: #000000;
 }
 
 body {
-  background-color: black;
+  background: radial-gradient(circle at top left, #121212, #000000);
   color: white;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Inter', sans-serif; /* Cleaner, modern font */
 }
 
-/* This creates a custom utility class you can use anywhere */
-.text-yi-green {
-  color: #00FF41 !important;
+/* Glass Effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
 }
 
-.bg-yi-green {
-  background-color: #00FF41 !important;
-}
-
-.border-yi-green {
-  border-color: #00FF41 !important;
+/* Neon Glow for the Bar */
+.neon-glow {
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
 }

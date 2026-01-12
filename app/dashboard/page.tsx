@@ -4,115 +4,81 @@ import React, { useState, useEffect } from 'react';
 export default function Dashboard() {
   const [votes, setVotes] = useState(2);
   const [userLevel, setUserLevel] = useState(1);
-  const [showQuiz, setShowQuiz] = useState(false);
   const [prices, setPrices] = useState({ sasol: 184.50, capitec: 2150.00 });
 
-  // JSE LIVE FEED SIMULATOR
   useEffect(() => {
     const interval = setInterval(() => {
       setPrices(prev => ({
-        sasol: prev.sasol + (Math.random() * 2 - 1),
-        capitec: prev.capitec + (Math.random() * 10 - 5)
+        sasol: prev.sasol + (Math.random() * 0.5 - 0.25),
+        capitec: prev.capitec + (Math.random() * 2 - 1)
       }));
     }, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  // VOTING FUNCTION
-  const handleVote = () => {
-    console.log("Attempting to vote...");
-    if (userLevel < 2) {
-      alert("SYSTEM LOCKED: Pass Level 2 Exam first.");
-      return;
-    }
-    if (votes < 5) {
-      setVotes(prev => prev + 1);
-    } else {
-      alert("MAX VOTES REACHED (5/5)");
-    }
-  };
-
-  const handleQuizAnswer = (isCorrect: boolean) => {
-    if (isCorrect) {
-      setUserLevel(2);
-      setShowQuiz(false);
-    } else {
-      alert("INCORRECT. TRY AGAIN.");
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-black text-white font-mono p-6">
-      {/* HEADER */}
-      <div className="border-b border-yi-green pb-4 mb-8 flex justify-between items-end">
-        <h1 className="text-xl text-yi-green font-bold tracking-tighter">
-          {">"} Y.I. SYSTEM_ACTIVE
-        </h1>
-        <div className="text-right">
-          <span className={`px-2 py-1 text-[10px] font-black ${userLevel >= 2 ? 'bg-yi-green text-black' : 'bg-zinc-800 text-zinc-400'}`}>
-            {userLevel === 1 ? 'LVL 1: APPRENTICE' : 'LVL 2: SOUS-CHEF'}
+    <div className="min-h-screen p-8 max-w-6xl mx-auto">
+      {/* MODERN HEADER */}
+      <header className="flex justify-between items-center mb-12">
+        <div>
+          <h1 className="text-2xl font-light tracking-widest text-white">YOUNG <span className="font-bold text-yi-green">INVESTORS</span></h1>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em]">Wealth Academy x Stokvel</p>
+        </div>
+        <div className="glass-card px-4 py-2 flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-yi-green animate-pulse"></div>
+          <span className="text-xs font-semibold uppercase tracking-tighter">
+            {userLevel === 1 ? 'Apprentice' : 'Sous-Chef'}
           </span>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* 1. JSE TICKER */}
-        <div className="border border-yi-green p-4 bg-zinc-900/40">
-          <h2 className="text-[10px] text-yi-green mb-4 underline uppercase">Market_Watch</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <span>SASOL</span>
-              <span className="text-yi-green">R {prices.sasol.toFixed(2)}</span>
+        {/* TREASURY CARD - Modern Gradient */}
+        <div className="lg:col-span-2 glass-card p-8 bg-gradient-to-br from-zinc-900/50 to-black">
+          <p className="text-xs text-zinc-400 mb-2 uppercase tracking-widest font-semibold">Total Portfolio Value</p>
+          <div className="flex items-baseline gap-4 mb-8">
+            <h2 className="text-5xl font-bold tracking-tight">R 85,240<span className="text-zinc-500">.00</span></h2>
+            <span className="text-yi-green text-sm font-bold">+2.4% today</span>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/5">
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase">Sasol ($SOL)</p>
+              <p className="text-lg font-medium">R {prices.sasol.toFixed(2)}</p>
             </div>
-            <div className="flex justify-between">
-              <span>CAPITEC</span>
-              <span className="text-yi-green">R {prices.capitec.toFixed(2)}</span>
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase">Capitec ($CPI)</p>
+              <p className="text-lg font-medium">R {prices.capitec.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
-        {/* 2. WEALTH ACADEMY GATE */}
-        <div className="border border-white p-4">
-          <h2 className="text-[10px] text-yi-green mb-4 underline uppercase">Skill_Tree</h2>
-          {userLevel === 1 ? (
-            !showQuiz ? (
-              <button onClick={() => setShowQuiz(true)} className="w-full border border-yi-green py-2 text-xs hover:bg-yi-green hover:text-black">
-                START EXAM
-              </button>
-            ) : (
-              <div className="text-[10px] space-y-2">
-                <p className="mb-2">Q: Purpose of a Stop-Loss?</p>
-                <button onClick={() => handleQuizAnswer(true)} className="block w-full text-left p-2 border border-zinc-700 hover:bg-zinc-800 underline">1. Limit potential losses</button>
-                <button onClick={() => handleQuizAnswer(false)} className="block w-full text-left p-2 border border-zinc-700 hover:bg-zinc-800">2. Increase leverage</button>
+        {/* GOVERNANCE - Glass Look */}
+        <div className="glass-card p-8 flex flex-col justify-between border-yi-green/20">
+          <div>
+            <h3 className="text-sm font-bold mb-1">Active Proposal</h3>
+            <p className="text-xs text-zinc-400 mb-6">Execution of $SOL Position</p>
+            
+            <div className="space-y-4 mb-8">
+              <div className="flex justify-between text-[10px] font-bold uppercase">
+                <span className="text-zinc-500">Quorum Progress</span>
+                <span className="text-yi-green">{votes}/5 Members</span>
               </div>
-            )
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-yi-green text-[10px] font-bold">ACCESS GRANTED</p>
-              <p className="text-[9px] opacity-50 uppercase">VOTING_ENABLED</p>
+              <div className="w-full bg-zinc-800/50 h-3 rounded-full overflow-hidden p-[2px]">
+                <div 
+                  className="bg-yi-green h-full rounded-full neon-glow transition-all duration-1000" 
+                  style={{ width: `${(votes / 5) * 100}%` }}
+                ></div>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* 3. GOVERNANCE (The Multi-Sig) */}
-        <div className={`border-2 p-4 transition-all duration-500 ${userLevel >= 2 ? 'border-yi-green' : 'border-zinc-800 opacity-30'}`}>
-          <h2 className="text-[10px] text-yi-green mb-4 underline uppercase">Governance_Engine</h2>
-          <div className="flex justify-between text-[10px] mb-2">
-             <span>PROGRESS</span>
-             <span className="text-yi-green">{votes}/5</span>
-          </div>
-          <div className="w-full bg-zinc-800 h-4 mb-6 border border-zinc-700 overflow-hidden">
-            <div 
-              className="bg-yi-green h-full shadow-[0_0_15px_#00FF41] transition-all duration-1000" 
-              style={{ width: `${(votes / 5) * 100}%` }}
-            ></div>
-          </div>
           <button 
-            onClick={handleVote}
-            className={`w-full py-3 text-xs font-black transition-all ${userLevel >= 2 ? 'bg-yi-green text-black hover:bg-white cursor-pointer' : 'bg-zinc-900 text-zinc-600 cursor-not-allowed'}`}
+            onClick={() => setVotes(v => v < 5 ? v + 1 : v)}
+            className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-yi-green transition-all transform active:scale-95"
           >
-            {userLevel >= 2 ? "[ CAST_VOTE ]" : "[ LOCKED ]"}
+            Vote to Execute
           </button>
         </div>
 
