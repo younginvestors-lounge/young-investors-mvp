@@ -1,26 +1,28 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* We are defining your "Young Investors" brand colors manually here */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --money-green: #00FF41;
+  --background: #000000;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: black;
+  color: white;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* This creates a custom utility class you can use anywhere */
+.text-yi-green {
+  color: #00FF41 !important;
+}
+
+.bg-yi-green {
+  background-color: #00FF41 !important;
+}
+
+.border-yi-green {
+  border-color: #00FF41 !important;
 }
