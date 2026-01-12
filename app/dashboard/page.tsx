@@ -11,15 +11,19 @@ export default function Dashboard() {
     { id: 2, time: '23:15:12', msg: 'LIQUIDITY_BUFFER_OK', type: 'success' }
   ]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPrices(prev => ({
-        sasol: prev.sasol + (Math.random() * 0.4 - 0.2),
-        capitec: prev.capitec + (Math.random() * 2 - 1)
-      }));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    // Inside your useEffect for prices, ensure the logs stay fresh
+if (Math.random() > 0.85) {
+  const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  const events = ["VOLATILITY_SYNC_OK", "JSE_API_HEARTBEAT", "LIQUIDITY_CHECK_PASSED"];
+  const randomMsg = events[Math.floor(Math.random() * events.length)];
+  
+  setLogs(prev => [{ 
+    id: Date.now(), 
+    time, 
+    msg: randomMsg, 
+    type: 'info' 
+  }, ...prev].slice(0, 5));
+}
 
   const handleCertification = () => {
     setUserLevel(2);
