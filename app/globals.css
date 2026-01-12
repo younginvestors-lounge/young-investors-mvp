@@ -1,10 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root {
-  --money-green: #00FF41;
-  --money-green-rgb: 0, 255, 65;
-}
+ 
+ :root {
+   --money-green: #00FF41;
+   --money-green-rgb: 0, 255, 65;
+ }
 
 body {
   background: radial-gradient(circle at top left, #121212, #000000);
