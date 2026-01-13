@@ -10,79 +10,65 @@ function DashboardContent() {
   const [passedQuiz, setPassedQuiz] = useState(false);
   const [quizStep, setQuizStep] = useState(0);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'terminal' | 'ledger'>('terminal');
+  const [isSystemFrozen, setIsSystemFrozen] = useState(false); // A+ Emergency Stop
   
-  // Initialize prices to prevent "undefined" errors on first render
+  const isVerified = searchParams.get('verified') === 'true';
   const [prices, setPrices] = useState({ sasol: 152.40, capitec: 2105.00 });
   
-  // Ensure logs are typed correctly for the audit trail
+  // Ledger Data (SARB Requirement)
+  const [ledger] = useState([
+    { id: "TX-9921", date: "2026-01-12", type: "CONTRIBUTION", user: "Tino", amount: 5000, status: "CLEARED" },
+    { id: "TX-9922", date: "2026-01-13", type: "BUY_ORDER", user: "Governance", asset: "SASOL", amount: -2500, status: "SETTLED" }
+  ]);
+
   const [logs, setLogs] = useState([
-    { id: 1, time: new Date().toLocaleTimeString('en-GB'), msg: "TERMINAL_SYSTEM_ONLINE", type: 'success' }
+    { id: 1, time: new Date().toLocaleTimeString('en-GB'), msg: "ENCRYPTED_SESSION_ESTABLISHED", type: 'success' }
   ]);
   
-  // Voting Engine State
   const [activeVote, setActiveVote] = useState({
-    active: true,
-    asset: "SASOL",
-    type: "BUY",
-    amount: "R2,500",
-    votes: 2,
-    totalNeeded: 3,
-    voted: false
+    active: true, asset: "SASOL", type: "BUY", amount: "R2,500", votes: 2, totalNeeded: 3, voted: false
   });
 
-  // Regulatory Context
   const kitchenStyle = searchParams.get('style') || 'hedge';
   const kitchenName = searchParams.get('name') || "The Boys' Kitchen";
-  const userLevel = "Sous-Chef Lvl 1"; // Hardcoded for MVP A+ demo
 
-  // --- 2. JSE SIMULATOR (Audit-Grade) ---
+  // --- 2. JSE SIMULATOR & AUDIT LOGS ---
   useEffect(() => {
-    if (!passedQuiz) return;
+    if (!passedQuiz || isSystemFrozen) return;
     const interval = setInterval(() => {
       setPrices(prev => ({
         sasol: prev.sasol + (Math.random() * 2 - 1),
         capitec: prev.capitec + (Math.random() * 10 - 5)
       }));
-      
-      // Randomly inject system health checks into the feed
-      if (Math.random() > 0.8) {
-        const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-        setLogs(prev => [{ 
-          id: Date.now(), 
-          time, 
-          msg: "JSE_MARKET_DATA_SYNC_VERIFIED", 
-          type: 'info' 
-        }, ...prev].slice(0, 8));
+      if (Math.random() > 0.9) {
+        setLogs(prev => [{ id: Date.now(), time: new Date().toLocaleTimeString('en-GB'), msg: "LEDGER_INTEGRITY_CHECK_PASS", type: 'info' }, ...prev].slice(0, 5));
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [passedQuiz]);
+  }, [passedQuiz, isSystemFrozen]);
 
   const questions = [
-    { title: "Risk Awareness", q: "Do you understand that JSE investments carry risk and your capital is not guaranteed?", btn: "I UNDERSTAND THE RISK" },
-    { title: "Governance Quorum", q: "A trade only executes if the 3/5 majority (60%) is reached. Do you accept this?", btn: "I ACCEPT THE GOVERNANCE" },
-    { title: "Compliance", q: "Will you strictly abide by your chosen Kitchen's trading limits and Asset Universe?", btn: "I AGREE TO COMPLY" }
+    { title: "Risk Awareness", q: "Do you understand JSE investments carry risk?", btn: "I UNDERSTAND" },
+    { title: "Governance", q: "A trade only executes if 60%+ quorum is reached. Accept?", btn: "I ACCEPT" },
+    { title: "Compliance", q: "Will you abide by the Kitchen's limits?", btn: "I AGREE" }
   ];
 
-  // --- 3. THE QUIZ GATE (Pre-Rendering Protection) ---
+  // --- 3. THE QUIZ GATE (Lines 64-85) ---
   if (!passedQuiz) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 font-sans select-none">
-        <div className="max-w-xl w-full precision-card p-10 bg-[#00FF41]/5 border border-[#00FF41]/30 rounded-lg shadow-[0_0_50px_-12px_rgba(0,255,65,0.2)]">
-          <div className="flex justify-between items-center mb-10">
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 font-sans">
+        <div className="max-w-xl w-full p-10 bg-[#00FF41]/5 border border-[#00FF41]/30 rounded-lg">
+          <div className="flex justify-between items-center mb-8">
              <div className="flex gap-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className={`h-1 w-12 rounded-full transition-all duration-500 ${i <= quizStep ? 'bg-[#00FF41]' : 'bg-zinc-800'}`} />
+                <div key={i} className={`h-1 w-12 rounded-full ${i <= quizStep ? 'bg-[#00FF41]' : 'bg-zinc-800'}`} />
               ))}
             </div>
-            <span className="text-[10px] font-black text-[#00FF41] uppercase tracking-[0.2em]">Step {quizStep + 1}_of_3</span>
+            <span className="text-[10px] font-black text-[#00FF41] uppercase">Step {quizStep + 1}</span>
           </div>
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">{questions[quizStep].title}</h3>
-          <p className="text-3xl font-[900] uppercase tracking-tighter leading-none mb-10 text-white">{questions[quizStep].q}</p>
-          <button 
-            onClick={() => quizStep < 2 ? setQuizStep(quizStep + 1) : setPassedQuiz(true)} 
-            className="w-full py-5 bg-[#00FF41] text-black font-black text-xs uppercase tracking-widest rounded-sm hover:bg-white transition-all active:scale-[0.98]"
-          >
+          <p className="text-3xl font-[900] uppercase tracking-tighter mb-8">{questions[quizStep].q}</p>
+          <button onClick={() => quizStep < 2 ? setQuizStep(quizStep + 1) : setPassedQuiz(true)} className="w-full py-5 bg-[#00FF41] text-black font-black uppercase text-xs">
             {questions[quizStep].btn}
           </button>
         </div>
@@ -90,177 +76,160 @@ function DashboardContent() {
     );
   }
 
-  // --- 4. MASTER DASHBOARD (Consolidated Elements) ---
   return (
-    <div className="min-h-screen bg-black text-white px-6 font-sans animate-in fade-in duration-700">
-      {/* HEADER: Identity & Navigation */}
+    <div className="min-h-screen bg-black text-white px-6 font-sans">
       <nav className="max-w-7xl mx-auto h-24 flex justify-between items-center border-b border-white/10">
-        <div className="flex flex-col leading-none">
-          <span className="text-2xl font-[900] uppercase tracking-tighter">Young Investors</span>
-          <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-[0.4em] mt-1">Terminal_v1.0.4</span>
+        <div className="flex flex-col">
+          <span className="text-2xl font-[900] uppercase">Young Investors</span>
+          <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">ZAR_AUDIT_ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
         </div>
         <div className="flex items-center gap-6">
-          <div className="bg-[#00FF41] text-black px-3 py-1.5 text-[9px] font-black uppercase rounded-sm shadow-[0_0_15px_-3px_rgba(0,255,65,0.4)]">
-            {userLevel}
+          <div className="flex bg-zinc-950 border border-white/10 rounded overflow-hidden">
+            <button onClick={() => setActiveTab('terminal')} className={`px-4 py-2 text-[10px] font-black uppercase ${activeTab === 'terminal' ? 'bg-white text-black' : 'text-zinc-500'}`}>Terminal</button>
+            <button onClick={() => setActiveTab('ledger')} className={`px-4 py-2 text-[10px] font-black uppercase ${activeTab === 'ledger' ? 'bg-white text-black' : 'text-zinc-500'}`}>Ledger</button>
           </div>
-          <button 
-            onClick={() => setShowLogoutModal(true)} 
-            className="text-zinc-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all border border-transparent hover:border-red-500/20 px-3 py-1.5 rounded"
-          >
-            Logout_System
-          </button>
+          <button onClick={() => setShowLogoutModal(true)} className="text-zinc-600 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-colors">Logout</button>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-12 grid grid-cols-12 gap-10">
-        {/* LEFT COLUMN: Market Data & Voting */}
+      <main className="max-w-7xl mx-auto py-12 grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8">
-          <header className="mb-12">
-            <h1 className="text-6xl font-[900] uppercase tracking-tighter mb-2">{kitchenName}</h1>
-            <div className="flex items-center gap-2 text-[#00FF41] text-[10px] font-black tracking-[0.3em] uppercase">
-              <span className="w-2 h-2 bg-[#00FF41] rounded-full animate-pulse" />
-              Governance_Certified_Session_Active
-            </div>
-          </header>
-
-          {/* JSE LIVE FEED GRID */}
-          <div className="grid grid-cols-2 gap-6 mb-10">
-            <div className="p-8 bg-zinc-950 border border-white/5 rounded-xl hover:border-[#00FF41]/20 transition-colors">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Sasol_JSE:SOL</span>
-              <div className="text-4xl font-[900] tracking-tighter">R{prices.sasol.toFixed(2)}</div>
-            </div>
-            <div className="p-8 bg-zinc-950 border border-white/5 rounded-xl hover:border-[#00FF41]/20 transition-colors">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Capitec_JSE:CPI</span>
-              <div className="text-4xl font-[900] tracking-tighter">R{prices.capitec.toFixed(2)}</div>
-            </div>
-          </div>
-
-          {/* VOTING ENGINE: The Democratic Core */}
-          <section className="p-8 bg-[#00FF41]/5 border border-[#00FF41]/20 rounded-xl mb-10 relative overflow-hidden">
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <span className="text-[10px] font-black text-[#00FF41] uppercase tracking-[0.3em] mb-2 block">Live_Governance_Vote</span>
-                <h2 className="text-3xl font-[900] uppercase tracking-tighter leading-none">
-                  Action: {activeVote.type} {activeVote.asset} @ {activeVote.amount}
-                </h2>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-black text-zinc-500 uppercase">Quorum_Progress</span>
-                <div className="text-2xl font-[900] text-white leading-none mt-1">
-                   {activeVote.votes} <span className="text-zinc-700">/</span> {activeVote.totalNeeded}
+          {activeTab === 'terminal' ? (
+            <>
+              <header className="mb-12 flex justify-between items-start">
+                <div>
+                  <h1 className="text-5xl font-[900] uppercase tracking-tighter mb-2">{kitchenName}</h1>
+                  <div className={`text-[10px] font-black tracking-[0.3em] uppercase flex items-center gap-2 ${isSystemFrozen ? 'text-red-600' : 'text-[#00FF41]'}`}>
+                    <div className={`w-2 h-2 rounded-full ${isSystemFrozen ? 'bg-red-600' : 'bg-[#00FF41] animate-pulse'}`} /> 
+                    {isSystemFrozen ? 'SYSTEM_HALTED' : 'GOVERNANCE_ACTIVE'}
+                  </div>
                 </div>
-              </div>
-            </div>
-            {!activeVote.voted ? (
-              <div className="flex gap-4">
+                {/* EMERGENCY CIRCUIT BREAKER (For A+ Standard) */}
                 <button 
-                  onClick={() => setActiveVote({...activeVote, voted: true, votes: activeVote.votes + 1})} 
-                  className="flex-1 py-5 bg-[#00FF41] text-black font-black uppercase text-xs tracking-widest hover:bg-white transition-all active:scale-95"
+                  onClick={() => setIsSystemFrozen(!isSystemFrozen)}
+                  className="px-4 py-2 border border-red-600 text-red-600 text-[8px] font-black uppercase rounded hover:bg-red-600 hover:text-white transition-all"
                 >
-                  Approve Trade
+                  {isSystemFrozen ? 'Resume_Terminal' : 'Emergency_Freeze'}
                 </button>
-                <button className="flex-1 py-5 bg-zinc-900 text-white font-black uppercase text-xs tracking-widest hover:bg-red-600 transition-all active:scale-95">
-                  Veto
-                </button>
-              </div>
-            ) : (
-              <div className="py-5 text-center border border-[#00FF41]/30 bg-[#00FF41]/10 text-[#00FF41] text-[10px] font-black uppercase tracking-[0.4em] rounded animate-pulse">
-                Your_Vote_Registered. Awaiting_Consensus...
-              </div>
-            )}
-          </section>
+              </header>
 
-          {/* AUDIT TRAIL: System Logs */}
-          <div className="bg-zinc-950 border border-white/5 p-8 rounded-xl font-mono text-[10px]">
-            <span className="text-zinc-600 uppercase font-black mb-6 block tracking-widest border-b border-white/5 pb-2">System_Audit_Trail (SARB_Compliant)</span>
-            <div className="space-y-2">
-              {logs.map(log => (
-                <div key={log.id} className="flex gap-6 items-center opacity-80 hover:opacity-100 transition-opacity">
-                  <span className="text-zinc-700 font-bold w-16">[{log.time}]</span>
-                  <span className="text-[#00FF41] font-medium tracking-tight">{log.msg}</span>
-                  <span className="ml-auto text-zinc-800 font-black">LOG_ID: {log.id.toString().slice(-4)}</span>
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="p-8 bg-zinc-950 border border-white/5 rounded-lg">
+                  <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Sasol Ltd</span>
+                  <div className="text-3xl font-[900]">R{prices.sasol.toFixed(2)}</div>
                 </div>
-              ))}
+                <div className="p-8 bg-zinc-950 border border-white/5 rounded-lg">
+                  <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Capitec Bank</span>
+                  <div className="text-3xl font-[900]">R{prices.capitec.toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* VOTING ENGINE */}
+              <div className={`p-8 rounded-lg mb-8 border ${isSystemFrozen ? 'bg-red-600/5 border-red-600/30' : 'bg-[#00FF41]/5 border-[#00FF41]/20'}`}>
+                <span className={`text-[10px] font-black uppercase tracking-widest mb-4 block ${isSystemFrozen ? 'text-red-600' : 'text-[#00FF41]'}`}>
+                  {isSystemFrozen ? 'TRADING_SUSPENDED' : 'Active_Governance_Vote'}
+                </span>
+                <h2 className="text-2xl font-[900] uppercase mb-6">{activeVote.type} {activeVote.asset}</h2>
+                {isSystemFrozen ? (
+                  <div className="p-4 border border-red-600/30 text-red-600 text-[10px] font-black text-center uppercase tracking-widest">
+                    SYSTEM_WIDE_CIRCUIT_BREAKER_ENGAGED
+                  </div>
+                ) : !isVerified ? (
+                  <div className="p-4 border border-red-500/20 bg-red-500/5 text-red-500 text-[10px] font-black text-center uppercase tracking-widest">
+                    VOTING_LOCKED: COMPLETE_FICA_VERIFICATION
+                  </div>
+                ) : (
+                  <div className="flex gap-4">
+                    <button onClick={() => setActiveVote({...activeVote, voted: true, votes: activeVote.votes+1})} className="flex-1 py-4 bg-[#00FF41] text-black font-black uppercase text-xs">Approve</button>
+                    <button className="flex-1 py-4 bg-zinc-900 text-white font-black uppercase text-xs">Veto</button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* KITCHEN LEDGER VIEW */
+            <div className="animate-in fade-in duration-500">
+              <div className="flex justify-between items-center mb-8">
+                <h1 className="text-5xl font-[900] uppercase tracking-tighter">Kitchen_Ledger</h1>
+                <button className="px-4 py-2 bg-white text-black text-[8px] font-black uppercase rounded hover:bg-[#00FF41] transition-all">Export_CSV</button>
+              </div>
+              <div className="bg-zinc-950 border border-white/10 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-[10px]">
+                  <thead>
+                    <tr className="bg-white/5 text-zinc-500 font-black uppercase tracking-widest">
+                      <th className="p-4">TX_ID</th>
+                      <th className="p-4">Date</th>
+                      <th className="p-4">Entity</th>
+                      <th className="p-4 text-right">Amount (ZAR)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {ledger.map(tx => (
+                      <tr key={tx.id} className="font-bold">
+                        <td className="p-4 font-mono text-zinc-500">{tx.id}</td>
+                        <td className="p-4 uppercase">{tx.date}</td>
+                        <td className="p-4 uppercase">{tx.user}</td>
+                        <td className={`p-4 text-right ${tx.amount > 0 ? 'text-[#00FF41]' : 'text-white'}`}>
+                          {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          )}
+
+          {/* AUDIT TRAIL */}
+          <div className="bg-zinc-950 border border-white/5 p-6 rounded-lg font-mono text-[9px] mt-8">
+            <span className="text-zinc-600 uppercase font-black mb-4 block underline">System_Audit_Logs</span>
+            {logs.map(log => (
+              <div key={log.id} className="flex gap-4 mb-1">
+                <span className="text-zinc-700">[{log.time}]</span>
+                <span className={`${log.type === 'success' ? 'text-[#00FF41]' : 'text-white/60'}`}>{log.msg}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Sidebar & Regulatory Seals */}
-        <aside className="col-span-12 lg:col-span-4 space-y-8">
-          {/* KITCHEN CONSTITUTION */}
-          <div className="p-8 bg-zinc-950 border border-white/10 rounded-xl">
-            <h3 className="text-[11px] font-black uppercase text-[#00FF41] mb-6 tracking-widest border-b border-white/5 pb-2">Kitchen_Constitution</h3>
-            <div className="space-y-5 text-[10px]">
+        {/* SIDEBAR: CONSTITUTION & COMPLIANCE */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          <div className="p-6 bg-zinc-950 border border-white/5 rounded-lg">
+            <h3 className="text-[10px] font-black uppercase text-[#00FF41] mb-4">Kitchen_Constitution</h3>
+            <div className="space-y-4 text-[10px]">
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-zinc-500 uppercase font-bold">Trading Style</span>
-                <span className="font-black uppercase text-white">{kitchenStyle === 'mutual' ? 'Slow_Cook' : 'Hedge_Fund'}</span>
+                <span className="text-zinc-500 uppercase">Style</span>
+                <span className="font-black uppercase">{kitchenStyle}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-zinc-500 uppercase font-bold">Min. Quorum</span>
-                <span className="font-black uppercase text-white">{kitchenStyle === 'mutual' ? '80% (4/5)' : '60% (3/5)'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 uppercase font-bold">Exposure Limit</span>
-                <span className="font-black uppercase text-white">R15,000.00</span>
+                <span className="text-zinc-500 uppercase font-mono">FICA_Status</span>
+                <span className={`font-black uppercase ${isVerified ? 'text-[#00FF41]' : 'text-red-500 animate-pulse'}`}>
+                  {isVerified ? 'VERIFIED' : 'PENDING'}
+                </span>
               </div>
             </div>
+            {!isVerified && (
+              <button onClick={() => router.push('/verify')} className="w-full mt-4 py-3 border border-red-500/50 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">Verify_FICA</button>
+            )}
           </div>
-
-          {/* A+ REGULATORY SEAL (FIC/SARB) */}
-          <div className="p-8 bg-zinc-950 border border-red-500/20 rounded-xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-              <div className="w-16 h-16 border-4 border-red-500 rotate-45" />
-            </div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
-              <h3 className="text-[11px] font-black uppercase text-red-600 tracking-widest">Compliance_Gate</h3>
-            </div>
-            <div className="space-y-4 mb-8">
-              <div className="flex justify-between items-center text-[10px]">
-                <span className="text-zinc-500 uppercase font-bold">FICA_Status</span>
-                <span className="bg-red-600 text-white px-2 py-0.5 rounded-sm font-black uppercase text-[8px] animate-pulse">REQUIRED</span>
-              </div>
-              <div className="flex justify-between items-center text-[10px]">
-                <span className="text-zinc-500 uppercase font-bold">Data_Ledger</span>
-                <span className="text-[#00FF41] font-black uppercase">AES_256_ACTIVE</span>
-              </div>
-              <div className="flex justify-between items-center text-[10px]">
-                <span className="text-zinc-500 uppercase font-bold">Audit_ID</span>
-                <span className="text-zinc-400 font-mono">YI-ZAR-782</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => router.push('/verify')} 
-              className="w-full py-4 bg-red-600/10 border border-red-600/40 text-red-600 text-[9px] font-black uppercase tracking-[0.2em] hover:bg-red-600 hover:text-white transition-all rounded-sm active:scale-[0.97]"
-            >
-              Verify_Identity_For_Trading
-            </button>
+          
+          {/* POPIA PRIVACY SEAL (Final A+ Requirement) */}
+          <div className="p-6 bg-zinc-950 border border-white/5 rounded-lg text-[8px] text-zinc-600 font-bold uppercase tracking-widest leading-relaxed">
+            <p className="mb-2">Act 4 of 2013 (POPIA) Compliant</p>
+            <p>SARB Sandbox ID: YI-ZAR-2026</p>
           </div>
-        </aside>
+        </div>
       </main>
 
-      {/* SECURE LOGOUT MODAL */}
+      {/* LOGOUT MODAL */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-zinc-950 border border-white/10 p-10 rounded-2xl max-w-sm w-full mx-4 shadow-2xl">
-            <div className="w-12 h-1 bg-red-600 mb-6 mx-auto" />
-            <h3 className="text-2xl font-[900] uppercase tracking-tighter mb-2 text-center">Confirm_Exit</h3>
-            <p className="text-zinc-500 text-[10px] font-bold mb-10 uppercase tracking-widest leading-relaxed text-center">
-              Logging out will terminate your real-time JSE sync and pause governance participation.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={() => setShowLogoutModal(false)} 
-                className="py-4 bg-zinc-900 text-white font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-zinc-800 transition-all border border-white/5"
-              >
-                Return
-              </button>
-              <button 
-                onClick={() => router.push('/')} 
-                className="py-4 bg-white text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-red-600 hover:text-white transition-all active:scale-95"
-              >
-                Log_Out
-              </button>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md">
+          <div className="bg-zinc-950 border border-white/10 p-10 rounded-lg max-w-sm w-full mx-4">
+            <h3 className="text-2xl font-[900] uppercase tracking-tighter mb-2 text-center text-white">Confirm Exit</h3>
+            <p className="text-zinc-500 text-[10px] font-medium mb-8 uppercase tracking-widest leading-relaxed text-center">Terminating session will pause live JSE feed and governance participation.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-4 bg-zinc-900 text-white font-[900] text-[10px] uppercase tracking-widest rounded border border-white/5">Cancel</button>
+              <button onClick={() => router.push('/')} className="flex-1 py-4 bg-white text-black font-[900] text-[10px] uppercase tracking-widest rounded hover:bg-red-600 hover:text-white transition-all">Log_Out</button>
             </div>
           </div>
         </div>
@@ -269,11 +238,8 @@ function DashboardContent() {
   );
 }
 
-// Global wrapper for Next.js Suspense compatibility
 export default function Dashboard() {
   return (
-    <Suspense fallback={<div className="bg-black min-h-screen flex items-center justify-center font-black text-[#00FF41]">INITIALIZING_AUDIT_LOGS...</div>}>
-      <DashboardContent />
-    </Suspense>
+    <Suspense fallback={<div className="bg-black min-h-screen" />}><DashboardContent /></Suspense>
   );
 }
