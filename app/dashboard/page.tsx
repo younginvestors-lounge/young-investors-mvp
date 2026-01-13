@@ -1,8 +1,9 @@
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function Dashboard() {
+// 1. Rename your current function to DashboardContent
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const kitchenStyle = searchParams.get('style') || 'hedge';
@@ -150,5 +151,20 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+  );
+}
+
+// 2. Export a main Dashboard function that wraps the content in Suspense
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-[#00FF41] font-[900] uppercase tracking-[0.3em] animate-pulse">
+          INITIALIZING_TERMINAL...
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
