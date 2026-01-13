@@ -1,7 +1,9 @@
 "use client"
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [votes, setVotes] = useState(2);
   const [userLevel, setUserLevel] = useState(1);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -10,6 +12,7 @@ export default function Dashboard() {
     { id: 1, time: '23:14:01', msg: 'ENCRYPTED_SESSION_START', type: 'info' },
     { id: 2, time: '23:15:12', msg: 'LIQUIDITY_BUFFER_OK', type: 'success' }
   ]);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // JSE LIVE FEED SIMULATOR
   useEffect(() => {
@@ -45,12 +48,30 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-black text-white px-6 font-sans">
       <nav className="max-w-7xl mx-auto h-24 flex justify-between items-center border-b border-white/10">
-        <div className="flex flex-col leading-none">
+        <div className="flex flex-col leading-none cursor-pointer" onClick={() => router.push('/')}>
           <span className="text-3xl font-[900] tracking-[-0.07em] uppercase">Young</span>
           <span className="text-3xl font-[900] tracking-[-0.07em] uppercase">Investors</span>
         </div>
-        <div className={`px-4 py-2 rounded-sm text-[10px] font-[900] uppercase tracking-tighter ${userLevel >= 2 ? 'bg-[#00FF41] text-black' : 'bg-zinc-800 text-zinc-400'}`}>
-          {userLevel === 1 ? 'Apprentice' : 'Sous-Chef'}
+        
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => router.push('/create-kitchen')}
+            className="text-zinc-500 hover:text-white text-[10px] font-[900] uppercase tracking-widest transition-colors"
+          >
+            ← Exit Kitchen
+          </button>
+
+          <div className={`px-4 py-2 rounded-sm text-[10px] font-[900] uppercase tracking-tighter ${userLevel >= 2 ? 'bg-[#00FF41] text-black' : 'bg-zinc-800 text-zinc-400'}`}>
+            {userLevel === 1 ? 'Apprentice' : 'Sous-Chef'}
+          </div>
+
+          <button 
+            onClick={() => router.push('/')}
+            onClick={() => setShowLogoutModal(true)}
+            className="text-zinc-500 hover:text-red-500 text-[10px] font-[900] uppercase tracking-widest transition-colors"
+          >
+            Log Out
+          </button>
         </div>
       </nav>
 
@@ -151,6 +172,24 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-white/10 p-8 rounded-lg max-w-sm w-full mx-4">
+            <h3 className="text-xl font-[900] uppercase tracking-tighter mb-2">Confirm Exit</h3>
+            <p className="text-zinc-500 text-xs font-medium mb-8">Are you sure you want to log out of your session?</p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-3 bg-zinc-900 text-white font-[900] text-[10px] uppercase tracking-widest rounded hover:bg-zinc-800 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => router.push('/')} className="flex-1 py-3 bg-white text-black font-[900] text-[10px] uppercase tracking-widest rounded hover:bg-red-500 hover:text-white transition-colors">
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
