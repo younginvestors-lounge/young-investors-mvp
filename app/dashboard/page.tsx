@@ -1,18 +1,20 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [votes, setVotes] = useState(2);
-  const [userLevel, setUserLevel] = useState(1);
-  const [showQuiz, setShowQuiz] = useState(false);
+  const searchParams = useSearchParams();
+  const kitchenStyle = searchParams.get('style') || 'hedge';
+  const kitchenName = searchParams.get('name');
+
   const [prices, setPrices] = useState({ sasol: 184.50, capitec: 2150.00 });
   const [logs, setLogs] = useState([
     { id: 1, time: '23:14:01', msg: 'ENCRYPTED_SESSION_START', type: 'info' },
     { id: 2, time: '23:15:12', msg: 'LIQUIDITY_BUFFER_OK', type: 'success' }
   ]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [userLevel, setUserLevel] = useState(1);
 
   // JSE LIVE FEED SIMULATOR
   useEffect(() => {
@@ -37,13 +39,6 @@ export default function Dashboard() {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
-
-  const handleCertification = () => {
-    setUserLevel(2);
-    setShowQuiz(false);
-    const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-    setLogs(prev => [{ id: Date.now(), time, msg: 'CHEF_ZANNY_CREDENTIALS_VERIFIED', type: 'success' }, ...prev]);
-  }
 
   return (
     <div className="min-h-screen bg-black text-white px-6 font-sans">
@@ -75,30 +70,37 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-7xl mx-auto py-12 grid grid-cols-12 gap-8">
-        <div className="col-span-12 lg:col-span-8 space-y-8">
-          <div className="bg-zinc-950 border border-white/5 p-12 rounded-lg">
-            <p className="text-zinc-500 font-[900] text-[12px] uppercase tracking-widest mb-6">Portfolio Balance</p>
-            <h2 className="text-8xl font-[900] tracking-[-0.08em] mb-12">R 85,240<span className="opacity-10">.00</span></h2>
-            
-            <div className="grid grid-cols-2 gap-12 pt-10 border-t border-white/5">
-              <div>
-                <p className="text-zinc-500 font-[900] text-[10px] uppercase mb-2">$SOL</p>
-                <p className="text-4xl font-[900] tracking-[-0.05em]">R{prices.sasol.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-zinc-500 font-[900] text-[10px] uppercase mb-2">$CPI</p>
-                <p className="text-4xl font-[900] tracking-[-0.05em]">R{prices.capitec.toFixed(2)}</p>
-              </div>
+        <div className="col-span-12 lg:col-span-8">
+          <div className="mb-8">
+             <h1 className="text-4xl font-[900] uppercase tracking-tighter mb-2">
+              {kitchenName || 'My Kitchen'}
+            </h1>
+            <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono">
+              <span className="w-2 h-2 bg-[#00FF41] rounded-full animate-pulse"></span>
+              LIVE_JSE_FEED_ACTIVE
             </div>
           </div>
 
-          <div className="bg-zinc-950/50 p-8 border border-white/5 rounded-lg font-mono">
-            <h3 className="text-[10px] font-[900] uppercase text-zinc-500 mb-6 tracking-[0.2em]">Live_Exchange_Feed</h3>
-            <div className="space-y-3">
+          {/* PRICES GRID */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="p-6 bg-zinc-950 border border-white/10 rounded-lg">
+              <div className="text-zinc-500 text-[10px] font-[900] uppercase tracking-widest mb-2">Sasol Ltd</div>
+              <div className="text-3xl font-[900] tracking-tighter">R{prices.sasol.toFixed(2)}</div>
+            </div>
+            <div className="p-6 bg-zinc-950 border border-white/10 rounded-lg">
+              <div className="text-zinc-500 text-[10px] font-[900] uppercase tracking-widest mb-2">Capitec Bank</div>
+              <div className="text-3xl font-[900] tracking-tighter">R{prices.capitec.toFixed(2)}</div>
+            </div>
+          </div>
+
+          {/* LOGS */}
+          <div className="bg-zinc-950 border border-white/10 rounded-lg p-6 font-mono text-xs">
+            <div className="text-zinc-500 text-[10px] font-[900] uppercase tracking-widest mb-4">System Logs</div>
+            <div className="space-y-2">
               {logs.map(log => (
-                <div key={log.id} className="text-[10px] flex gap-4 opacity-50">
-                  <span className="text-zinc-600">[{log.time}]</span>
-                  <span className={log.type === 'success' ? 'text-[#00FF41]' : 'text-white'}>{log.msg}</span>
+                <div key={log.id} className="flex gap-4">
+                  <span className="text-zinc-600">{log.time}</span>
+                  <span className={log.type === 'success' ? 'text-[#00FF41]' : 'text-zinc-300'}>{log.msg}</span>
                 </div>
               ))}
             </div>
@@ -110,64 +112,22 @@ export default function Dashboard() {
           <div className="precision-card p-6 bg-[#00FF41]/5 border border-[#00FF41]/20 mb-6 rounded-lg">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-[10px] font-[900] uppercase tracking-widest text-[#00FF41]">Active_Constitution</h3>
-              <span className="text-[8px] bg-[#00FF41] text-black px-2 py-0.5 font-black rounded-sm uppercase">Hedge_Fund_Style</span>
+              <span className="text-[8px] bg-[#00FF41] text-black px-2 py-0.5 font-black rounded-sm uppercase">{kitchenStyle === 'mutual' ? 'Slow_Cook_Style' : 'Hedge_Fund_Style'}</span>
             </div>
             <ul className="space-y-2 text-[10px] font-medium text-zinc-400">
               <li className="flex justify-between border-b border-white/5 pb-1">
                 <span>Min. Approval Quorum</span>
-                <span className="text-white">60% (3/5)</span>
+                <span className="text-white">{kitchenStyle === 'mutual' ? '80% (4/5)' : '60% (3/5)'}</span>
               </li>
               <li className="flex justify-between border-b border-white/5 pb-1">
                 <span>Max. Asset Exposure</span>
-                <span className="text-white">R15,000 / Trade</span>
+                <span className="text-white">{kitchenStyle === 'mutual' ? 'R5,000 / Trade' : 'R15,000 / Trade'}</span>
               </li>
               <li className="flex justify-between">
                 <span>Asset Universe</span>
                 <span className="text-white">JSE_TOP_40 + TECH</span>
               </li>
             </ul>
-          </div>
-
-          <div className="bg-white text-black p-8 rounded-lg min-h-[400px] flex flex-col justify-between">
-            <div>
-              <h3 className="text-lg font-[900] uppercase tracking-[-0.05em] mb-8">Consensus</h3>
-              
-              {showQuiz ? (
-                <div className="space-y-6">
-                  <p className="text-sm font-[900] leading-tight uppercase tracking-tight">Confirm: Stop-loss is used to mitigate capital risk?</p>
-                  <button onClick={handleCertification} className="w-full bg-black text-white py-4 font-[900] text-xs uppercase tracking-widest hover:bg-[#00FF41] hover:text-black transition-colors">
-                    Confirm & Verify
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-[900] uppercase text-zinc-400">Proposal #104</p>
-                    <p className="text-2xl font-[900] uppercase tracking-tighter leading-none">Execute $SOL Order</p>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between font-[900] text-[10px] uppercase">
-                      <span>Quorum</span>
-                      <span>{votes}/5</span>
-                    </div>
-                    <div className="h-4 bg-black/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-black transition-all duration-1000" style={{ width: `${(votes/5)*100}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button 
-              disabled={userLevel < 2}
-              onClick={() => setVotes(v => Math.min(5, v+1))}
-              className={`w-full py-5 font-[900] text-sm uppercase tracking-widest transition-all ${userLevel >= 2 ? 'bg-black text-white' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'}`}
-            >
-              {userLevel === 1 ? 'Locked' : 'Approve Order'}
-            </button>
-            {userLevel === 1 && !showQuiz && (
-              <button onClick={() => setShowQuiz(true)} className="mt-4 text-[10px] font-[900] uppercase underline text-center w-full">Begin Certification</button>
-            )}
           </div>
         </div>
       </main>
