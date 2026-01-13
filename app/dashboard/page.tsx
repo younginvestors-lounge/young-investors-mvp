@@ -17,6 +17,34 @@ function DashboardContent() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [userLevel, setUserLevel] = useState(1);
 
+  // ADD THIS STATE AT THE TOP OF DashboardContent
+const [passedQuiz, setPassedQuiz] = useState(false);
+
+{/* RESTORED QUIZ SECTION */}
+{!passedQuiz && (
+  <div className="precision-card p-8 bg-[#00FF41]/10 border border-[#00FF41] mb-8 animate-pulse">
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-2 h-2 bg-[#00FF41] rounded-full" />
+      <h3 className="text-[10px] font-black uppercase tracking-widest text-[#00FF41]">Governance_Certification_Required</h3>
+    </div>
+    <p className="text-xl font-[900] uppercase tracking-tighter mb-6">
+      Do you agree to abide by the consensus of the Kitchen and never trade without a 3/5 majority?
+    </p>
+    <button 
+      onClick={() => setPassedQuiz(true)}
+      className="w-full py-4 bg-[#00FF41] text-black font-black text-xs uppercase tracking-widest hover:bg-white transition-all"
+    >
+      I_CONFIRM_UNDERSTANDING
+    </button>
+  </div>
+)}
+
+{passedQuiz && (
+  <div className="text-[10px] font-black text-[#00FF41] mb-4 uppercase tracking-[0.3em]">
+    ✓ Governance_Certified_User_Active
+  </div>
+)}
+
   // JSE LIVE FEED SIMULATOR
   useEffect(() => {
     const interval = setInterval(() => {

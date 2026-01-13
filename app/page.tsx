@@ -1,4 +1,5 @@
 'use client'; 
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -17,12 +18,10 @@ export default function Home() {
           <p className="border-l-2 border-white pl-2 uppercase">Ping: 6ms</p>
         </div>
 
-        <button 
-          onClick={() => window.location.href = '/dashboard'}
-          className="w-full bg-money-green text-black py-4 font-black hover:bg-white hover:scale-[1.02] transition-all uppercase"
-        >
-          {">"} Initialize Login
-        </button>
+        <Link href="/kitchen-type">
+  <button className="w-full py-3 bg-money-green text-black font-bold text-sm uppercase tracking-widest hover:bg-opacity-80 transition-all">ENTER_TERMINAL</button>
+</Link>
+
       </div>
     </main>
   );
