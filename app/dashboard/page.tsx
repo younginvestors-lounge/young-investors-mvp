@@ -6,62 +6,58 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // --- STATE MANAGEMENT ---
+  // --- 1. STATE MANAGEMENT ---
   const [passedQuiz, setPassedQuiz] = useState(false);
   const [quizStep, setQuizStep] = useState(0);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  
-  // Simulation Data (Missing in your snippet)
   const [prices, setPrices] = useState({ sasol: 152.40, capitec: 2105.00 });
   const [logs, setLogs] = useState([{ id: 1, time: "10:00:00", msg: "TERMINAL_READY", type: 'info' }]);
   
+  // Voting State
+  const [activeVote, setActiveVote] = useState({
+    active: true,
+    asset: "SASOL",
+    type: "BUY",
+    amount: "R2,500",
+    votes: 2,
+    totalNeeded: 3,
+    voted: false
+  });
+
   // User/Kitchen Context
   const kitchenStyle = searchParams.get('style') || 'hedge';
   const kitchenName = "The Boys' Kitchen";
   const userLevel = 1;
 
-  // --- JSE LIVE FEED SIMULATOR ---
+  // --- 2. JSE SIMULATOR ---
   useEffect(() => {
-    if (!passedQuiz) return; // Only run simulator once passed
-
+    if (!passedQuiz) return;
     const interval = setInterval(() => {
       setPrices(prev => ({
         sasol: prev.sasol + (Math.random() * 2 - 1),
         capitec: prev.capitec + (Math.random() * 10 - 5)
       }));
-
       if (Math.random() > 0.85) {
         const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-        const events = ["VOLATILITY_SYNC_OK", "JSE_API_HEARTBEAT", "LIQUIDITY_CHECK_PASSED"];
-        const randomMsg = events[Math.floor(Math.random() * events.length)];
-        
-        setLogs(prev => [{ 
-          id: Date.now(), 
-          time, 
-          msg: randomMsg, 
-          type: 'info' 
-        }, ...prev].slice(0, 5));
+        setLogs(prev => [{ id: Date.now(), time, msg: "JSE_FEED_SYNC_OK", type: 'info' }, ...prev].slice(0, 5));
       }
     }, 3000);
     return () => clearInterval(interval);
   }, [passedQuiz]);
 
-  // --- QUESTIONS DATA ---
   const questions = [
-    { title: "Risk Awareness", q: "Do you understand that JSE investments carry risk and your capital is not guaranteed?", btn: "I UNDERSTAND THE RISK" },
-    { title: "Governance Quorum", q: "A trade only executes if the 3/5 majority (60%) is reached. Do you accept this collective rule?", btn: "I ACCEPT THE GOVERNANCE" },
-    { title: "Mandate Compliance", q: "Will you strictly abide by your chosen Kitchen's Asset Universe and trading limits?", btn: "I AGREE TO THE CONSTITUTION" }
+    { title: "Risk Awareness", q: "Do you understand that JSE investments carry risk?", btn: "I UNDERSTAND" },
+    { title: "Governance Quorum", q: "A trade only executes if the majority is reached. Accept?", btn: "I ACCEPT" },
+    { title: "Compliance", q: "Will you abide by the Kitchen's limits?", btn: "I AGREE" }
   ];
 
-  // --- UX LOGIC: CONDITIONAL RENDERING ---
-  
-  // 1. SHOW QUIZ FIRST
+  // --- 3. THE QUIZ GATE (COMPLIANCE) ---
   if (!passedQuiz) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-6 font-sans">
         <div className="max-w-xl w-full precision-card p-10 bg-[#00FF41]/5 border border-[#00FF41]/30 rounded-lg">
           <div className="flex justify-between items-center mb-8">
-            <div className="flex gap-2">
+             <div className="flex gap-2">
               {[0, 1, 2].map((i) => (
                 <div key={i} className={`h-1 w-12 rounded-full ${i <= quizStep ? 'bg-[#00FF41]' : 'bg-zinc-800'}`} />
               ))}
@@ -69,16 +65,8 @@ function DashboardContent() {
             <span className="text-[10px] font-black text-[#00FF41] uppercase tracking-[0.2em]">Step {quizStep + 1}_of_3</span>
           </div>
           <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">{questions[quizStep].title}</h3>
-          <p className="text-3xl font-[900] uppercase tracking-tighter leading-none mb-8">
-            {questions[quizStep].q}
-          </p>
-          <button 
-            onClick={() => {
-              if (quizStep < 2) setQuizStep(quizStep + 1);
-              else setPassedQuiz(true);
-            }}
-            className="w-full py-5 bg-[#00FF41] text-black font-black text-xs uppercase tracking-widest hover:bg-white transition-all rounded-sm"
-          >
+          <p className="text-3xl font-[900] uppercase tracking-tighter leading-none mb-8">{questions[quizStep].q}</p>
+          <button onClick={() => quizStep < 2 ? setQuizStep(quizStep + 1) : setPassedQuiz(true)} className="w-full py-5 bg-[#00FF41] text-black font-black text-xs uppercase tracking-widest rounded-sm">
             {questions[quizStep].btn}
           </button>
         </div>
@@ -86,106 +74,100 @@ function DashboardContent() {
     );
   }
 
-  // 2. SHOW FULL DASHBOARD AFTER QUIZ
+  // --- 4. MAIN DASHBOARD UI ---
   return (
-    <div className="min-h-screen bg-black text-white px-6 font-sans animate-in fade-in duration-1000">
-      {/* NAV */}
+    <div className="min-h-screen bg-black text-white px-6 font-sans">
       <nav className="max-w-7xl mx-auto h-24 flex justify-between items-center border-b border-white/10">
-        <div className="flex flex-col leading-none cursor-pointer" onClick={() => router.push('/')}>
-          <span className="text-3xl font-[900] tracking-[-0.07em] uppercase">Young</span>
-          <span className="text-3xl font-[900] tracking-[-0.07em] uppercase">Investors</span>
+        <div className="flex flex-col leading-none">
+          <span className="text-2xl font-[900] uppercase">Young Investors</span>
         </div>
-        
         <div className="flex items-center gap-6">
-          <button onClick={() => router.push('/create-kitchen')} className="text-zinc-500 hover:text-white text-[10px] font-[900] uppercase tracking-widest transition-colors">
-            ← Exit Kitchen
-          </button>
-          <div className={`px-4 py-2 rounded-sm text-[10px] font-[900] uppercase tracking-tighter ${userLevel >= 2 ? 'bg-[#00FF41] text-black' : 'bg-zinc-800 text-zinc-400'}`}>
-            {userLevel === 1 ? 'Apprentice' : 'Sous-Chef'}
-          </div>
-          <button onClick={() => setShowLogoutModal(true)} className="text-zinc-500 hover:text-red-500 text-[10px] font-[900] uppercase tracking-widest transition-colors">
-            Log Out
-          </button>
+          <div className="bg-[#00FF41] text-black px-3 py-1 text-[8px] font-black uppercase rounded-sm">Sous-Chef Lvl 1</div>
+          <button onClick={() => setShowLogoutModal(true)} className="text-zinc-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest">Logout</button>
         </div>
       </nav>
 
-      {/* MAIN CONTENT */}
       <main className="max-w-7xl mx-auto py-12 grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-[900] uppercase tracking-tighter mb-2">{kitchenName}</h1>
-            <div className="flex items-center gap-2 text-[#00FF41] text-[10px] font-black uppercase tracking-[0.2em]">
-              <span className="w-2 h-2 bg-[#00FF41] rounded-full animate-pulse"></span>
-              Governance_Certified_Session_Active
+          <div className="mb-12">
+            <h1 className="text-5xl font-[900] uppercase tracking-tighter mb-2">{kitchenName}</h1>
+            <div className="text-[#00FF41] text-[10px] font-black tracking-[0.3em] uppercase">✓ Governance_Certified_Active</div>
+          </div>
+
+          {/* PRICES */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="p-8 bg-zinc-950 border border-white/5 rounded-lg">
+              <span className="text-[10px] font-black text-zinc-600 uppercase">Sasol JSE</span>
+              <div className="text-3xl font-[900]">R{prices.sasol.toFixed(2)}</div>
+            </div>
+            <div className="p-8 bg-zinc-950 border border-white/5 rounded-lg">
+              <span className="text-[10px] font-black text-zinc-600 uppercase">Capitec JSE</span>
+              <div className="text-3xl font-[900]">R{prices.capitec.toFixed(2)}</div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="p-6 bg-zinc-950 border border-white/10 rounded-lg">
-              <div className="text-zinc-500 text-[10px] font-[900] uppercase tracking-widest mb-2">Sasol Ltd</div>
-              <div className="text-3xl font-[900] tracking-tighter">R{prices.sasol.toFixed(2)}</div>
+          {/* RESTORED VOTING LOGIC */}
+          <div className="p-8 bg-[#00FF41]/5 border border-[#00FF41]/20 rounded-lg mb-8">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <span className="text-[10px] font-black text-[#00FF41] uppercase tracking-widest">Live_Governance_Vote</span>
+                <h2 className="text-2xl font-[900] uppercase tracking-tighter">Action: {activeVote.type} {activeVote.asset}</h2>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-black text-zinc-500 uppercase">Quorum Needed</span>
+                <div className="text-xl font-[900]">{activeVote.votes}/{activeVote.totalNeeded}</div>
+              </div>
             </div>
-            <div className="p-6 bg-zinc-950 border border-white/10 rounded-lg">
-              <div className="text-zinc-500 text-[10px] font-[900] uppercase tracking-widest mb-2">Capitec Bank</div>
-              <div className="text-3xl font-[900] tracking-tighter">R{prices.capitec.toFixed(2)}</div>
-            </div>
+            {!activeVote.voted ? (
+              <div className="flex gap-4">
+                <button onClick={() => setActiveVote({...activeVote, voted: true, votes: activeVote.votes + 1})} className="flex-1 py-4 bg-[#00FF41] text-black font-black uppercase text-xs">Approve Trade</button>
+                <button className="flex-1 py-4 bg-zinc-900 text-white font-black uppercase text-xs">Veto</button>
+              </div>
+            ) : (
+              <div className="py-4 text-center border border-[#00FF41]/30 text-[#00FF41] text-[10px] font-black uppercase tracking-widest">Vote Registered. Waiting for Quorum...</div>
+            )}
           </div>
 
           {/* EXCHANGE FEED LOGS */}
-          <div className="bg-zinc-950 border border-white/10 rounded-lg p-6 font-mono text-xs">
-            <div className="text-zinc-500 text-[10px] font-[900] uppercase tracking-widest mb-4">Live_System_Logs</div>
-            <div className="space-y-2">
-              {logs.map(log => (
-                <div key={log.id} className="flex gap-4">
-                  <span className="text-zinc-600">[{log.time}]</span>
-                  <span className={log.type === 'info' ? 'text-[#00FF41]' : 'text-zinc-300'}>{log.msg}</span>
-                </div>
-              ))}
-            </div>
+          <div className="bg-zinc-950 border border-white/5 p-6 rounded-lg font-mono text-[10px]">
+            <span className="text-zinc-600 uppercase font-black mb-4 block">System_Audit_Trail</span>
+            {logs.map(log => (
+              <div key={log.id} className="flex gap-4 mb-1">
+                <span className="text-zinc-700">[{log.time}]</span>
+                <span className="text-[#00FF41]">{log.msg}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* SIDEBAR */}
-        <div className="col-span-12 lg:col-span-4">
-          <div className="precision-card p-6 bg-[#00FF41]/5 border border-[#00FF41]/20 rounded-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-[10px] font-[900] uppercase tracking-widest text-[#00FF41]">Active_Constitution</h3>
-              <span className="text-[8px] bg-[#00FF41] text-black px-2 py-0.5 font-black rounded-sm uppercase">{kitchenStyle === 'mutual' ? 'Slow_Cook' : 'Hedge_Fund'}</span>
+        {/* CONSTITUTION SIDEBAR */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          <div className="p-6 bg-zinc-950 border border-white/5 rounded-lg">
+            <h3 className="text-[10px] font-black uppercase text-[#00FF41] mb-4">Kitchen_Constitution</h3>
+            <div className="space-y-4 text-[10px]">
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-zinc-500 uppercase">Style</span>
+                <span className="font-black uppercase">{kitchenStyle}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-zinc-500 uppercase">Quorum</span>
+                <span className="font-black uppercase">{kitchenStyle === 'mutual' ? '80%' : '60%'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500 uppercase">Risk Level</span>
+                <span className="font-black uppercase text-red-500">Medium</span>
+              </div>
             </div>
-            <ul className="space-y-2 text-[10px] font-medium text-zinc-400">
-              <li className="flex justify-between border-b border-white/5 pb-1">
-                <span>Min. Approval Quorum</span>
-                <span className="text-white">{kitchenStyle === 'mutual' ? '80% (4/5)' : '60% (3/5)'}</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Asset Universe</span>
-                <span className="text-white">JSE_TOP_40 + TECH</span>
-              </li>
-            </ul>
           </div>
         </div>
       </main>
-
-      {/* MODAL */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-zinc-950 border border-white/10 p-8 rounded-lg max-w-sm w-full mx-4">
-            <h3 className="text-xl font-[900] uppercase tracking-tighter mb-2">Confirm Exit</h3>
-            <p className="text-zinc-500 text-xs font-medium mb-8">Are you sure you want to log out of your session?</p>
-            <div className="flex gap-4">
-              <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-3 bg-zinc-900 text-white font-[900] text-[10px] uppercase tracking-widest rounded hover:bg-zinc-800 transition-colors">Cancel</button>
-              <button onClick={() => router.push('/')} className="flex-1 py-3 bg-white text-black font-[900] text-[10px] uppercase tracking-widest rounded hover:bg-red-500 hover:text-white transition-colors">Log Out</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-[#00FF41] font-[900]">INITIALIZING_TERMINAL...</div>}>
+    <Suspense fallback={<div className="bg-black min-h-screen" />}>
       <DashboardContent />
     </Suspense>
   );
