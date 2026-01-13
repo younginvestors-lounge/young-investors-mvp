@@ -11,19 +11,29 @@ export default function Dashboard() {
     { id: 2, time: '23:15:12', msg: 'LIQUIDITY_BUFFER_OK', type: 'success' }
   ]);
 
-    // Inside your useEffect for prices, ensure the logs stay fresh
-if (Math.random() > 0.85) {
-  const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-  const events = ["VOLATILITY_SYNC_OK", "JSE_API_HEARTBEAT", "LIQUIDITY_CHECK_PASSED"];
-  const randomMsg = events[Math.floor(Math.random() * events.length)];
-  
-  setLogs(prev => [{ 
-    id: Date.now(), 
-    time, 
-    msg: randomMsg, 
-    type: 'info' 
-  }, ...prev].slice(0, 5));
-}
+  // JSE LIVE FEED SIMULATOR
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPrices(prev => ({
+        sasol: prev.sasol + (Math.random() * 2 - 1),
+        capitec: prev.capitec + (Math.random() * 10 - 5)
+      }));
+
+      if (Math.random() > 0.85) {
+        const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+        const events = ["VOLATILITY_SYNC_OK", "JSE_API_HEARTBEAT", "LIQUIDITY_CHECK_PASSED"];
+        const randomMsg = events[Math.floor(Math.random() * events.length)];
+        
+        setLogs(prev => [{ 
+          id: Date.now(), 
+          time, 
+          msg: randomMsg, 
+          type: 'info' 
+        }, ...prev].slice(0, 5));
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCertification = () => {
     setUserLevel(2);
@@ -31,29 +41,6 @@ if (Math.random() > 0.85) {
     const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
     setLogs(prev => [{ id: Date.now(), time, msg: 'CHEF_ZANNY_CREDENTIALS_VERIFIED', type: 'success' }, ...prev]);
   }
-
-  {/* KITCHEN CONSTITUTION BOX */}
-<div className="precision-card p-6 bg-[#00FF41]/5 border-[#00FF41]/20 mb-6">
-  <div className="flex justify-between items-center mb-4">
-    <h3 className="text-[10px] font-[900] uppercase tracking-widest text-[#00FF41]">Active_Constitution</h3>
-    <span className="text-[8px] bg-[#00FF41] text-black px-2 py-0.5 font-black rounded-sm uppercase">Hedge_Fund_Style</span>
-  </div>
-  <ul className="space-y-2 text-[10px] font-medium text-zinc-400">
-    <li className="flex justify-between border-b border-white/5 pb-1">
-      <span>Min. Approval Quorum</span>
-      <span className="text-white">60% (3/5)</span>
-    </li>
-    <li className="flex justify-between border-b border-white/5 pb-1">
-      <span>Max. Asset Exposure</span>
-      <span className="text-white">R15,000 / Trade</span>
-    </li>
-    <li className="flex justify-between">
-      <span>Asset Universe</span>
-      <span className="text-white">JSE_TOP_40 + TECH</span>
-    </li>
-  </ul>
-</div>
-
 
   return (
     <div className="min-h-screen bg-black text-white px-6 font-sans">
@@ -99,6 +86,28 @@ if (Math.random() > 0.85) {
         </div>
 
         <div className="col-span-12 lg:col-span-4">
+          {/* KITCHEN CONSTITUTION BOX */}
+          <div className="precision-card p-6 bg-[#00FF41]/5 border border-[#00FF41]/20 mb-6 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-[10px] font-[900] uppercase tracking-widest text-[#00FF41]">Active_Constitution</h3>
+              <span className="text-[8px] bg-[#00FF41] text-black px-2 py-0.5 font-black rounded-sm uppercase">Hedge_Fund_Style</span>
+            </div>
+            <ul className="space-y-2 text-[10px] font-medium text-zinc-400">
+              <li className="flex justify-between border-b border-white/5 pb-1">
+                <span>Min. Approval Quorum</span>
+                <span className="text-white">60% (3/5)</span>
+              </li>
+              <li className="flex justify-between border-b border-white/5 pb-1">
+                <span>Max. Asset Exposure</span>
+                <span className="text-white">R15,000 / Trade</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Asset Universe</span>
+                <span className="text-white">JSE_TOP_40 + TECH</span>
+              </li>
+            </ul>
+          </div>
+
           <div className="bg-white text-black p-8 rounded-lg min-h-[400px] flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-[900] uppercase tracking-[-0.05em] mb-8">Consensus</h3>
