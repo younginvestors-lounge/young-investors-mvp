@@ -66,7 +66,6 @@ export default function Dashboard() {
           </div>
 
           <button 
-            onClick={() => router.push('/')}
             onClick={() => setShowLogoutModal(true)}
             className="text-zinc-500 hover:text-red-500 text-[10px] font-[900] uppercase tracking-widest transition-colors"
           >
