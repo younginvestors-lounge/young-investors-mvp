@@ -16,7 +16,7 @@ export default function Home() {
     <main className="min-h-screen bg-white text-black p-8 md:p-12 font-sans border-[12px] border-black">
       
       {/* HEADER */}
-      <header className="flex flex-col md:flex-row justify-between items-end border-b-4 border-black pb-6 mb-12">
+      <header className="flex flex-col md:flex-row justify-between items-end border-b-4 border-black pb-6 mb-8">
         <div>
           <h1 className="text-6xl md:text-8xl font-bold tracking-tighter italic uppercase">
             The Kitchen.
@@ -31,6 +31,30 @@ export default function Home() {
           </p>
         </div>
       </header>
+
+      {/* BIMODAL LOGIC VISUAL (Added) */}
+      <section className="mb-12 flex flex-col md:flex-row items-center justify-between border-2 border-dashed border-gray-300 p-6 bg-gray-50">
+        <div className="md:w-1/2 mb-4 md:mb-0">
+            <h3 className="font-bold text-xl uppercase mb-2">The Logic</h3>
+            <p className="font-mono text-xs text-gray-600 max-w-md">
+                We bridge the gap between low-capital students (Left Peak) and high-value institutional assets (Right Peak) through collective governance.
+            </p>
+        </div>
+        
+        {/* The CSS Graph */}
+        <div className="relative w-full md:w-1/2 h-32 bg-white rounded-lg overflow-hidden border border-gray-200">
+            {/* Peak 1: Students */}
+            <div className="absolute bottom-0 left-10 w-20 h-16 bg-black opacity-90 rounded-t-full z-10"></div>
+            <div className="absolute bottom-2 left-12 text-white text-[10px] font-bold z-20">STUDENTS</div>
+            
+            {/* Peak 2: Market */}
+            <div className="absolute bottom-0 right-10 w-32 h-24 bg-gray-500 opacity-90 rounded-t-full z-10"></div>
+            <div className="absolute bottom-2 right-16 text-white text-[10px] font-bold z-20">MARKET</div>
+            
+            {/* The Connector */}
+            <div className="absolute bottom-0 left-20 right-20 h-8 bg-gray-300 opacity-50 rounded-t-full blur-sm"></div>
+        </div>
+      </section>
 
       {/* GRID LAYOUT */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -82,9 +106,9 @@ export default function Home() {
 
         {/* Empty State */}
         {proposals.length === 0 && (
-            <div className="col-span-3 text-center py-20 border-2 border-dashed border-gray-300">
-                <p className="font-mono text-gray-400">CONNECTING TO KITCHEN SERVER...</p>
-                <p className="text-xs text-gray-300 mt-2">(Make sure Django is running)</p>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 border-2 border-dashed border-gray-300">
+              <p className="font-mono text-gray-400">CONNECTING TO KITCHEN SERVER...</p>
+              <p className="text-xs text-gray-300 mt-2">(Make sure Django is running)</p>
             </div>
         )}
 
