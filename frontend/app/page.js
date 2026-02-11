@@ -1,227 +1,258 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
 
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white">
-      
-      {/* 1. TITLE & HERO (Rubric: Title and Description) */}
-      <section className="h-screen flex flex-col justify-between p-8 md:p-12 border-b-[12px] border-black">
-        <nav className="flex justify-between items-start">
-          <div className="text-xs font-bold tracking-widest uppercase text-gray-400">
-            Young Investors Pty Ltd
-          </div>
-          <Link href="/kitchen">
-            <button className="bg-black text-white px-6 py-2 font-mono text-xs hover:bg-gray-800 transition-all border border-black uppercase tracking-wider">
-              Launch Terminal &rarr;
-            </button>
-          </Link>
-        </nav>
+export default function PitchDeck() {
+  const [activeSlide, setActiveSlide] = useState(0);
 
-        <div>
-          <h1 className="text-7xl md:text-9xl font-bold tracking-tighter uppercase italic mb-6">
-            We Cook.
-          </h1>
-          <p className="max-w-3xl text-xl md:text-2xl font-medium leading-relaxed text-gray-800">
-            <strong>The Concept:</strong> A Bimodal Governance Structure bridging the gap between student liquidity and institutional assets.
+  const slides = [
+    {
+      // SLIDE 1: IDENTITY & MOTTO
+      title: "YOUNG INVESTORS PTY LTD",
+      subtitle: "The Governance Engine for Gen Z",
+      content: (
+        <div className="space-y-6">
+          <div className="border-l-4 border-black pl-6 my-8">
+            <h2 className="text-4xl font-bold italic tracking-tighter">"WE COOK."</h2>
+            <p className="text-sm font-mono mt-2 text-gray-600">OFFICIAL MOTTO</p>
+          </div>
+          <p className="text-lg font-serif">
+            A digitized collective investment ecosystem that combines institutional governance with cultural relatability.
+          </p>
+          <div className="flex justify-between text-xs font-mono uppercase border-t border-black pt-4">
+             <span>Structure: Pty Ltd</span>
+             <span>Stage: Live Prototype</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      // SLIDE 2: THE FOUNDER'S STORY
+      title: "THE ORIGIN STORY",
+      subtitle: "From Theory to 3 AM Execution",
+      content: (
+        <div className="space-y-4 font-serif text-lg leading-relaxed">
+          <p>
+            "I graduated with a <strong>Bachelor of Economics</strong>, yet I realized something terrifying: 
+            I understood the <em>theory</em> of markets, but I had no idea how to actually <em>invest</em>."
+          </p>
+          
+          <div className="bg-gray-100 p-4 border-l-4 border-black font-sans text-sm">
+            <strong>The Spark (3:00 AM):</strong><br/>
+            "This wasn't built in a boardroom. I woke up at 3 AM, opened my terminal, and just started <strong>vibe coding</strong>. 
+            I needed to bridge the gap between my degree and my bank account. By sunrise, the 'Governance Engine' was alive."
+          </div>
+
+          <p className="text-xs font-mono text-gray-500 mt-2">
+            - Denzel Zawani, CEO
           </p>
         </div>
-
-        <div className="flex justify-between items-end">
-          <div className="text-sm font-mono">
-            EST. 2026 // MAKHANDA, SA
+      )
+    },
+    {
+      // SLIDE 3: THE PROBLEM & STAT
+      title: "THE MARKET GAP",
+      subtitle: "Why Youth Don't Invest",
+      content: (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-mono text-sm">
+          <div className="border border-black p-4 bg-black text-white">
+            <strong className="block mb-2 text-xl text-red-500">THE STAT</strong>
+            <p className="text-lg">
+              Less than <strong>4%</strong> of South Africans directly own shares on the JSE.
+            </p>
+            <p className="text-xs text-gray-400 mt-2">
+              (Source: JSE Retail Participation Data)
+            </p>
           </div>
-          <div className="text-xs font-bold uppercase tracking-widest animate-bounce">
-            Scroll for Academic Briefing ↓
+          <div className="border border-black p-4">
+            <strong className="block mb-2 text-lg">THE BARRIER: FEAR</strong>
+            <p>
+              For a student, the market is daunting. Minimum capital requirements are high, 
+              and the risk of losing money <em>alone</em> is paralyzing.
+            </p>
           </div>
         </div>
-      </section>
+      )
+    },
+    {
+      // SLIDE 4: THE SOLUTION
+      title: "THE SOLUTION",
+      subtitle: "Low Capital & Collective Safety",
+      content: (
+        <div className="space-y-5">
+          <div className="flex justify-between items-center border-b border-black pb-2">
+            <strong className="text-lg">A. THE "SQUAD" EFFECT</strong>
+          </div>
+          <p className="text-sm">
+            We replace "Solo Trading" with <strong>Collective Execution</strong>. By pooling funds:
+          </p>
+          <ul className="list-disc pl-5 text-sm font-mono space-y-2">
+            <li><strong>Low Entry Barrier:</strong> Students can start with as little as R50.</li>
+            <li><strong>Psychological Safety:</strong> You aren't guessing alone; you are voting with a team.</li>
+          </ul>
 
-      {/* 2. PROBLEM & VALUE PROPOSITION (Rubric Section 1) */}
-      <section className="py-24 px-8 md:px-12 border-b-2 border-black bg-gray-50">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-16">
-            <div className="md:w-1/3">
-                <h2 className="text-3xl font-bold uppercase mb-4">01. Problem & Value</h2>
-                <div className="w-12 h-2 bg-black mb-6"></div>
-            </div>
-            <div className="md:w-2/3 space-y-8">
-                <div>
-                    <h3 className="font-bold text-xl mb-2">The Problem (Market Gap)</h3>
-                    <p className="text-gray-700">
-                        Students possess <strong>high time-preference</strong> and <strong>low individual capital</strong>. 
-                        Legacy financial institutions ignore this segment due to high acquisition costs and low account balances, 
-                        leaving students structurally excluded from premium market instruments.
-                    </p>
-                </div>
-                <div>
-                    <h3 className="font-bold text-xl mb-2">The Value Proposition</h3>
-                    <p className="text-gray-700">
-                        We aggregate micro-capital into a unified <strong>"Kitchen" (Quorum)</strong>. 
-                        By acting as a single institutional entity, we unlock high-yield instruments and reduce transaction fees, 
-                        giving students access to institutional-grade wealth creation.
-                    </p>
-                </div>
-            </div>
+          <div className="flex justify-between items-center border-b border-black pb-2 pt-4">
+            <strong className="text-lg">B. THE "KITCHEN" LOGIC</strong>
+          </div>
+          <p className="text-xs font-mono mt-2 text-gray-600">
+             We use the term "Kitchen" because a kitchen is where a team works together to create a result. 
+             If the squad (60%) doesn't agree on the recipe (the trade), we don't cook.
+          </p>
         </div>
-      </section>
-
-      {/* 3. MARKET SIZE & ACCESS (Rubric Section 2) */}
-      <section className="py-24 px-8 md:px-12 border-b-2 border-black">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-16">
-            <div className="md:w-1/3">
-                <h2 className="text-3xl font-bold uppercase mb-4">02. Market & Access</h2>
-                <div className="w-12 h-2 bg-black mb-6"></div>
-            </div>
-            <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="border border-black p-6">
-                    <h3 className="font-bold text-lg mb-2">Target Market</h3>
-                    <p className="text-sm text-gray-600">
-                        University Students (Ages 18-24) in South Africa. Initial focus on Rhodes University (Makhanda).
-                    </p>
-                </div>
-                <div className="border border-black p-6">
-                    <h3 className="font-bold text-lg mb-2">Market Access</h3>
-                    <p className="text-sm text-gray-600">
-                        <strong>Direct Acquisition:</strong> Campus partnerships, Society events (RUESS), and peer-to-peer referral networks.
-                    </p>
-                </div>
-            </div>
-        </div>
-      </section>
-
-      {/* 4. VIABILITY & COMPETITION (Rubric Section 3) */}
-      <section className="py-24 px-8 md:px-12 border-b-2 border-black bg-gray-50">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-16">
-             <div className="md:w-1/3">
-                <h2 className="text-3xl font-bold uppercase mb-4">03. Competitive Edge</h2>
-                <div className="w-12 h-2 bg-black mb-6"></div>
-            </div>
-            <div className="md:w-2/3">
-                <p className="text-lg mb-6">
-                    <strong>Competitors:</strong> EasyEquities (Retail), Stokvels (Traditional), Crypto Exchanges (High Risk).
-                </p>
-                <div className="bg-white border-2 border-black p-8 relative overflow-hidden">
-                    <h3 className="font-bold text-2xl italic mb-4">The "Kitchen" Advantage</h3>
-                    <p className="text-gray-700 mb-4">
-                        Unlike retail apps that encourage isolated gambling, the Kitchen forces <strong>Collaborative Intelligence</strong>. 
-                        Trades require <strong>60% Consensus</strong> to execute, filtering out impulsive decisions.
-                    </p>
-                    <div className="absolute top-4 right-4 text-xs font-bold border border-black px-2 py-1 uppercase">
-                        Differentiation
-                    </div>
-                </div>
-            </div>
-        </div>
-      </section>
-
-      {/* 5. OPERATIONALIZATION (Rubric Section 4) */}
-      <section className="py-24 px-8 md:px-12 border-b-2 border-black">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-16">
-            <div className="md:w-1/3">
-                <h2 className="text-3xl font-bold uppercase mb-4">04. Operations</h2>
-                <div className="w-12 h-2 bg-black mb-6"></div>
-            </div>
-            <div className="md:w-2/3 space-y-6 font-mono text-sm">
-                <div className="flex items-start gap-4">
-                    <span className="font-bold">01. INPUT:</span>
-                    <span>Students deposit capital into the "Waiting Room" (Escrow).</span>
-                </div>
-                <div className="flex items-start gap-4">
-                    <span className="font-bold">02. PROCESS:</span>
-                    <span>Investment Committee proposes assets. Students vote via the App.</span>
-                </div>
-                <div className="flex items-start gap-4">
-                    <span className="font-bold">03. OUTPUT:</span>
-                    <span>If &gt;60% Yes: Trade Executed. If &lt;60%: Proposal Rejected.</span>
-                </div>
-            </div>
-        </div>
-      </section>
-
-      {/* 6. REVENUE & FEASIBILITY (Rubric Sections 5 & 6) */}
-      <section className="py-24 px-8 md:px-12 border-b-2 border-black bg-black text-white">
-         <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-16">
-            <div className="md:w-1/3">
-                <h2 className="text-3xl font-bold uppercase mb-4">05. Financials</h2>
-                <div className="w-12 h-2 bg-white mb-6"></div>
-            </div>
-            <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div>
-                    <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Revenue Model</h3>
-                    <ul className="space-y-4 font-mono text-sm">
-                        <li className="flex justify-between">
-                            <span>Management Fee</span>
-                            <span className="font-bold">2.5% p.a.</span>
-                        </li>
-                        <li className="flex justify-between">
-                            <span>Performance Fee</span>
-                            <span className="font-bold">15.0%</span>
-                        </li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 className="text-xl font-bold mb-4 border-b border-gray-700 pb-2">Feasibility & Risk</h3>
-                    <p className="text-sm text-gray-400 mb-2">
-                        <strong>Regulatory:</strong> Compliance with FSCA (CAT II License pathway).
-                    </p>
-                    <p className="text-sm text-gray-400">
-                        <strong>Financial:</strong> Break-even analysis requires 500 Active Users at R500 avg. deposit.
-                    </p>
-                </div>
-            </div>
-        </div>
-      </section>
-
-      {/* 7. THE BOARD (5 DIRECTORS) */}
-      <section className="py-24 px-8 md:px-12 border-b-2 border-black">
-        <h2 className="text-4xl font-bold uppercase mb-12 text-center">The Board of Directors</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          
-          {/* Denzel */}
-          <div className="border border-black p-4 hover:bg-black hover:text-white transition-colors">
-            <h3 className="text-xl font-serif italic mb-1">Denzel</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2">Chief Executive</p>
-            <p className="text-xs opacity-80">Vision & Strategy.</p>
+      )
+    },
+    {
+      // SLIDE 5: REVENUE MODEL
+      title: "REVENUE MODEL",
+      subtitle: "Diversified Streams (B2C, B2B, B2I)",
+      content: (
+        <div className="space-y-4 font-mono text-sm">
+          <div className="bg-gray-100 p-3 border-l-4 border-black">
+            <strong>1. B2C (Direct to Student)</strong>
+            <p className="text-xs mt-1">Freemium Model. Free "Sandbox" access; Subscription for premium "Live Kitchen" tools.</p>
           </div>
 
-          {/* Tino */}
-          <div className="border border-black p-4 hover:bg-black hover:text-white transition-colors">
-            <h3 className="text-xl font-serif italic mb-1">Tino</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2">Chief Technology</p>
-            <p className="text-xs opacity-80">Systems Architecture.</p>
+          <div className="bg-gray-100 p-3 border-l-4 border-black">
+            <strong>2. B2I (Institutions)</strong>
+            <p className="text-xs mt-1">SaaS Licensing to Investment Societies (ABSIP, Rhodes Econ). We provide the "Governance Infrastructure" for their funds.</p>
           </div>
 
-          {/* Luba */}
-          <div className="border border-black p-4 hover:bg-black hover:text-white transition-colors">
-            <h3 className="text-xl font-serif italic mb-1">Luba</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2">Chief Operating</p>
-            <p className="text-xs opacity-80">Logistics & Ops.</p>
+          <div className="bg-gray-100 p-3 border-l-4 border-black">
+            <strong>3. B2B (Banks/Corporates)</strong>
+            <p className="text-xs mt-1">Talent Pipeline. We sell data insights on high-performing students to recruiters.</p>
           </div>
-
-          {/* Josh */}
-          <div className="border border-black p-4 hover:bg-black hover:text-white transition-colors">
-            <h3 className="text-xl font-serif italic mb-1">Josh</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2">Chief Financial</p>
-            <p className="text-xs opacity-80">Risk & Capital.</p>
-          </div>
-
-          {/* Gary */}
-          <div className="border border-black p-4 hover:bg-black hover:text-white transition-colors">
-            <h3 className="text-xl font-serif italic mb-1">Gary</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2">Chief Marketing</p>
-            <p className="text-xs opacity-80">Growth & Brand.</p>
-          </div>
-
         </div>
-      </section>
+      )
+    },
+    {
+      // SLIDE 6: THE TEAM
+      title: "THE DIRECTORS",
+      subtitle: "Young Investors Pty Ltd",
+      content: (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono border-t border-black pt-4">
+            <div>
+                <p className="font-bold text-lg">DENZEL ZAWANI</p>
+                <p className="text-gray-500">Chief Executive Officer (CEO)</p>
+            </div>
+            <div>
+                <p className="font-bold text-lg">TINOMUDA BOPOTO</p>
+                <p className="text-gray-500">Chief Technology Officer (CTO)</p>
+            </div>
+            <div>
+                <p className="font-bold text-lg">LUBABALO JAWUKA</p>
+                <p className="text-gray-500">Chief Operating Officer (COO)</p>
+            </div>
+            <div>
+                <p className="font-bold text-lg">JOSH MAKORIE</p>
+                <p className="text-gray-500">Chief Financial Officer (CFO)</p>
+            </div>
+            <div className="col-span-1 md:col-span-2 border-t border-gray-200 pt-2 mt-2">
+                <p className="font-bold text-lg">GARY MUNYONGA</p>
+                <p className="text-gray-500">Chief Marketing Officer (CMO)</p>
+            </div>
+        </div>
+      )
+    },
+    {
+      // SLIDE 7: SCALING & CONCLUSION
+      title: "SCALING & GROWTH",
+      subtitle: "From Rhodes to National Rollout",
+      content: (
+        <div className="space-y-6">
+          <ul className="space-y-3 text-sm border-l-2 border-black pl-4">
+            <li>
+              <strong>PHASE 1 (NOW):</strong> 
+              Validation at Rhodes University. Testing the "60% Rule" and Backend Stability.
+            </li>
+            <li>
+              <strong>PHASE 2 (EXPANSION):</strong> 
+              Onboarding 5 major SA campuses (UCT, Wits, Stellies) via the ABSIP network.
+            </li>
+            <li>
+              <strong>PHASE 3 (ASSET CLASS):</strong> 
+              Adding Global Markets, Crypto, and Bonds to the curriculum.
+            </li>
+          </ul>
+          <div className="pt-6 border-t-4 border-black text-center">
+            <p className="text-xl font-bold italic">"LET HIM COOK."</p>
+            <p className="text-xs font-mono uppercase mt-1">READY FOR DEPLOYMENT</p>
+          </div>
+        </div>
+      )
+    }
+  ];
 
-      {/* FOOTER */}
-      <footer className="py-12 px-8 md:px-12 bg-black text-white text-center">
-        <p className="text-2xl italic font-serif mb-2">Young Investors Pty Ltd</p>
-        <p className="text-[10px] text-gray-500 font-mono">
-            PREPARED FOR PROFESSOR MARK BUNTING // ENTREPRENEURSHIP 2026
+  return (
+    <main className="min-h-screen bg-white text-black p-8 md:p-12 font-sans border-[12px] border-black flex flex-col justify-between">
+      
+      {/* HEADER */}
+      <header className="flex flex-col md:flex-row justify-between items-start border-b-4 border-black pb-6 mb-8">
+        <div className="mb-4 md:mb-0">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tighter italic uppercase">
+            Start-Up Deck.
+          </h1>
+          <p className="text-xs font-mono mt-2">YOUNG INVESTORS PTY LTD</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+             {/* THE LINK TO THE APP */}
+            <Link href="/kitchen">
+                <button className="bg-black text-white px-4 py-2 font-mono text-xs hover:bg-gray-800 transition-all border border-black uppercase tracking-wider">
+                    Launch Terminal &rarr;
+                </button>
+            </Link>
+          <div className="text-right hidden md:block mt-2">
+            <p className="text-[10px] font-mono">CONFIDENTIAL</p>
+            <p className="text-[10px] font-mono">PREPARED FOR: MARK BUNTING</p>
+          </div>
+        </div>
+      </header>
+
+      {/* SLIDE CONTENT */}
+      <div className="flex-1 flex flex-col justify-center max-w-4xl mx-auto w-full min-h-[400px]">
+        <div className="mb-4">
+            <span className="bg-black text-white px-2 py-1 text-xs font-bold uppercase">
+                SLIDE 0{activeSlide + 1} / 0{slides.length}
+            </span>
+        </div>
+        
+        <h2 className="text-4xl md:text-7xl font-serif mb-2 uppercase">{slides[activeSlide].title}</h2>
+        <p className="text-sm md:text-xl font-mono text-gray-500 mb-8 uppercase tracking-widest">
+            {slides[activeSlide].subtitle}
         </p>
+        
+        <div className="text-lg md:text-xl leading-relaxed">
+            {slides[activeSlide].content}
+        </div>
+      </div>
+
+      {/* NAVIGATION FOOTER */}
+      <footer className="flex justify-between items-center border-t-4 border-black pt-6 mt-8">
+        <button 
+            onClick={() => setActiveSlide(Math.max(0, activeSlide - 1))}
+            disabled={activeSlide === 0}
+            className="text-sm md:text-xl font-bold hover:bg-black hover:text-white px-6 py-2 border-2 border-black disabled:opacity-30 transition-all"
+        >
+            &larr; PREV
+        </button>
+        
+        <div className="flex space-x-2">
+            {slides.map((_, idx) => (
+                <div 
+                    key={idx} 
+                    className={`h-2 w-2 rounded-full ${idx === activeSlide ? 'bg-black' : 'bg-gray-300'}`}
+                />
+            ))}
+        </div>
+
+        <button 
+            onClick={() => setActiveSlide(Math.min(slides.length - 1, activeSlide + 1))}
+            disabled={activeSlide === slides.length - 1}
+            className="text-sm md:text-xl font-bold hover:bg-black hover:text-white px-6 py-2 border-2 border-black disabled:opacity-30 transition-all"
+        >
+            NEXT &rarr;
+        </button>
       </footer>
+
     </main>
   );
 }
