@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="none" />
+  <g fill="none" stroke="#111111" stroke-opacity="0.08" stroke-width="1">
+    <path d="M28 72h54v28H28z" />
+    <path d="M212 42h68v34h-68z" />
+    <path d="M44 212h72v36H44z" />
+    <path d="M204 220h42v42h-42z" />
+    <path d="M142 126h56v56h-56z" />
+    <path d="M72 54l24-24 24 24-24 24z" />
+    <path d="M238 148l20-20 20 20-20 20z" />
+  </g>
+  <g fill="#111111" fill-opacity="0.09" font-family="Space Mono, Courier New, monospace" font-size="11">
+    <text x="36" y="91">YI</text>
+    <text x="224" y="64">60%</text>
+    <text x="52" y="236">WE COOK</text>
+    <text x="151" y="158">RISK</text>
+    <text x="214" y="248">VOTE</text>
+    <text x="18" y="160">KITCHEN</text>
+    <text x="208" y="296">ACADEMY</text>
+  </g>
+</svg>
