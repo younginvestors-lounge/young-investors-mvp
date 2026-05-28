@@ -126,6 +126,16 @@ export interface RankingRow {
   paperCapital: Money;
   roiPercent: number;
   isGordon: boolean;
+  beatGordon?: boolean;
+}
+
+export type ChefVote = "FOR" | "AGAINST" | "ABSTAIN" | null;
+
+export interface KitchenMember {
+  id: string;
+  name: string;
+  vote: ChefVote;
+  isUser: boolean;
 }
 
 export interface DashboardSnapshot {

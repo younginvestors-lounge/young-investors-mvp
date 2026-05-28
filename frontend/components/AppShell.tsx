@@ -21,17 +21,20 @@ import {
   type TradeProposal,
 } from "@/lib/types";
 
-export default function AppShell() {
+interface AppShellProps {
+  initialTab?: DashboardTab;
+}
+
+export default function AppShell({ initialTab = "academy" }: AppShellProps) {
   const seed = getDashboardSnapshot();
 
-  const [activeTab, setActiveTab] = useState<DashboardTab>("academy");
+  const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("solid");
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [proposals, setProposals] = useState<TradeProposal[]>(seed.tradeProposals);
   const [modules, setModules] = useState<AcademyModule[]>(seed.academyModules);
   const [clearance, setClearance] = useState<AcademyClearance>(seed.academyClearance);
 
-  // Read persisted preferences on mount
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem("yi_theme") as ThemeMode | null;
@@ -44,13 +47,11 @@ export default function AppShell() {
     } catch {}
   }, []);
 
-  // Sync theme → <html data-theme> + localStorage
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("yi_theme", theme); } catch {}
   }, [theme]);
 
-  // Persist background preference
   useEffect(() => {
     try { localStorage.setItem("yi_background", backgroundMode); } catch {}
   }, [backgroundMode]);
@@ -127,61 +128,7 @@ export default function AppShell() {
           proposals={proposals}
         />
 
-        {activeTab === "kitchen" && (
-          <section className="stack" style={{ padding: "48px 0 32px", alignItems: "flex-start" }}>
-            <div>
-              <p className="eyebrow" style={{ color: "#b42318" }}>Demo mode · locked</p>
-              <h2 className="view-title">The Kitchen</h2>
-            </div>
-            <div style={{
-              border: "2px solid #b42318",
-              padding: "28px 24px",
-              maxWidth: 480,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b42318" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-                <span style={{
-                  fontFamily: "var(--font-mono), monospace",
-                  fontSize: "0.65rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  color: "#b42318",
-                }}>
-                  Kitchen access requires Academy clearance
-                </span>
-              </div>
-              <p style={{
-                fontFamily: "var(--font-archivo), system-ui, sans-serif",
-                fontSize: "0.9rem",
-                color: "var(--yi-ink, #111)",
-                margin: "0 0 20px",
-                lineHeight: 1.5,
-              }}>
-                Complete all required Academy lessons to unlock The Kitchen. Recipes, voting, and governance become available once you earn your clearance.
-              </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab("academy")}
-                style={{
-                  fontFamily: "var(--font-mono), monospace",
-                  fontSize: "0.72rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.12em",
-                  background: "#111",
-                  color: "#fff",
-                  border: "none",
-                  padding: "11px 22px",
-                  cursor: "pointer",
-                }}
-              >
-                Return to Academy →
-              </button>
-            </div>
-          </section>
-        )}
+        {activeTab === "kitchen" && <KitchenView />}
         {activeTab === "academy" && (
           <AcademyView modules={modules} clearance={clearance} onModuleStart={handleModuleStart} />
         )}

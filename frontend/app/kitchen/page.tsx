@@ -1,5 +1,5 @@
 import AppShell from "../../components/AppShell";
 
 export default function KitchenPage() {
-  return <AppShell />;
+  return <AppShell initialTab="kitchen" />;
 }
