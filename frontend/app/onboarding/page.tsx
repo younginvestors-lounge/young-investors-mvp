@@ -29,7 +29,7 @@ export default function OnboardingPage() {
         localStorage.setItem("yi_chef_age", age);
         localStorage.setItem("yi_chef_intent", intent);
       } catch {}
-      router.push("/kitchen");
+      router.push("/gordon-intro");
     }
   }
 
@@ -207,7 +207,7 @@ export default function OnboardingPage() {
             }}>
               What are you cooking toward, Chef?
             </h1>
-            <div style={{ display: "grid", gap: 0, marginBottom: 40 }}>
+            <div style={{ display: "grid", gap: 0, marginBottom: 40, border: "1px solid #111" }}>
               {INTENTS.map((opt) => (
                 <button
                   key={opt}
@@ -217,8 +217,8 @@ export default function OnboardingPage() {
                     display: "block",
                     width: "100%",
                     padding: "16px 18px",
-                    border: "1px solid #111",
-                    borderTop: "none",
+                    border: "none",
+                    borderBottom: "1px solid #ddd",
                     background: intent === opt ? "#111" : "#fff",
                     color: intent === opt ? "#fff" : "#111",
                     fontFamily: "var(--font-archivo), system-ui, sans-serif",
@@ -230,8 +230,6 @@ export default function OnboardingPage() {
                   {opt}
                 </button>
               ))}
-              {/* top border on first item */}
-              <style>{`.intent-list button:first-child { border-top: 1px solid #111; }`}</style>
             </div>
           </>
         )}
