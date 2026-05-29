@@ -1,23 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AcademyView } from "@/components/AcademyView";
 import { BottomNav } from "@/components/BottomNav";
-import { BrutalistHeader } from "@/components/BrutalistHeader";
-import { KitchenGordonPanel } from "@/components/KitchenGordonPanel";
 import { KitchenView } from "@/components/KitchenView";
 import { LoungeView } from "@/components/LoungeView";
 import { ShopView } from "@/components/ShopView";
+import { TopBar } from "@/components/TopBar";
 import { VaultView } from "@/components/VaultView";
 import { getDashboardSnapshot } from "@/lib/api";
-import { buildPatternDataURI } from "@/lib/pattern";
 import {
   EXECUTION_MODE,
   type AcademyClearance,
   type AcademyModule,
-  type BackgroundMode,
   type DashboardTab,
-  type ThemeMode,
   type TradeProposal,
 } from "@/lib/types";
 
@@ -25,38 +21,21 @@ interface AppShellProps {
   initialTab?: DashboardTab;
 }
 
-export default function AppShell({ initialTab = "academy" }: AppShellProps) {
+export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
   const seed = getDashboardSnapshot();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
-  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("solid");
-  const [theme, setTheme] = useState<ThemeMode>("light");
   const [proposals, setProposals] = useState<TradeProposal[]>(seed.tradeProposals);
   const [modules, setModules] = useState<AcademyModule[]>(seed.academyModules);
   const [clearance, setClearance] = useState<AcademyClearance>(seed.academyClearance);
+  const [chefName, setChefName] = useState("");
 
   useEffect(() => {
     try {
-      const savedTheme = localStorage.getItem("yi_theme") as ThemeMode | null;
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const resolved = savedTheme ?? (systemDark ? "dark" : "light");
-      setTheme(resolved);
-
-      const savedBg = localStorage.getItem("yi_background") as BackgroundMode | null;
-      if (savedBg) setBackgroundMode(savedBg);
+      const n = localStorage.getItem("yi_chef_name");
+      if (n) setChefName(n);
     } catch {}
   }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("yi_theme", theme); } catch {}
-  }, [theme]);
-
-  useEffect(() => {
-    try { localStorage.setItem("yi_background", backgroundMode); } catch {}
-  }, [backgroundMode]);
-
-  const patternUrl = useMemo(() => buildPatternDataURI(theme), [theme]);
 
   function handleVote(proposalId: string, vote: "YES" | "NO") {
     setProposals((prev) =>
@@ -104,31 +83,18 @@ export default function AppShell({ initialTab = "academy" }: AppShellProps) {
 
   return (
     <div className="dashboard-shell">
-      {backgroundMode === "pattern" && (
-        <div
-          className="pattern-overlay"
-          style={{ backgroundImage: `url("${patternUrl}")` }}
-        />
-      )}
+      <TopBar
+        activeTab={activeTab}
+        executionMode={EXECUTION_MODE}
+        clearance={clearance}
+        modules={modules}
+        portfolio={seed.portfolio}
+        proposals={proposals}
+        chefName={chefName}
+      />
 
       <main className="dashboard-main">
-        <BrutalistHeader
-          activeTab={activeTab}
-          executionMode={EXECUTION_MODE}
-          backgroundMode={backgroundMode}
-          onBackgroundModeChange={setBackgroundMode}
-          theme={theme}
-          onThemeChange={setTheme}
-        />
-
-        <KitchenGordonPanel
-          clearance={clearance}
-          modules={modules}
-          portfolio={seed.portfolio}
-          proposals={proposals}
-        />
-
-        {activeTab === "kitchen" && <KitchenView />}
+        {activeTab === "kitchen" && <KitchenView clearance={clearance} />}
         {activeTab === "academy" && (
           <AcademyView modules={modules} clearance={clearance} onModuleStart={handleModuleStart} />
         )}

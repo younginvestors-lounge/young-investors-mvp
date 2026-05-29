@@ -304,6 +304,11 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
       roiPercent: 4.2,
       isGordon: false,
       beatGordon: true,
+      earnedBadges: [
+        { id: "first-service", name: "First Service", description: "Started your first Kitchen", category: "achievement" },
+        { id: "risk-cleared", name: "Risk Cleared", description: "Completed Academy clearance", category: "clearance" },
+        { id: "beat-gordon", name: "Beat Gordon", description: "Outperformed the benchmark", category: "achievement" },
+      ],
     },
     {
       rank: 2,

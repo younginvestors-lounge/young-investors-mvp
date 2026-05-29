@@ -28,6 +28,7 @@ export default function OnboardingPage() {
         localStorage.setItem("yi_chef_name", name.trim());
         localStorage.setItem("yi_chef_age", age);
         localStorage.setItem("yi_chef_intent", intent);
+        localStorage.setItem("yi_onboarding_complete", "1");
       } catch {}
       router.push("/gordon-intro");
     }

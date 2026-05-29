@@ -5,6 +5,7 @@ import { BookOpenCheck, CheckCircle, LockKeyhole, PlayCircle } from "lucide-reac
 import { useEffect, useState } from "react";
 import { BrutalistButton } from "@/components/BrutalistButton";
 import { BrutalistCard } from "@/components/BrutalistCard";
+import { AcademyLessonModal } from "@/components/AcademyLessonModal";
 import type { AcademyClearance, AcademyModule } from "@/lib/types";
 
 interface AcademyViewProps {
@@ -18,6 +19,8 @@ export function AcademyView({ modules, clearance, onModuleStart }: AcademyViewPr
   const totalCount = modules.length;
 
   const [chefName, setChefName] = useState<string | null>(null);
+  const [openLesson, setOpenLesson] = useState<{ id: string; title: string } | null>(null);
+
   useEffect(() => {
     try {
       setChefName(localStorage.getItem("yi_chef_name") || "Chef");
@@ -100,7 +103,7 @@ export function AcademyView({ modules, clearance, onModuleStart }: AcademyViewPr
                 {canStart && (
                   <BrutalistButton
                     icon={<PlayCircle className="icon-inline" aria-hidden="true" />}
-                    onClick={() => onModuleStart(module.id)}
+                    onClick={() => setOpenLesson({ id: module.id, title: module.title })}
                   >
                     Start lesson
                   </BrutalistButton>
@@ -118,6 +121,17 @@ export function AcademyView({ modules, clearance, onModuleStart }: AcademyViewPr
           );
         })}
       </div>
+
+      {openLesson && (
+        <AcademyLessonModal
+          moduleId={openLesson.id}
+          moduleTitle={openLesson.title}
+          onClose={() => setOpenLesson(null)}
+          onPass={(moduleId) => {
+            onModuleStart(moduleId);
+          }}
+        />
+      )}
     </section>
   );
 }
