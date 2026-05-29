@@ -79,6 +79,7 @@ export function TopBar({
         padding: "0 16px",
         borderBottom: "1px solid var(--yi-hairline)",
         background: "var(--yi-nav-bg)",
+        boxShadow: "0 2px 4px rgba(17, 17, 17, 0.06), 0 1px 1px rgba(17, 17, 17, 0.08)",
       }}>
         {/* Left — wordmark */}
         <span style={{
@@ -135,6 +136,7 @@ export function TopBar({
         gridTemplateColumns: "repeat(4, 1fr)",
         borderBottom: "1px solid var(--yi-hairline)",
         background: "var(--yi-nav-bg)",
+        boxShadow: "0 1px 2px rgba(17, 17, 17, 0.04)",
       }}>
         {metrics.map((m, i) => (
           <div key={m.label} style={{

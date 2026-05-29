@@ -64,6 +64,13 @@ button {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.08);
+  transition: box-shadow 200ms ease, background-color 200ms ease, transform 80ms ease;
+}
+
+button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 1px rgba(17, 17, 17, 0.04);
 }
 
 button:disabled {
@@ -88,6 +95,22 @@ a {
   transition: background-color 240ms ease;
 }
 
+.dashboard-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><defs><pattern id="yi" patternUnits="userSpaceOnUse" width="300" height="300"><g opacity="0.12"><path fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/><line fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" x1="12" y1="2" x2="12" y2="22"/><path fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/><path fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M8 22h8"/><path fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M7 10h10"/><path fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M12 15v7"/><path fill="none" stroke="%23000000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></g></pattern></defs><rect width="300" height="300" fill="url(%23yi)"/></svg>');
+  background-repeat: repeat;
+  opacity: 0.08;
+}
+
+.dashboard-main {
+  position: relative;
+  z-index: 2;
+}
+
 .pattern-overlay {
   position: fixed;
   inset: 0;
@@ -98,8 +121,57 @@ a {
   opacity: 0.13;
 }
 
-[data-theme="dark"] .pattern-overlay {
-  opacity: 0.11;
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 110px;
+  padding: 8px 0 max(16px, env(safe-area-inset-bottom, 0px));
+  background: var(--yi-nav-bg);
+  border-top: 1px solid var(--yi-hairline);
+  box-shadow: 0 -2px 4px rgba(17, 17, 17, 0.06), 0 -1px 1px rgba(17, 17, 17, 0.08);
+}
+
+.bottom-nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--yi-muted);
+  transition: color 200ms ease;
+}
+
+.bottom-nav-button:active {
+  transform: scale(0.96);
+}
+
+.bottom-nav-button-active {
+  color: var(--yi-ink);
+  font-weight: 600;
+}
+
+.bottom-nav-icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.5;
+}
+
+.bottom-nav-label {
+  font-family: var(--yi-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .dashboard-main {
