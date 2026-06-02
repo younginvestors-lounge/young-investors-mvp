@@ -116,7 +116,7 @@ ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -139,7 +139,12 @@ CORS_ALLOWED_ORIGINS = [
     os.environ.get("FRONTEND_URL", "http://localhost:3000"),
 ]
 
-EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+# Email configuration
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
+    SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@younginvestors.co")
-EMAIL_HOST_USER = os.environ.get("SENDGRID_API_KEY")
+EMAIL_HOST_USER = os.environ.get("SENDGRID_API_KEY", "")
