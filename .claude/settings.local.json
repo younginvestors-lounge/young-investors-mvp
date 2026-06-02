@@ -31,7 +31,8 @@
       "Bash(git fetch *)",
       "Bash(git checkout *)",
       "Bash(del package-lock.json)",
-      "Bash(git rebase *)"
+      "Bash(git rebase *)",
+      "Bash(python -m pip install -q djangorestframework-simplejwt django-cors-headers sendgrid python-dotenv psycopg2-binary)"
     ]
   }
 }
