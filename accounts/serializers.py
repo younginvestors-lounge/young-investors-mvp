@@ -24,6 +24,8 @@ class ChefUserSerializer(serializers.ModelSerializer):
             "academy_score",
             "kitchen_score",
             "personal_prediction_score",
+            "profile_picture",
+            "profile_icon",
         ]
         read_only_fields = ["id", "email_verified", "is_training_mode"]
 

@@ -23,6 +23,25 @@ class ChefUser(AbstractUser):
     academy_score = models.PositiveIntegerField(default=0)
     kitchen_score = models.PositiveIntegerField(default=0)
     personal_prediction_score = models.PositiveIntegerField(default=0)
+    profile_picture = models.ImageField(upload_to="profile_pictures/", null=True, blank=True, help_text="User selfie or profile photo")
+    profile_icon = models.CharField(
+        max_length=32,
+        blank=True,
+        default="chef-default",
+        help_text="Avatar icon key (chef, spoon, pot, flame, dollar, growth, shield, etc.)",
+        choices=[
+            ("chef-default", "Chef's Hat"),
+            ("spoon", "Spoon"),
+            ("pot", "Pot"),
+            ("flame", "Flame"),
+            ("dollar", "Dollar Sign"),
+            ("growth", "Growth Arrow"),
+            ("shield", "Shield"),
+            ("balance", "Balance Scale"),
+            ("star", "Star"),
+            ("chart", "Chart"),
+        ],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

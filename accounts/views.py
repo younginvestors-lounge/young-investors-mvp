@@ -182,3 +182,48 @@ class AuthViewSet(viewsets.ViewSet):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         return Response(ChefUserSerializer(request.user).data)
+
+    @action(detail=False, methods=["patch"])
+    def update_profile(self, request):
+        """Update user profile: chef_alias, profile_icon, profile_picture."""
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Not authenticated."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        user = request.user
+
+        # Update chef_alias if provided
+        if "chef_alias" in request.data:
+            user.chef_alias = request.data["chef_alias"]
+
+        # Update profile_icon if provided
+        if "profile_icon" in request.data:
+            icon = request.data["profile_icon"]
+            valid_icons = [choice[0] for choice in ChefUser._meta.get_field("profile_icon").choices]
+            if icon not in valid_icons:
+                return Response(
+                    {"error": f"Invalid profile_icon. Choose from: {', '.join(valid_icons)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.profile_icon = icon
+
+        # Handle profile_picture upload
+        if "profile_picture" in request.FILES:
+            file = request.FILES["profile_picture"]
+            if file.size > 5 * 1024 * 1024:  # 5MB limit
+                return Response(
+                    {"error": "Profile picture too large (max 5MB)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.profile_picture = file
+
+        user.save()
+        return Response(
+            {
+                "message": "Profile updated.",
+                "user": ChefUserSerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
