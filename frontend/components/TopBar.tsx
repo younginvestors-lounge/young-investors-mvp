@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { getProfileIcon } from "@/lib/profileIcons";
 import { calculateConsensus, formatPercent } from "@/lib/domain";
 import type {
   AcademyClearance,
@@ -38,6 +40,9 @@ export function TopBar({
   chefName,
 }: TopBarProps) {
   const router = useRouter();
+  const { logout, user } = useAuth();
+  const ChefIcon = getProfileIcon(user?.profile_icon);
+  const memberNumber = user?.member_number ?? null;
 
   const passedCount = modules.filter((m) => m.passed).length;
   const academyPct  = modules.length === 0 ? 0 : Math.round((passedCount / modules.length) * 100);
@@ -62,6 +67,7 @@ export function TopBar({
   ];
 
   function handleLogout() {
+    logout();
     router.push("/login");
   }
 
@@ -82,16 +88,39 @@ export function TopBar({
         boxShadow: "0 2px 4px rgba(17, 17, 17, 0.06), 0 1px 1px rgba(17, 17, 17, 0.08)",
       }}>
         {/* Left — wordmark */}
-        <span style={{
-          fontFamily: "var(--font-archivo), system-ui, sans-serif",
-          fontSize: "0.9rem",
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-          color: "var(--yi-ink)",
-          userSelect: "none",
-          lineHeight: 1,
-        }}>
-          {chefName ? `Chef ${chefName}` : "Young Investors"}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 26, height: 26, border: "1px solid var(--yi-hairline)", flexShrink: 0,
+          }}>
+            <ChefIcon size={15} strokeWidth={1.7} aria-hidden />
+          </span>
+          <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.05, minWidth: 0 }}>
+            <span style={{
+              fontFamily: "var(--font-archivo), system-ui, sans-serif",
+              fontSize: "0.82rem",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: "var(--yi-ink)",
+              userSelect: "none",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}>
+              {chefName ? `Chef ${chefName}` : "Young Investors"}
+            </span>
+            {memberNumber != null && (
+              <span style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.5rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                color: "var(--yi-muted)",
+              }}>
+                Chef No. {String(memberNumber).padStart(4, "0")}
+              </span>
+            )}
+          </span>
         </span>
 
         {/* Centre — current tab */}

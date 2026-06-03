@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Archivo, Space_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth-context";
 
 const bodoni = Bodoni_Moda({
   subsets: ["latin"],
@@ -47,7 +48,7 @@ export default function RootLayout({
       <body
         className={`${bodoni.variable} ${archivo.variable} ${spaceMono.variable}`}
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

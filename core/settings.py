@@ -104,10 +104,16 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.ChefUser"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
@@ -116,7 +122,7 @@ ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -126,18 +132,40 @@ REST_FRAMEWORK = {
     ],
 }
 
+from datetime import timedelta  # noqa: E402
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": 60 * 60 * 24,
-    "REFRESH_TOKEN_LIFETIME": 60 * 60 * 24 * 7,
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=24),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ALGORITHM": "HS256",
     "SIGNING_KEY": os.environ.get("SECRET_KEY", SECRET_KEY),
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    os.environ.get("FRONTEND_URL", "http://localhost:3000"),
+# Email-first authentication, with Django's ModelBackend kept as a fallback.
+AUTHENTICATION_BACKENDS = [
+    "accounts.auth_backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
 ]
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+# CORS / CSRF
+_default_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+CORS_ALLOWED_ORIGINS = list(
+    dict.fromkeys(
+        _default_origins
+        + [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+        + [FRONTEND_URL]
+    )
+)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = list(
+    dict.fromkeys(
+        _default_origins
+        + [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+        + [FRONTEND_URL]
+    )
+)
 
 # Email configuration
 if DEBUG:

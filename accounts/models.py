@@ -20,6 +20,13 @@ class ChefUser(AbstractUser):
     email_verified = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     is_training_mode = models.BooleanField(default=True, help_text="Training Kitchen until age 18")
+    member_number = models.PositiveIntegerField(
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Permanent, never-reused join position. Chef #1 is the first ever to join.",
+    )
     academy_score = models.PositiveIntegerField(default=0)
     kitchen_score = models.PositiveIntegerField(default=0)
     personal_prediction_score = models.PositiveIntegerField(default=0)
@@ -58,7 +65,21 @@ class ChefUser(AbstractUser):
     def mark_email_verified(self):
         self.email_verified = True
         self.email_verified_at = timezone.now()
-        self.save()
+        self.save(update_fields=["email_verified", "email_verified_at"])
+
+
+class KitchenSeatCounter(models.Model):
+    """Singleton row that hands out monotonic, never-reused member numbers.
+
+    Allocation runs under ``select_for_update`` so concurrent signups can never
+    receive the same seat. SQLite is single-writer locally; Postgres enforces the
+    row lock in production.
+    """
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    last_seat = models.PositiveIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return f"Seats issued: {self.last_seat}"
 
 
 class EmailVerificationToken(models.Model):

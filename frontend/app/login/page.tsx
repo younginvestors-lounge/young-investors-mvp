@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 const GREETINGS = [
   { word: "Hello",     lang: "English" },
@@ -26,21 +27,17 @@ const GREETINGS = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
   const [idx, setIdx] = useState(0);
   const [visible, setVisible] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Returning users skip straight to kitchen
+  // Returning, authenticated chefs skip the splash and go straight to the Kitchen.
   useEffect(() => {
-    try {
-      const name = localStorage.getItem("yi_chef_name");
-      const complete = localStorage.getItem("yi_onboarding_complete");
-      if (name && complete) {
-        router.replace("/kitchen");
-        return;
-      }
-    } catch {}
-  }, [router]);
+    if (!isLoading && isAuthenticated) {
+      router.replace("/kitchen");
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
@@ -166,25 +163,40 @@ export default function LoginPage() {
         </div>
 
         {/* CTA */}
-        <Link
-          href="/onboarding"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "14px 32px",
-            border: "1px solid #111111",
-            background: "#111111",
-            color: "#ffffff",
-            fontFamily: "var(--font-mono), monospace",
-            fontSize: "0.75rem",
-            textTransform: "uppercase",
-            letterSpacing: "0.15em",
-            textDecoration: "none",
-          }}
-        >
-          Start your journey →
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+          <Link
+            href="/onboarding"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "14px 32px",
+              border: "1px solid #111111",
+              background: "#111111",
+              color: "#ffffff",
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "0.75rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              textDecoration: "none",
+            }}
+          >
+            Start your journey →
+          </Link>
+          <Link
+            href="/signin"
+            style={{
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "0.66rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "#111111",
+              textDecoration: "underline",
+            }}
+          >
+            Sign in
+          </Link>
+        </div>
 
         <p style={{
           fontFamily: "var(--font-mono), monospace",

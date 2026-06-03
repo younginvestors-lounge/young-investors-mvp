@@ -1,5 +1,84 @@
 # Young Investors Frontend Handoff
 
+---
+
+## 2026-06-03 — Local Auth Integration (frontend ↔ Django) — VERIFIED
+
+**Status:** Real authentication is wired and verified locally end-to-end. No Azure
+deployment performed. Still `MOCK_MVP_PAPER_TRADING_ONLY` — no real money, broker,
+bank, FICA, or live trading.
+
+### What now works (proven by automated HTTP tests against the live dev server)
+- **Signup** (`POST /api/auth/signup/`): atomic user + seat + verification-token
+  creation; email normalised to lowercase; profile icon saved at creation; a unique
+  **join number** ("Chef #N") allocated race-safely via `select_for_update`.
+- **Email verification** (`POST /api/auth/verify_email/`): token-based, 24h expiry,
+  one-time use. The verification link is included in the email body and printed to
+  the Django console in local dev (console email backend).
+- **Login** (`POST /api/auth/login/`): email-first (case-insensitive) via a custom
+  `EmailBackend`; returns JWT access (24h) + refresh (7d); blocks unverified users
+  with `403 {code: "email_unverified"}`.
+- **Token refresh** (`POST /api/token/refresh/`): the frontend API client refreshes
+  the access token transparently on a 401 and retries once.
+- **Password reset** (`request` + `confirm`): tokenised, 2h expiry, **no email
+  enumeration** (always returns a generic 200).
+- **Profile** (`GET /api/auth/me/`, `PATCH /api/auth/update_profile/`): update
+  chef_alias, age, intent, profile_icon, and profile_picture (≤5MB, image types
+  validated). Media served at `/media/` in DEBUG; absolute URLs resolved client-side.
+- **CORS**: preflight verified for `http://localhost:3000` (credentials + PATCH/POST).
+- **Permissions**: DRF default restored to `IsAuthenticated`; auth endpoints are
+  explicitly public via `AuthViewSet.get_permissions`.
+
+### Frontend additions
+- `lib/api-client.ts` — typed client: structured `ApiError` (field + message),
+  request timeout, transparent token refresh, multipart profile upload, media URL
+  resolution.
+- `lib/auth-context.tsx` — `AuthProvider` + `useAuth()` (single shared session;
+  wired in `app/layout.tsx`). Only drops the session on a real 401, not network blips.
+- `lib/profileIcons.tsx` — shared icon catalog (keys match backend choices).
+- Pages: `/signin` (real email+password form), `/verify-email`, `/reset-password`
+  (dual mode), and a rebuilt `/onboarding` (alias → age → intent → icon → email/
+  password → signup → verify-email).
+- `components/TopBar.tsx` — shows the chef's icon, alias, and **Chef No. NNNN**;
+  logout uses the auth context.
+- `components/AppShell.tsx` — auth-guarded; unauthenticated visitors are sent to
+  `/signin`; chef alias comes from the live session.
+
+### Verified flow
+`/login` (splash) → `/onboarding` (creates real account) → `/verify-email`
+(click console link locally) → `/signin` → `/kitchen` (guarded, shows Chef No.).
+Returning authenticated users skip the splash straight to `/kitchen`.
+
+### How to run locally
+1. Backend: `pip install -r requirements.txt` → `python manage.py migrate` →
+   `python manage.py runserver 127.0.0.1:8000`
+2. Frontend: `frontend/.env.local` contains `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`;
+   then `npm install` && `npm run dev` (→ http://localhost:3000).
+3. On signup, copy the verification link from the **Django console** to verify.
+
+### Known follow-ups (not blockers for local proof)
+- Verification/reset emails are console-only in DEBUG; SendGrid wires in for prod.
+- `/gordon-intro` still reads localStorage and is currently outside the auth path
+  (orphaned, not broken) — fold into the post-verify journey in a later pass.
+- Kitchen/Academy/Vault/Shop/Lounge still render mock data; backend data wiring is
+  Phases 2–7.
+
+### Azure staging checklist (DO NOT deploy until approved)
+- [ ] Generate a strong `SECRET_KEY` ≥ 32 bytes (dev key triggers JWT length warning).
+- [ ] Create Azure Database for PostgreSQL Flexible Server; set `DATABASE_URL`
+      (`?sslmode=require`); add the App Service outbound IP to the DB firewall.
+- [ ] Azure App Service (Python 3.13 or container via the included `Dockerfile`).
+- [ ] App settings: `DEBUG=False`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`,
+      `CSRF_TRUSTED_ORIGINS`, `FRONTEND_URL`, `SENDGRID_API_KEY`, `DEFAULT_FROM_EMAIL`.
+- [ ] Switch email backend to SendGrid (already auto-selected when `DEBUG=False`);
+      verify sender domain in SendGrid.
+- [ ] `python manage.py migrate` + `collectstatic` on the App Service.
+- [ ] Vercel: set `NEXT_PUBLIC_API_BASE_URL` to the App Service HTTPS URL.
+- [ ] Smoke test signup → verify → login → profile → kitchen on staging.
+- [ ] Confirm no real-money path is wired (switched-off boundary intact).
+
+---
+
 ## Routing Recovery Update
 
 - Extracted the working dashboard from `frontend/app/page.tsx` into `frontend/components/AppShell.tsx`.
