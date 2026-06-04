@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Compass } from "lucide-react";
 import { AcademyComplete } from "@/components/AcademyComplete";
 import { AcademyView } from "@/components/AcademyView";
 import { BottomNav } from "@/components/BottomNav";
@@ -79,6 +80,61 @@ function writePassedModules(chefId: string | undefined, moduleIds: string[]): vo
   } catch {
     /* local demo persistence is best-effort */
   }
+}
+
+function GordonNextActionCard({
+  activeTab,
+  clearance,
+  modules,
+  onTabChange,
+}: {
+  activeTab: DashboardTab;
+  clearance: AcademyClearance;
+  modules: AcademyModule[];
+  onTabChange: (tab: DashboardTab) => void;
+}) {
+  const nextOpenLesson = modules.find((module) => !module.passed && !module.locked);
+  const missingCount = clearance.missingModuleIds.length;
+  const copyByTab: Record<DashboardTab, { line: string; target?: DashboardTab; cta?: string }> = {
+    academy: {
+      line: nextOpenLesson
+        ? `Next plate: clear ${nextOpenLesson.title}. High scores build trust before the Kitchen votes.`
+        : "Next plate: submit a practice attempt and sharpen your Chef Scorecard.",
+    },
+    kitchen: clearance.complete
+      ? { line: "Next plate: season one reason clearly, then check whether the table can reach 60%." }
+      : { line: `${missingCount} Academy lesson${missingCount === 1 ? "" : "s"} still stand between you and the Kitchen.`, target: "academy", cta: "Go Academy" },
+    vault: {
+      line: "Next plate: long-press a Shop stock, create a Shelf receipt, then follow it back here.",
+      target: "shop",
+      cta: "Open Shop",
+    },
+    shop: {
+      line: "Next plate: tap a Top 40 stock for Gordon's heat check, then long-press to choose buy, sell, or hold.",
+    },
+    lounge: {
+      line: "Next plate: tap a rank term, read the meaning, then open Gordon's Cookbook if the word is still fuzzy.",
+    },
+  };
+  const next = copyByTab[activeTab];
+
+  return (
+    <div style={{ border: "1px solid var(--yi-frame)", borderLeft: "2px solid var(--yi-black)", background: "var(--yi-card-bg)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <p style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.45, color: "var(--yi-copy)", margin: 0, minWidth: 0 }}>
+        <Compass size={15} strokeWidth={1.8} aria-hidden style={{ color: "var(--yi-ink)", flexShrink: 0 }} />
+        <span><strong style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-ink)", marginRight: 6 }}>Gordon / Next</strong>{next.line}</span>
+      </p>
+      {next.target && next.cta && (
+        <button
+          type="button"
+          onClick={() => { if (next.target) onTabChange(next.target); }}
+          style={{ minHeight: 34, border: "none", background: "var(--yi-black)", color: "var(--yi-white)", padding: "0 12px", fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}
+        >
+          {next.cta}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
@@ -167,6 +223,13 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
       />
 
       <main className="dashboard-main">
+        <GordonNextActionCard
+          activeTab={activeTab}
+          clearance={clearance}
+          modules={modules}
+          onTabChange={setActiveTab}
+        />
+
         <Reveal key={activeTab}>
           {activeTab === "kitchen" && <KitchenView clearance={clearance} />}
           {activeTab === "academy" && (

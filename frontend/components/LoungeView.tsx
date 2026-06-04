@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, UserPlus } from "lucide-react";
+import { BookOpen, Check, UserPlus } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
+import { GlossaryBook } from "@/components/GlossaryBook";
 import { LoungeMusic } from "@/components/LoungeMusic";
 import { useAuth } from "@/lib/auth-context";
 import { tap } from "@/lib/haptics";
@@ -15,11 +16,11 @@ interface LoungeViewProps {
 }
 
 const RANK_LADDER = [
-  { rank: "01", label: "Commis",          note: "First steps in the Kitchen",           requirement: "Complete any Academy module" },
-  { rank: "02", label: "Chef de Partie",  note: "You know your station",                 requirement: "Earn Kitchen clearance" },
-  { rank: "03", label: "Sous Chef",       note: "Ready to lead a section",               requirement: "Beat Gordon 3 times" },
-  { rank: "04", label: "Chef de Cuisine", note: "The Kitchen is yours",                  requirement: "Beat Gordon across a full month" },
-  { rank: "05", label: "Michelin Star",   note: "The Lounge remembers you",              requirement: "Win a full season against Gordon" },
+  { rank: "01", label: "Commis",          note: "First steps in the Kitchen",           requirement: "Complete any Academy module", meaning: "You have entered service. The goal is basic fluency: words, risk, and why recipes need reasons." },
+  { rank: "02", label: "Chef de Partie",  note: "You know your station",                 requirement: "Earn Kitchen clearance", meaning: "You can hold a station without burning the table. Academy clearance turns learning into Kitchen access." },
+  { rank: "03", label: "Sous Chef",       note: "Ready to lead a section",               requirement: "Beat Gordon 3 times", meaning: "You are not just participating. Your reasoning and votes have started beating Gordon's benchmark." },
+  { rank: "04", label: "Chef de Cuisine", note: "The Kitchen is yours",                  requirement: "Beat Gordon across a full month", meaning: "You have sustained process over time. The Lounge sees consistency, not one lucky night." },
+  { rank: "05", label: "Michelin Star",   note: "The Lounge remembers you",              requirement: "Win a full season against Gordon", meaning: "Season-level excellence. Status here means discipline, receipts, risk control, and results." },
 ];
 
 const BEAT_GORDON_PLATE = {
@@ -37,13 +38,22 @@ const LIFESTYLE_QUESTIONS = [
   "If your Kitchen beats Gordon for a full month — what does that prove about you?",
 ];
 
-function SiciliaPanel({ name, gordonReturn, beatCount }: { name: string; gordonReturn: number; beatCount: number }) {
+const SICILIA_QUOTES = [
+  (name: string, gordonReturn: number) => `Benvenuta, Chef ${name}. The Kitchen feeds you. The Lounge shows you what you're cooking toward. Gordon's benchmark sits at +${gordonReturn.toFixed(1)}% this week. The question is not how he did it. The question is whether your table is ready to beat it.`,
+  (name: string) => `Benvenuta, Chef ${name}. Taste is not decoration here. Taste is knowing why you want the life, then building the receipts to deserve it.`,
+  (name: string) => `Allora, Chef ${name}. Status is not noise. Status is proof that you can keep your head while the room gets loud.`,
+  (name: string) => `Benvenuta, Chef ${name}. The Lounge does not clap for guesses. It remembers discipline, timing, and the reasons you could repeat under pressure.`,
+];
+
+function SiciliaPanel({ name, gordonReturn, beatCount, lineIndex }: { name: string; gordonReturn: number; beatCount: number; lineIndex: number }) {
   const beatText = beatCount >= 2
     ? `Allora, Chef ${name}. The week is over. The Lounge has spoken. Two Kitchens beat Gordon this week — they voted with discipline, executed without panic, and let the process do its work. Note that. The Lounge remembers everything.`
     : `Benvenuta, Chef ${name}. The Kitchen feeds you. The Lounge shows you what you're cooking toward. Gordon's benchmark sits at +${gordonReturn.toFixed(1)}% this week. The question isn't how he did it — the question is whether you're ready to beat it.`;
 
-  const { displayed, done } = useTypewriter(beatText, { speed: 17, delay: 300 });
-  const linkedOpener = beatCount >= 2 ? "Allora" : "Benvenuta";
+  const rotatedText = SICILIA_QUOTES[lineIndex % SICILIA_QUOTES.length](name, gordonReturn);
+  const activeText = lineIndex === 0 ? beatText : rotatedText;
+  const { displayed, done } = useTypewriter(activeText, { speed: 17, delay: 300 });
+  const linkedOpener = activeText.startsWith("Allora") ? "Allora" : "Benvenuta";
   const displayPrefix = `${linkedOpener}, Chef ${name}. `;
   const displayBody = displayed.slice(Math.min(displayed.length, displayPrefix.length));
   return (
@@ -188,6 +198,11 @@ export function LoungeView({ rankings }: LoungeViewProps) {
   const [chefName, setChefName] = useState("Chef");
   const [userRank] = useState(0); // index in rank ladder (0 = Commis)
   const [lifestyleIdx, setLifestyleIdx] = useState(0);
+  const [siciliaIdx, setSiciliaIdx] = useState(0);
+  const [rankMeaning, setRankMeaning] = useState<(typeof RANK_LADDER)[number] | null>(null);
+  const [cookbookPrompt, setCookbookPrompt] = useState(false);
+  const [cookbookOpen, setCookbookOpen] = useState(false);
+  const rankPressTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -195,6 +210,28 @@ export function LoungeView({ rankings }: LoungeViewProps) {
       if (n) setChefName(n);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSiciliaIdx((i) => i + 1), 11000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function clearRankPress() {
+    if (rankPressTimerRef.current) {
+      window.clearTimeout(rankPressTimerRef.current);
+      rankPressTimerRef.current = null;
+    }
+  }
+
+  function explainRank(rank: (typeof RANK_LADDER)[number]) {
+    tap();
+    setRankMeaning(rank);
+  }
+
+  function startRankPress(rank: (typeof RANK_LADDER)[number]) {
+    clearRankPress();
+    rankPressTimerRef.current = window.setTimeout(() => explainRank(rank), 430);
+  }
 
   const gordonRow = rankings.find((r) => r.isGordon);
   const gordonReturn = gordonRow?.roiPercent ?? 3.1;
@@ -222,7 +259,7 @@ export function LoungeView({ rankings }: LoungeViewProps) {
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.6rem)", textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
           Sicilia · The Lounge
         </p>
-        <SiciliaPanel name={chefName} gordonReturn={gordonReturn} beatCount={beatCount} />
+        <SiciliaPanel key={siciliaIdx} name={chefName} gordonReturn={gordonReturn} beatCount={beatCount} lineIndex={siciliaIdx} />
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: "10px 0 0" }}>
           Lifestyle context only · Educational · Not financial advice
         </p>
@@ -352,9 +389,20 @@ export function LoungeView({ rankings }: LoungeViewProps) {
                 {r.rank}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.62rem,2.5vw,0.75rem)", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0, color: isPast ? "#167a3a" : isActive ? "var(--yi-ink)" : "var(--yi-muted)", fontWeight: isActive ? 700 : 400 }}>
+                <button
+                  type="button"
+                  onClick={() => explainRank(r)}
+                  onDoubleClick={() => { clearRankPress(); setRankMeaning(r); setCookbookPrompt(true); }}
+                  onPointerDown={() => startRankPress(r)}
+                  onPointerUp={clearRankPress}
+                  onPointerCancel={clearRankPress}
+                  onPointerLeave={clearRankPress}
+                  style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.62rem,2.5vw,0.75rem)", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0, color: isPast ? "#167a3a" : isActive ? "var(--yi-ink)" : "var(--yi-muted)", fontWeight: isActive ? 700 : 400, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", textDecoration: "underline", textUnderlineOffset: 3, touchAction: "manipulation" }}
+                  aria-label={`Explain ${r.label}`}
+                  title="Tap for meaning. Double tap for Gordon's Cookbook."
+                >
                   {r.label}
-                </p>
+                </button>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "clamp(0.72rem,2.5vw,0.8rem)", color: "var(--yi-muted)", margin: "2px 0 0" }}>
                   {r.note}
                 </p>
@@ -375,6 +423,46 @@ export function LoungeView({ rankings }: LoungeViewProps) {
             </div>
           );
         })}
+        {rankMeaning && (
+          <div style={{ borderTop: "1px solid var(--yi-hairline)", marginTop: 6, paddingTop: 12, display: "grid", gap: 8 }}>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
+              Gordon&apos;s Notebook / {rankMeaning.label}
+            </p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: 0 }}>
+              {rankMeaning.meaning}
+            </p>
+            <button
+              type="button"
+              onClick={() => setCookbookPrompt(true)}
+              style={{ justifySelf: "start", minHeight: 34, border: "1px solid var(--yi-frame)", background: "transparent", color: "var(--yi-ink)", display: "inline-flex", alignItems: "center", gap: 7, padding: "0 10px", fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}
+            >
+              <BookOpen size={13} strokeWidth={1.8} aria-hidden /> Read Gordon&apos;s Cookbook
+            </button>
+          </div>
+        )}
+        {cookbookPrompt && (
+          <div style={{ borderTop: "1px solid var(--yi-hairline)", marginTop: 10, paddingTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.5, color: "var(--yi-copy)", margin: 0 }}>
+              Would you like to read the Cookbook in Gordon&apos;s Glossary?
+            </p>
+            <span style={{ display: "inline-flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => { setCookbookPrompt(false); setCookbookOpen(true); }}
+                style={{ minHeight: 34, border: "none", background: "var(--yi-black)", color: "var(--yi-white)", padding: "0 11px", fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                onClick={() => setCookbookPrompt(false)}
+                style={{ minHeight: 34, border: "1px solid var(--yi-frame)", background: "transparent", color: "var(--yi-muted)", padding: "0 11px", fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}
+              >
+                Not now
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* The shared creed */}
@@ -390,6 +478,7 @@ export function LoungeView({ rankings }: LoungeViewProps) {
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.46rem,1.6vw,0.58rem)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
         Educational simulation · Mock performance only · Not financial advice
       </p>
+      <GlossaryBook open={cookbookOpen} onClose={() => setCookbookOpen(false)} />
     </section>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { CandlestickChart } from "lucide-react";
+import { useState } from "react";
+import { CandlestickChart, Newspaper, PackageOpen } from "lucide-react";
 import { JSEMarket } from "@/components/JSEMarket";
 import { useLiveTickers } from "@/lib/useLiveTickers";
 import { formatMoney, formatPercent } from "@/lib/domain";
@@ -19,8 +20,17 @@ function toneColor(v: number) {
   return "#888";
 }
 
+type ShopAisle = "stocks" | "articles" | "future";
+
+const SHOP_AISLES: { id: ShopAisle; label: string; Icon: typeof CandlestickChart }[] = [
+  { id: "stocks", label: "Stock Aisle", Icon: CandlestickChart },
+  { id: "articles", label: "Times & News", Icon: Newspaper },
+  { id: "future", label: "Future Markets", Icon: PackageOpen },
+];
+
 export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers, news }: ShopViewProps) {
   const { tickers } = useLiveTickers(fallbackTickers);
+  const [aisle, setAisle] = useState<ShopAisle>("stocks");
 
   return (
     <section style={{ display: "grid", gap: 20 }} aria-labelledby="shop-heading">
@@ -35,8 +45,42 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
         </h2>
       </div>
 
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid var(--yi-frame)" }} aria-label="Shop aisles">
+        {SHOP_AISLES.map(({ id, label, Icon }, i) => {
+          const active = aisle === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAisle(id)}
+              aria-pressed={active}
+              style={{
+                minHeight: 46,
+                border: "none",
+                borderRight: i < SHOP_AISLES.length - 1 ? "1px solid var(--yi-frame)" : "none",
+                background: active ? "var(--yi-black)" : "transparent",
+                color: active ? "var(--yi-white)" : "var(--yi-ink)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                padding: "0 8px",
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "clamp(0.52rem,1.8vw,0.62rem)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                cursor: "pointer",
+              }}
+            >
+              <Icon size={14} strokeWidth={1.8} aria-hidden />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* The JSE — what's on the menu, with Gordon's heat check */}
-      <div style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: aisle === "stocks" ? "grid" : "none", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <CandlestickChart size={16} strokeWidth={1.8} aria-hidden style={{ color: "var(--yi-ink)" }} />
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
@@ -47,7 +91,7 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       </div>
 
       {/* Lead article */}
-      <div style={{ border: "1px solid var(--yi-frame)", padding: "18px 16px", background: "var(--yi-card-bg)" }}>
+      <div style={{ display: aisle === "articles" ? "block" : "none", border: "1px solid var(--yi-frame)", padding: "18px 16px", background: "var(--yi-card-bg)" }}>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
           {feature.kicker}
         </p>
@@ -63,7 +107,7 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       </div>
 
       {/* Secondary articles */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
+      <div style={{ display: aisle === "articles" ? "grid" : "none", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
         {secondaryArticles.map((a) => (
           <div key={a.title} style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
             <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,1.8vw,0.6rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>{a.kicker}</p>
@@ -75,7 +119,7 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       </div>
 
       {/* JSE tickers */}
-      <div>
+      <div style={{ display: aisle === "stocks" ? "block" : "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
             Market signals · JSE &amp; global
@@ -108,7 +152,7 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       </div>
 
       {/* Macro news */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
+      <div style={{ display: aisle === "articles" ? "grid" : "none", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
         {news.map((item) => (
           <div key={item.id} style={{ border: `1px solid ${item.critical ? "#b42318" : "var(--yi-frame)"}`, padding: "14px 16px", background: "var(--yi-card-bg)" }}>
             <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,1.8vw,0.6rem)", textTransform: "uppercase", letterSpacing: "0.1em", color: item.critical ? "#b42318" : "var(--yi-muted)", margin: "0 0 6px" }}>{item.region}</p>
@@ -117,6 +161,28 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
           </div>
         ))}
       </div>
+
+      {aisle === "future" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,220px),1fr))", gap: 12 }}>
+          {[
+            { title: "Capital Market Aisle", line: "Bonds, rates, and credit modules will live here once Gordon has the syllabus ready." },
+            { title: "Commodity Market Aisle", line: "Gold, platinum, oil, maize, and resource-cycle lessons are reserved for the next shelf." },
+            { title: "Currency Market Aisle", line: "FX, rand shocks, and regional money flows stay labelled as future education, not live trading." },
+          ].map((item) => (
+            <article key={item.title} style={{ border: "1px solid var(--yi-frame)", padding: "15px 16px", background: "var(--yi-card-bg)" }}>
+              <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>
+                Future module
+              </p>
+              <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.1rem", fontWeight: 600, lineHeight: 1.2, color: "var(--yi-ink)", margin: "0 0 8px" }}>
+                {item.title}
+              </h3>
+              <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: 0 }}>
+                {item.line}
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.46rem,1.6vw,0.56rem)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
         Simulated prices · MOCK_MVP_PAPER_TRADING_ONLY · Not financial advice

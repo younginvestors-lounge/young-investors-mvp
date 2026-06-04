@@ -11,6 +11,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Music } from "lucide-react";
+import { TaskToast } from "@/components/TaskToast";
+import { TASK_TOAST_EVENT, notifyTask } from "@/lib/taskToast";
 
 const MUSIC_SOURCES = ["/audio/lounge.mp3", "/audio/lounge.m4a", "/audio/lounge.ogg"];
 const MUSIC_TRACK = "Tadow — FKJ & Masego";
@@ -38,8 +40,10 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [pattern, setPattern] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
   const [musicAvailable, setMusicAvailable] = useState(true);
-  const [toast, setToast] = useState(false);
+  const [musicToast, setMusicToast] = useState(false);
+  const [taskToast, setTaskToast] = useState<{ title: string; line?: string } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const taskToastTimerRef = useRef<number | null>(null);
 
   // Sync state with what's already on <html> (theme set pre-paint) + saved pattern.
   useEffect(() => {
@@ -80,6 +84,21 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
+  useEffect(() => {
+    function onTaskToast(event: Event) {
+      const detail = (event as CustomEvent<{ title?: string; line?: string }>).detail;
+      if (!detail?.title) return;
+      setTaskToast({ title: detail.title, line: detail.line });
+      if (taskToastTimerRef.current) window.clearTimeout(taskToastTimerRef.current);
+      taskToastTimerRef.current = window.setTimeout(() => setTaskToast(null), 3800);
+    }
+    window.addEventListener(TASK_TOAST_EVENT, onTaskToast);
+    return () => {
+      window.removeEventListener(TASK_TOAST_EVENT, onTaskToast);
+      if (taskToastTimerRef.current) window.clearTimeout(taskToastTimerRef.current);
+    };
+  }, []);
+
   // Mirror the real audio element state (OS / other tab can pause it).
   useEffect(() => {
     const a = audioRef.current;
@@ -101,6 +120,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         document.documentElement.setAttribute("data-theme", next);
         localStorage.setItem("yi_theme", next);
       } catch {}
+      notifyTask(next === "dark" ? "Night mode saved" : "Light mode saved", "Your Kitchen opens in that mood next time.");
       return next;
     });
   }, []);
@@ -112,6 +132,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         document.documentElement.setAttribute("data-pattern", next ? "on" : "off");
         localStorage.setItem("yi_pattern", next ? "on" : "off");
       } catch {}
+      notifyTask(next ? "Pattern switched on" : "Pattern switched off", "The app chrome has been saved.");
       return next;
     });
   }, []);
@@ -129,8 +150,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
       a.loop = true;
       await a.play();
       try { localStorage.setItem("yi_music", "on"); } catch {}
-      setToast(true);
-      window.setTimeout(() => setToast(false), 4500);
+      setMusicToast(true);
+      window.setTimeout(() => setMusicToast(false), 4500);
     } catch {
       if (a.error || a.networkState === a.NETWORK_NO_SOURCE) setMusicAvailable(false);
     }
@@ -147,7 +168,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         ))}
       </audio>
 
-      {toast && (
+      {taskToast && <TaskToast title={taskToast.title} line={taskToast.line} />}
+
+      {musicToast && (
         <div
           role="status"
           aria-live="polite"

@@ -11,9 +11,24 @@
  */
 
 import Link from "next/link";
-import { LockKeyhole, Vault as VaultIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LockKeyhole, ReceiptText, Scale, Trash2, Vault as VaultIcon } from "lucide-react";
+import { clearShelfReceipts, readShelfReceipts, SHELF_EVENT, type ShelfReceipt } from "@/lib/shelfStore";
+import { notifyTask } from "@/lib/taskToast";
 
 export const STARTING_CAPITAL = "R1,001.00";
+
+function money(n: number): string {
+  return `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function receiptDate(ts: number): string {
+  try {
+    return new Intl.DateTimeFormat("en-ZA", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(ts);
+  } catch {
+    return "Mock receipt";
+  }
+}
 
 /** Shown when a Chef taps the Vault before finishing the Academy. */
 export function VaultLocked({ passedCount, totalCount }: { passedCount: number; totalCount: number }) {
@@ -57,6 +72,98 @@ export function VaultLocked({ passedCount, totalCount }: { passedCount: number; 
   );
 }
 
+function VaultShelfReceipts() {
+  const [receipts, setReceipts] = useState<ShelfReceipt[]>([]);
+
+  useEffect(() => {
+    const load = () => setReceipts(readShelfReceipts());
+    load();
+    window.addEventListener(SHELF_EVENT, load);
+    return () => window.removeEventListener(SHELF_EVENT, load);
+  }, []);
+
+  function clearReceipts() {
+    clearShelfReceipts();
+    notifyTask("Shelf cleared", "Your mock receipts were removed from this device.");
+  }
+
+  return (
+    <div style={{ border: "1px solid var(--yi-frame)", padding: "16px 18px", background: "var(--yi-card-bg)", display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <p style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>
+            <ReceiptText size={14} strokeWidth={1.8} aria-hidden /> The Shelf
+          </p>
+          <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.15rem", fontWeight: 600, lineHeight: 1.15, color: "var(--yi-ink)", margin: 0 }}>
+            Mock receipts waiting for a Kitchen vote
+          </h3>
+        </div>
+        {receipts.length > 0 && (
+          <button
+            type="button"
+            onClick={clearReceipts}
+            title="Clear Shelf receipts"
+            style={{ minHeight: 34, border: "1px solid var(--yi-frame)", background: "transparent", color: "var(--yi-muted)", display: "inline-flex", alignItems: "center", gap: 7, padding: "0 10px", fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}
+          >
+            <Trash2 size={13} strokeWidth={1.8} aria-hidden /> Clear
+          </button>
+        )}
+      </div>
+
+      {receipts.length === 0 ? (
+        <div style={{ border: "1px solid var(--yi-hairline)", padding: "13px 14px", background: "var(--yi-paper)" }}>
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+            Your Shelf is empty. Go to Shop, open the Stock Aisle, then long-press a company to choose buy, sell, or hold before the Kitchen votes.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {receipts.map((receipt) => (
+            <article key={receipt.id} style={{ border: "1px solid var(--yi-frame)", background: "var(--yi-paper)", padding: "12px 13px", display: "grid", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: "0 0 4px" }}>
+                    {receipt.decision === "SELL" ? "YI mock invoice of sale" : receipt.decision === "BUY" ? "YI mock purchase receipt" : "YI mock hold note"} / {receiptDate(receipt.createdAt)}
+                  </p>
+                  <h4 style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.95rem", fontWeight: 700, color: "var(--yi-ink)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {receipt.decision} {receipt.symbol}
+                  </h4>
+                </div>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.08em", border: "1px solid var(--yi-frame)", color: "var(--yi-muted)", padding: "3px 7px", flexShrink: 0 }}>
+                  Paper
+                </span>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+                {[
+                  ["Value", money(receipt.notional)],
+                  ["Weight", `${receipt.weightPercent}%`],
+                  ["Units", String(receipt.units)],
+                  ["Price", money(receipt.price)],
+                ].map(([label, value]) => (
+                  <p key={label} style={{ margin: 0, minWidth: 0 }}>
+                    <span style={{ display: "block", fontFamily: "var(--font-mono), monospace", fontSize: "0.46rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>{label}</span>
+                    <span style={{ display: "block", fontFamily: "var(--font-mono), monospace", fontSize: "0.66rem", color: "var(--yi-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+                  </p>
+                ))}
+              </div>
+
+              <p style={{ display: "flex", alignItems: "flex-start", gap: 7, fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.82rem", lineHeight: 1.5, color: "var(--yi-copy)", margin: 0 }}>
+                <Scale size={13} strokeWidth={1.8} aria-hidden style={{ marginTop: 2, flexShrink: 0 }} />
+                <span>{receipt.reason}</span>
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0, lineHeight: 1.5 }}>
+        Shelf receipts are device-local / MOCK_MVP_PAPER_TRADING_ONLY / Not financial advice
+      </p>
+    </div>
+  );
+}
+
 /** Shown once the Academy is cleared: the R1,001 grant + the start of the simulation. */
 export function VaultStart({ chefName }: { chefName: string }) {
   return (
@@ -97,6 +204,8 @@ export function VaultStart({ chefName }: { chefName: string }) {
           Right now your Vault is all cash — no positions yet. When your Kitchen votes a recipe through the 60% Rule, the holding shows up here with its plate weight and heat. No fake holdings. This is the real thing.
         </p>
       </div>
+
+      <VaultShelfReceipts />
 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
         Paper trading only · No real money · No live execution · Not financial advice

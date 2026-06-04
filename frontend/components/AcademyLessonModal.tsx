@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
 import { success, tap, warn } from "@/lib/haptics";
 import { glossaryForModule, READER_LEVELS, type GlossaryLevels } from "@/lib/gordonGlossary";
+import { notifyTask } from "@/lib/taskToast";
 
 /** What each class promises — Gordon as lecturer/master chef. */
 const LESSON_OUTCOMES: Record<string, string[]> = {
@@ -394,6 +395,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
       });
     }
     success();
+    notifyTask("Lesson cleared", `${moduleTitle} saved to Gordon's notebook.`);
     onPass(moduleId);
     onClose();
   }

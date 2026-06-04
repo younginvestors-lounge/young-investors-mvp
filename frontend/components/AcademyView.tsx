@@ -2,13 +2,14 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { BookOpenCheck, CheckCircle, LockKeyhole, PlayCircle } from "lucide-react";
+import { BadgeCheck, BookOpenCheck, CheckCircle, LockKeyhole, PlayCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrutalistButton } from "@/components/BrutalistButton";
 import { BrutalistCard } from "@/components/BrutalistCard";
 import { AcademyLessonModal } from "@/components/AcademyLessonModal";
 import { GordonChefScorecard } from "@/components/GordonChefScorecard";
 import { useAuth } from "@/lib/auth-context";
+import { notifyTask } from "@/lib/taskToast";
 import {
   ATTEMPT_LIMIT,
   FIRST_TESTER_NUMBER,
@@ -195,6 +196,10 @@ function FollowTheMoneyCard() {
     try {
       const { attempt } = await submitAttempt();
       setResult(attempt);
+      notifyTask(
+        attempt.cleared ? "Academy score cleared" : "Academy attempt recorded",
+        `${attempt.score}/100 saved / best ${attempt.bestScore}/100`
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't record that attempt.");
     } finally {
@@ -255,6 +260,9 @@ function FollowTheMoneyCard() {
 
       <p className="copy" style={{ marginTop: 12, fontStyle: "italic" }}>
         You get three attempts. Not because we expect perfection — because mastery is correction.
+      </p>
+      <p className="copy" style={{ marginTop: 8 }}>
+        Gordon opens the Kitchen at {PASS_THRESHOLD}, but high scores cook louder. They sharpen your Chef Scorecard, lift your Lounge status, and help other chefs trust your reasons when the table votes.
       </p>
 
       {/* Latest attempt result */}
@@ -339,17 +347,17 @@ function FollowTheMoneyCard() {
 
       {/* Microcredential + reward indicators */}
       <div style={{ borderTop: "1px solid var(--yi-hairline)", marginTop: 16, paddingTop: 12, display: "grid", gap: 6 }}>
-        <p style={{ ...mono, fontSize: "0.54rem", color: cleared ? "#167a3a" : "var(--yi-muted)", margin: 0 }}>
-          ◆ Microcredential: {cleared ? "Cleared" : "In progress"} · Internal Young Investors microcredential pathway
+        <p style={{ ...mono, display: "flex", alignItems: "center", gap: 6, fontSize: "0.54rem", color: cleared ? "#167a3a" : "var(--yi-muted)", margin: 0 }}>
+          <BadgeCheck size={12} strokeWidth={1.8} aria-hidden /> Microcredential: {cleared ? "Cleared" : "In progress"} · Internal Young Investors microcredential pathway
         </p>
         {foundingHundred && (
-          <p style={{ ...mono, fontSize: "0.54rem", color: "var(--yi-ink)", margin: 0 }}>
-            ◆ Founding 100 · Chef No. {String(user.member_number).padStart(4, "0")} · Launch reward indicator — subject to official Young Investors reward terms
+          <p style={{ ...mono, display: "flex", alignItems: "center", gap: 6, fontSize: "0.54rem", color: "var(--yi-ink)", margin: 0 }}>
+            <BadgeCheck size={12} strokeWidth={1.8} aria-hidden /> Founding 100 · Chef No. {String(user.member_number).padStart(4, "0")} · Launch reward indicator — subject to official Young Investors reward terms
           </p>
         )}
         {mastery && (
-          <p style={{ ...mono, fontSize: "0.54rem", color: "var(--yi-ink)", margin: 0 }}>
-            ◆ 95+ mastery · Reward indicator — subject to official Young Investors reward terms
+          <p style={{ ...mono, display: "flex", alignItems: "center", gap: 6, fontSize: "0.54rem", color: "var(--yi-ink)", margin: 0 }}>
+            <BadgeCheck size={12} strokeWidth={1.8} aria-hidden /> 95+ mastery · Reward indicator — subject to official Young Investors reward terms
           </p>
         )}
       </div>

@@ -82,6 +82,7 @@ export default function BriefingPage() {
       `${GORDON_LINES.greetingPlain}\n\n` +
       `You said you're here to ${intent}. Respect. But here's the deal, Chef ${name} — ` +
       `you can't cook with money you don't understand. So we learn first. ${GORDON_LINES.whyHard}\n\n` +
+      `Do not aim for 60 just because 60 opens the Kitchen. Aim high because your score becomes your Chef Scorecard: it earns trust at the table, sharpens your reasons, and gives the Lounge something real to respect.\n\n` +
       `Sharp sharp. Let's go.`,
     [intent, name]
   );
