@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CircleCheck } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
+import { useAuth } from "@/lib/auth-context";
+import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
+import { getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, type KitchenState } from "@/lib/profileStore";
 import { calculateConsensus } from "@/lib/domain";
+import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
 import type { AcademyClearance, ChefVote, KitchenMember, VoteTally } from "@/lib/types";
 
 type GovernanceModel = "slow-cook" | "high-heat";
@@ -46,7 +51,8 @@ function membersToVoteTally(members: KitchenMember[]): VoteTally {
     yes:           members.filter((m) => m.vote === "FOR").length,
     no:            members.filter((m) => m.vote === "AGAINST").length,
     abstain:       members.filter((m) => m.vote === "ABSTAIN").length,
-    quorumRequired: 3,
+    // Quorum scales with the real table (min 2, ~60% of the Kitchen).
+    quorumRequired: Math.max(MIN_KITCHEN_CHEFS, Math.ceil(members.length * 0.6)),
     totalMembers:  members.length,
   };
 }
@@ -268,8 +274,9 @@ function ProposeScreen({
           }}
         />
         {reasonOk && (
-          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#167a3a", margin: "8px 0 0" }}>
-            ✓ Reason recorded — the Kitchen will read this before voting
+          <p style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#167a3a", margin: "8px 0 0" }}>
+            <CircleCheck size={13} strokeWidth={1.8} aria-hidden />
+            <span>Reason recorded — the Kitchen will read this before voting</span>
           </p>
         )}
       </div>
@@ -424,7 +431,7 @@ function VoteScreen({
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)" }}>
-            {result.forCount} For · {result.againstCount} Against · {5 - result.castCount} Pending
+            {result.forCount} For · {result.againstCount} Against · {members.length - result.castCount} Pending
           </span>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", fontWeight: 700, color: passes ? "#167a3a" : "#b42318", letterSpacing: "0.08em" }}>
             {passes ? "PASSES" : "NOT PASSING"}
@@ -438,7 +445,7 @@ function VoteScreen({
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>60% threshold</span>
         </div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: result.quorumMet ? "#167a3a" : "#b46918", margin: "6px 0 0" }}>
-          {result.quorumMet ? `Quorum met · ${result.castCount}/5 voted` : `Quorum needed · ${result.castCount}/3 cast so far`}
+          {result.quorumMet ? `Quorum met · ${result.castCount}/${members.length} voted` : `Quorum needed · ${result.castCount}/${tally.quorumRequired} cast so far`}
         </p>
       </div>
 
@@ -536,22 +543,79 @@ interface KitchenViewProps {
 
 /* ── Main KitchenView ── */
 export function KitchenView({ clearance }: KitchenViewProps) {
+  const { user, recordKitchenVote } = useAuth();
   const [model, setModel] = useState<GovernanceModel>("slow-cook");
   const [phase, setPhase] = useState<KitchenPhase>("browse");
   const [submittedDraft, setSubmittedDraft] = useState<ProposalDraft | null>(null);
-  const [members, setMembers] = useState<KitchenMember[]>(() =>
-    BASE_MEMBERS.map((m) => ({ ...m, name: m.isUser ? "You" : PEER_NAMES[m.id] ?? m.id }))
-  );
+  const [kitchen, setKitchen] = useState<KitchenState | null>(null);
+  const [loadingKitchen, setLoadingKitchen] = useState(true);
+  const [members, setMembers] = useState<KitchenMember[]>([]);
 
+  // Load the chef's real Kitchen (Supabase RPC or local demo).
   useEffect(() => {
-    try {
-      const n = localStorage.getItem("yi_chef_name");
-      if (n) setMembers((prev) => prev.map((m) => (m.isUser ? { ...m, name: `${n} (You)` } : m)));
-    } catch {}
-  }, []);
+    let cancelled = false;
+    (async () => {
+      try {
+        const k = await getMyKitchen(user);
+        if (!cancelled) setKitchen(k);
+      } catch {
+        if (!cancelled) setKitchen(null);
+      } finally {
+        if (!cancelled) setLoadingKitchen(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Build the voting table from real members. Practice (local-demo) chefs pre-cast a
+  // vote so a solo tester can see the 60% Rule; real co-chefs are pending until they vote.
+  useEffect(() => {
+    if (!kitchen) { setMembers([]); return; }
+    setMembers(
+      kitchen.members.map((m) => ({
+        id: m.userId,
+        name: m.isYou ? `${m.alias} (You)` : m.alias,
+        vote: (m.simulated ? "FOR" : null) as ChefVote,
+        isUser: m.isYou,
+      }))
+    );
+    setModel(kitchen.governance === "hedge" ? "high-heat" : "slow-cook");
+  }, [kitchen]);
+
+  // Real multi-user vote sync: pull co-chefs' actual votes for the active recipe
+  // (Supabase). Your own cast stays authoritative locally; practice chefs keep theirs.
+  useEffect(() => {
+    if (!kitchen || kitchen.members.length < MIN_KITCHEN_CHEFS) return;
+    let cancelled = false;
+    async function sync() {
+      const votes = await getKitchenVotes(ACTIVE_PROPOSAL.symbol);
+      if (cancelled || Object.keys(votes).length === 0) return;
+      setMembers((prev) =>
+        prev.map((m) => {
+          if (m.isUser) return m;
+          const v = votes[m.id];
+          return v ? { ...m, vote: v as ChefVote } : m;
+        })
+      );
+    }
+    sync();
+    const t = setInterval(sync, 5000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [kitchen]);
 
   function castVote(memberId: string, vote: ChefVote) {
-    setMembers((prev) => prev.map((m) => (m.id !== memberId ? m : { ...m, vote: m.vote === vote ? null : vote })));
+    const member = members.find((m) => m.id === memberId);
+    const next = member && member.vote === vote ? null : vote;
+    setMembers((prev) => prev.map((m) => (m.id !== memberId ? m : { ...m, vote: next })));
+    // Persist only the user's own cast (not an un-vote). Best-effort, never blocks.
+    if (member?.isUser && next) {
+      void recordKitchenVote({
+        kitchenName: kitchen?.name ?? "My Kitchen",
+        proposalTicker: ACTIVE_PROPOSAL.symbol,
+        vote: next,
+        seasoningReason: ACTIVE_PROPOSAL.reason,
+      });
+    }
   }
 
   // Clearance gate — show a locked screen before Academy is cleared
@@ -587,6 +651,31 @@ export function KitchenView({ clearance }: KitchenViewProps) {
     );
   }
 
+  // ── Kitchen gate: form/join a Kitchen, and reach quorum, before cooking ──
+  if (loadingKitchen) {
+    return (
+      <section style={{ display: "grid", gap: 16 }} aria-labelledby="kitchen-heading">
+        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--yi-muted)" }}>
+          Loading your Kitchen…
+        </p>
+      </section>
+    );
+  }
+  if (!kitchen) {
+    return (
+      <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
+        <FormKitchen onDone={setKitchen} />
+      </section>
+    );
+  }
+  if (kitchen.members.length < MIN_KITCHEN_CHEFS) {
+    return (
+      <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
+        <KitchenLobby kitchen={kitchen} onChanged={setKitchen} onLeft={() => setKitchen(null)} />
+      </section>
+    );
+  }
+
   if (phase === "propose") {
     return (
       <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
@@ -594,6 +683,17 @@ export function KitchenView({ clearance }: KitchenViewProps) {
           onBack={() => setPhase("browse")}
           onSubmit={(draft) => {
             setSubmittedDraft(draft);
+            if (user) {
+              rememberGordonChefReason(user.id, {
+                source: "kitchen",
+                action: "recipe-proposal",
+                ticker: draft.symbol,
+                assetName: draft.assetName,
+                side: draft.side,
+                units: Number(draft.units),
+                reason: draft.reason,
+              });
+            }
             setTimeout(() => setPhase("browse"), 2000);
           }}
         />
@@ -637,9 +737,9 @@ export function KitchenView({ clearance }: KitchenViewProps) {
 
       {/* Kitchen meta + governance toggle */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
-        <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.28rem", fontWeight: 600, margin: "0 0 4px" }}>Rhodes Test Kitchen</p>
+        <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.28rem", fontWeight: 600, margin: "0 0 4px" }}>{kitchen.name}</p>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 16px" }}>
-          5 members · simulated pool R60,000
+          {kitchen.members.length} chef{kitchen.members.length !== 1 ? "s" : ""} · {kitchen.governance === "hedge" ? "High heat" : "Slow cook"} · paper only
         </p>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>
           Governance model
@@ -677,7 +777,7 @@ export function KitchenView({ clearance }: KitchenViewProps) {
           <div style={{ position: "absolute", top: -4, bottom: -4, left: "60%", width: 1, background: "#111" }} />
         </div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: result.quorumMet ? "#167a3a" : "#b46918", margin: "0 0 14px" }}>
-          {result.forCount} for · {result.againstCount} against · {5 - result.castCount} pending · {result.quorumMet ? "Quorum met" : "Quorum needed"}
+          {result.forCount} for · {result.againstCount} against · {members.length - result.castCount} pending · {result.quorumMet ? "Quorum met" : "Quorum needed"}
         </p>
 
         <button

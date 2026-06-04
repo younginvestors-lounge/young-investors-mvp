@@ -17,11 +17,13 @@ pip install -r requirements.txt
 Create `.env` with:
 ```
 DEBUG=True
-SECRET_KEY=dev-secret-key-here
+SECRET_KEY=local-dev-secret-replace-before-production-32chars
 ALLOWED_HOSTS=localhost,127.0.0.1
 DATABASE_URL=sqlite:///db.sqlite3
-SENDGRID_API_KEY=not-needed-for-local-console-email
+SENDGRID_API_KEY=not-needed-for-local-file-email
 DEFAULT_FROM_EMAIL=noreply@younginvestors.co
+EMAIL_BACKEND=django.core.mail.backends.filebased.EmailBackend
+EMAIL_FILE_PATH=.local-emails
 FRONTEND_URL=http://localhost:3000
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
@@ -60,9 +62,9 @@ curl -X POST http://127.0.0.1:8000/api/auth/signup/ \
   }'
 
 # Response: {"message": "Account created. Please check your email to verify.", "user": {...}}
-# Console output: Email verification link (look for /verify-email?token=...)
+# Local email outbox: .local-emails/ contains the verification email
 
-# Get the token from console email output and verify email
+# Get the token from the local email outbox and verify email
 curl -X POST http://127.0.0.1:8000/api/auth/verify_email/ \
   -H "Content-Type: application/json" \
   -d '{"token":"TOKEN_FROM_EMAIL"}'
@@ -125,7 +127,7 @@ Frontend is now at `http://localhost:3000`
    - Age: 25
    - Intent: "Learn the craft"
 4. **Submit** → backend creates ChefUser, sends verification email
-5. **Check Django console output** for verification email with token
+5. **Check `.local-emails/`** for the verification email with token
 6. **Copy token** into verification link or call endpoint manually
 7. **Verify email** → backend marks user as verified
 8. **Automatic login redirect** → /kitchen with JWT token
@@ -148,7 +150,7 @@ python manage.py runserver 0.0.0.0:8000
 - Restart Django after changing CORS settings
 
 ### "Email verification token not found"
-- Check Django console output for email body
+- Check `.local-emails/` for the email body
 - Copy the full token (everything after `token=` in the URL)
 - Ensure token hasn't expired (24 hours)
 
@@ -178,7 +180,7 @@ Once local auth flow is verified:
 
 1. **Run full smoke test:**
    - Sign up with email/password
-   - Verify email from console output
+   - Verify email from the local email outbox
    - Login → JWT token
    - Update profile with icon
    - Logout → localStorage cleared
@@ -201,25 +203,25 @@ Once local auth flow is verified:
 
 ## Success Criteria (Local Integration)
 
-✅ Backend runs without errors  
-✅ Frontend runs without errors  
-✅ Signup creates user in database  
-✅ Email verification email appears in console  
-✅ Verify email endpoint marks user as verified  
-✅ Login returns JWT tokens  
-✅ JWT stored in localStorage  
-✅ Profile update saves chef alias/icon  
-✅ Profile picture uploads to media/  
-✅ Onboarding routes to /kitchen after profile  
-✅ No CORS errors in browser console  
-✅ No routing breaks (all links work)  
-✅ Logout clears tokens  
-✅ Login works again after logout  
+✅ Backend runs without errors
+✅ Frontend runs without errors
+✅ Signup creates user in database
+✅ Email verification email appears in `.local-emails/`
+✅ Verify email endpoint marks user as verified
+✅ Login returns JWT tokens
+✅ JWT stored in localStorage
+✅ Profile update saves chef alias/icon
+✅ Profile picture uploads to media/
+✅ Onboarding routes to /kitchen after profile
+✅ No CORS errors in browser console
+✅ No routing breaks (all links work)
+✅ Logout clears tokens
+✅ Login works again after logout
 
 ## Security Notes (Dev Only)
 
 ⚠️ This setup uses:
-- **Console email backend** (no SendGrid needed)
+- **File email backend** (no SendGrid needed)
 - **SQLite** (no Postgres needed)
 - **AllowAny permissions** (DRF auth optional, loosen for demo)
 - **DEBUG=True** (never use in production)

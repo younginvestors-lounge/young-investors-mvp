@@ -22,6 +22,23 @@
   --yi-copy: rgba(17, 17, 17, 0.86);
 }
 
+/* Night mode. The design uses --yi-black/--yi-white as a literal bg/text pair, so
+   dark mode swaps them: "black" surfaces become light, "white" text becomes dark.
+   Covers the token-based app (dashboard, views, sheets). */
+[data-theme="dark"] {
+  --yi-black: #f4f4f4;
+  --yi-white: #141414;
+  --yi-paper: #0f0f0f;
+  --yi-soft: rgba(244, 244, 244, 0.06);
+  --yi-ink: #f4f4f4;
+  --yi-muted: rgba(244, 244, 244, 0.60);
+  --yi-hairline: rgba(244, 244, 244, 0.16);
+  --yi-frame: rgba(244, 244, 244, 0.42);
+  --yi-card-bg: rgba(255, 255, 255, 0.045);
+  --yi-nav-bg: rgba(20, 20, 20, 0.96);
+  --yi-copy: rgba(244, 244, 244, 0.86);
+}
+
 
 *,
 *::before,
@@ -48,6 +65,24 @@ body {
   /* NO overflow:hidden, NO overscroll-behavior — let the browser scroll naturally */
 }
 
+/* Optional background pattern (toggle in toolbar/settings). Sits subtly behind
+   content; pointer-events off so it never blocks taps. */
+[data-pattern="on"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/yi-pattern.svg");
+  background-repeat: repeat;
+  background-size: 340px;
+  opacity: 0.05;
+}
+[data-theme="dark"][data-pattern="on"] body::before {
+  opacity: 0.08;
+  filter: invert(1);
+}
+
 ::selection {
   background: var(--yi-black);
   color: var(--yi-white);
@@ -64,13 +99,11 @@ button {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.08);
-  transition: box-shadow 200ms ease, background-color 200ms ease, transform 80ms ease;
+  transition: background-color 200ms ease, transform 80ms ease;
 }
 
 button:active {
   transform: translateY(1px);
-  box-shadow: 0 1px 1px rgba(17, 17, 17, 0.04);
 }
 
 button:disabled {
@@ -134,7 +167,6 @@ a {
   padding: 8px 0 max(16px, env(safe-area-inset-bottom, 0px));
   background: var(--yi-nav-bg);
   border-top: 1px solid var(--yi-hairline);
-  box-shadow: 0 -2px 4px rgba(17, 17, 17, 0.06), 0 -1px 1px rgba(17, 17, 17, 0.08);
 }
 
 .bottom-nav-button {
@@ -345,7 +377,6 @@ a {
 .chart-wrap {
   background: var(--yi-card-bg);
   color: var(--yi-ink);
-  backdrop-filter: blur(12px);
 }
 
 .brutalist-card {
@@ -496,8 +527,6 @@ a {
   grid-template-columns: repeat(5, 1fr);
   border-top: 1px solid var(--yi-hairline);
   background: var(--yi-nav-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 

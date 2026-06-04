@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AcademyComplete } from "@/components/AcademyComplete";
 import { AcademyView } from "@/components/AcademyView";
 import { BottomNav } from "@/components/BottomNav";
 import { KitchenView } from "@/components/KitchenView";
 import { LoungeView } from "@/components/LoungeView";
+import { Reveal } from "@/components/Reveal";
 import { ShopView } from "@/components/ShopView";
 import { TopBar } from "@/components/TopBar";
-import { VaultView } from "@/components/VaultView";
+import { VaultLocked, VaultStart } from "@/components/VaultGate";
 import { getDashboardSnapshot } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -23,6 +25,62 @@ interface AppShellProps {
   initialTab?: DashboardTab;
 }
 
+const ACADEMY_PROGRESS_KEY = "yi_academy_progress";
+const ACADEMY_ACK_KEY = "yi_academy_ack";
+
+function perChefKey(prefix: string, chefId?: string): string {
+  return chefId ? `${prefix}:${chefId}` : prefix;
+}
+
+function deriveAcademyState(
+  seedModules: AcademyModule[],
+  seedClearance: AcademyClearance,
+  passedModuleIds: string[]
+): { modules: AcademyModule[]; clearance: AcademyClearance } {
+  const passed = new Set([...seedModules.filter((module) => module.passed).map((module) => module.id), ...passedModuleIds]);
+  let foundFirstIncomplete = false;
+
+  const modules = seedModules.map((module) => {
+    const isPassed = passed.has(module.id);
+    const locked = isPassed ? false : foundFirstIncomplete;
+    if (!isPassed) foundFirstIncomplete = true;
+    return { ...module, passed: isPassed, locked };
+  });
+
+  const requiredModuleIds = seedClearance.requiredModuleIds;
+  const missingModuleIds = requiredModuleIds.filter((id) => !passed.has(id));
+
+  return {
+    modules,
+    clearance: {
+      ...seedClearance,
+      passedModuleIds: modules.filter((module) => module.passed).map((module) => module.id),
+      missingModuleIds,
+      complete: missingModuleIds.length === 0,
+    },
+  };
+}
+
+function readPassedModules(chefId?: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(perChefKey(ACADEMY_PROGRESS_KEY, chefId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePassedModules(chefId: string | undefined, moduleIds: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(perChefKey(ACADEMY_PROGRESS_KEY, chefId), JSON.stringify(Array.from(new Set(moduleIds))));
+  } catch {
+    /* local demo persistence is best-effort */
+  }
+}
+
 export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
   const seed = getDashboardSnapshot();
   const router = useRouter();
@@ -32,8 +90,26 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
   const [proposals, setProposals] = useState<TradeProposal[]>(seed.tradeProposals);
   const [modules, setModules] = useState<AcademyModule[]>(seed.academyModules);
   const [clearance, setClearance] = useState<AcademyClearance>(seed.academyClearance);
+  const [academyLessonOpen, setAcademyLessonOpen] = useState(false);
 
   const chefName = user?.chef_alias ?? "";
+  const chefId = user?.id;
+
+  // The Academy-complete celebration shows once per device (then Sicilia → Lounge).
+  const [acked, setAcked] = useState(true);
+  useEffect(() => {
+    try { setAcked(localStorage.getItem(perChefKey(ACADEMY_ACK_KEY, chefId)) === "1"); } catch { setAcked(true); }
+  }, [chefId]);
+  function markAck() {
+    setAcked(true);
+    try { localStorage.setItem(perChefKey(ACADEMY_ACK_KEY, chefId), "1"); } catch {}
+  }
+
+  useEffect(() => {
+    const next = deriveAcademyState(seed.academyModules, seed.academyClearance, readPassedModules(chefId));
+    setModules(next.modules);
+    setClearance(next.clearance);
+  }, [chefId, seed.academyModules, seed.academyClearance]);
 
   // Guard the app shell: an unauthenticated visitor is sent to sign in.
   useEffect(() => {
@@ -59,31 +135,11 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
   }
 
   function handleModuleStart(moduleId: string) {
-    setModules((prev) => {
-      const updated = prev.map((m) =>
-        m.id === moduleId && !m.locked && !m.passed ? { ...m, passed: true } : m
-      );
-      let unlockDone = false;
-      return updated.map((m) => {
-        if (m.locked && !unlockDone) {
-          unlockDone = true;
-          return { ...m, locked: false };
-        }
-        return m;
-      });
-    });
-
-    setClearance((prev) => {
-      if (prev.passedModuleIds.includes(moduleId)) return prev;
-      const newPassed = [...prev.passedModuleIds, moduleId];
-      const newMissing = prev.missingModuleIds.filter((id) => id !== moduleId);
-      return {
-        ...prev,
-        passedModuleIds: newPassed,
-        missingModuleIds: newMissing,
-        complete: newMissing.length === 0,
-      };
-    });
+    const nextPassed = Array.from(new Set([...modules.filter((m) => m.passed).map((m) => m.id), moduleId]));
+    writePassedModules(chefId, nextPassed);
+    const next = deriveAcademyState(seed.academyModules, seed.academyClearance, nextPassed);
+    setModules(next.modules);
+    setClearance(next.clearance);
   }
 
   // While auth resolves (or while redirecting an unauthenticated visitor),
@@ -111,23 +167,44 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
       />
 
       <main className="dashboard-main">
-        {activeTab === "kitchen" && <KitchenView clearance={clearance} />}
-        {activeTab === "academy" && (
-          <AcademyView modules={modules} clearance={clearance} onModuleStart={handleModuleStart} />
-        )}
-        {activeTab === "vault" && <VaultView portfolio={seed.portfolio} />}
-        {activeTab === "shop" && (
-          <ShopView
-            feature={seed.timesFeature}
-            secondaryArticles={seed.timesSecondary}
-            tickers={seed.marketTickers}
-            news={seed.macroNews}
-          />
-        )}
-        {activeTab === "lounge" && <LoungeView rankings={seed.rankings} />}
+        <Reveal key={activeTab}>
+          {activeTab === "kitchen" && <KitchenView clearance={clearance} />}
+          {activeTab === "academy" && (
+            <AcademyView
+              modules={modules}
+              clearance={clearance}
+              onModuleStart={handleModuleStart}
+              onLessonOpenChange={setAcademyLessonOpen}
+            />
+          )}
+          {activeTab === "vault" && (
+            clearance.complete
+              ? <VaultStart chefName={chefName || "Chef"} />
+              : <VaultLocked passedCount={modules.filter((m) => m.passed).length} totalCount={modules.length} />
+          )}
+          {activeTab === "shop" && (
+            <ShopView
+              feature={seed.timesFeature}
+              secondaryArticles={seed.timesSecondary}
+              tickers={seed.marketTickers}
+              news={seed.macroNews}
+            />
+          )}
+          {activeTab === "lounge" && <LoungeView rankings={seed.rankings} />}
+        </Reveal>
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} lockedTabs={{ vault: !clearance.complete }} />
+
+      {clearance.complete && !acked && !academyLessonOpen && (
+        <AcademyComplete
+          chefName={chefName || "Chef"}
+          score={user?.academy_score ?? 0}
+          lessonsPassed={modules.filter((m) => m.passed).length}
+          onEnterLounge={() => { setActiveTab("lounge"); markAck(); }}
+          onClose={markAck}
+        />
+      )}
     </div>
   );
 }

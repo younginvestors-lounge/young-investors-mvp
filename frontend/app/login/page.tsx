@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,8 @@ const GREETINGS = [
   { word: "Bonjour",   lang: "Français" },
   { word: "Aweh",      lang: "SA Slang" },
 ];
+
+const SPLASH_IMAGE_SRC = process.env.NEXT_PUBLIC_SPLASH_IMAGE_SRC?.trim() || "/images/splash-side.png";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,19 +54,20 @@ export default function LoginPage() {
   }, []);
 
   const g = GREETINGS[idx];
+  const hasSplashImage = SPLASH_IMAGE_SRC.length > 0;
 
   return (
     <main style={{
       minHeight: "100svh",
-      background: "#ffffff",
-      color: "#111111",
+      background: "var(--yi-paper, #ffffff)",
+      color: "var(--yi-ink, #111111)",
       display: "grid",
       gridTemplateRows: "auto 1fr auto",
       padding: "0",
     }}>
 
       {/* Top rule */}
-      <div style={{ height: 2, background: "#111111", flexShrink: 0 }} />
+      <div style={{ height: 2, background: "var(--yi-black, #111111)", flexShrink: 0 }} />
 
       {/* Header strip */}
       <div style={{
@@ -77,7 +81,7 @@ export default function LoginPage() {
           fontSize: "1rem",
           fontWeight: 700,
           letterSpacing: "-0.02em",
-          color: "#111111",
+          color: "var(--yi-ink, #111111)",
         }}>
           Young Investors
         </span>
@@ -86,14 +90,59 @@ export default function LoginPage() {
           fontSize: "0.56rem",
           textTransform: "uppercase",
           letterSpacing: "0.18em",
-          color: "#aaaaaa",
+          color: "var(--yi-muted, #aaaaaa)",
         }}>
           We Cook.
         </span>
       </div>
 
       {/* Main content */}
-      <div style={{ padding: "clamp(24px,6vw,52px) 24px 32px", maxWidth: 520 }}>
+      <div
+        className={hasSplashImage ? "splash-grid splash-grid-with-image" : "splash-grid"}
+        style={{ padding: "clamp(24px,6vw,52px) 24px 32px" }}
+      >
+        <style>{`
+          .splash-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 520px);
+            gap: 28px;
+            align-items: stretch;
+            max-width: 1120px;
+            width: 100%;
+          }
+          .splash-grid-with-image {
+            grid-template-columns: minmax(0, 520px) minmax(280px, 1fr);
+          }
+          .splash-copy {
+            min-width: 0;
+          }
+          .splash-image-panel {
+            position: relative;
+            border: 1px solid var(--yi-frame, #111111);
+            min-height: 560px;
+            display: flex;
+            overflow: hidden;
+            background: var(--yi-card-bg, #f6f6f6);
+          }
+          .splash-side-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(1);
+          }
+          @media (max-width: 860px) {
+            .splash-grid,
+            .splash-grid-with-image {
+              grid-template-columns: minmax(0, 1fr);
+              max-width: 560px;
+            }
+            .splash-image-panel {
+              min-height: 260px;
+              order: -1;
+            }
+          }
+        `}</style>
+        <div className="splash-copy">
 
         {/* Greeting carousel */}
         <div style={{ marginBottom: "clamp(20px,5vw,36px)" }}>
@@ -101,7 +150,7 @@ export default function LoginPage() {
             fontFamily: "var(--font-bodoni), Georgia, serif",
             fontSize: "clamp(3rem, 13vw, 5.2rem)",
             fontWeight: 500,
-            color: "#111111",
+            color: "var(--yi-ink, #111111)",
             display: "block",
             lineHeight: 1,
             opacity: visible ? 1 : 0,
@@ -115,7 +164,7 @@ export default function LoginPage() {
             fontSize: "0.58rem",
             textTransform: "uppercase",
             letterSpacing: "0.2em",
-            color: "#bbbbbb",
+            color: "var(--yi-muted, #bbbbbb)",
             display: "block",
             marginTop: 6,
             opacity: visible ? 1 : 0,
@@ -126,7 +175,7 @@ export default function LoginPage() {
         </div>
 
         {/* Three pillars */}
-        <div style={{ borderTop: "1px solid #eeeeee", marginBottom: "clamp(24px,5vw,36px)" }}>
+        <div style={{ borderTop: "1px solid var(--yi-hairline, #eeeeee)", marginBottom: "clamp(24px,5vw,36px)" }}>
           {[
             { label: "The Academy",  body: "Complete modules, earn clearance, unlock the Kitchen. No shortcuts." },
             { label: "The Kitchen",  body: "Propose recipes, vote with your table, reach 60% consensus before anything cooks." },
@@ -137,7 +186,7 @@ export default function LoginPage() {
               gridTemplateColumns: "110px 1fr",
               gap: 12,
               padding: "12px 0",
-              borderBottom: "1px solid #eeeeee",
+              borderBottom: "1px solid var(--yi-hairline, #eeeeee)",
               alignItems: "start",
             }}>
               <span style={{
@@ -145,7 +194,7 @@ export default function LoginPage() {
                 fontSize: "0.6rem",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
-                color: "#111111",
+                color: "var(--yi-ink, #111111)",
                 fontWeight: 700,
               }}>
                 {item.label}
@@ -154,7 +203,7 @@ export default function LoginPage() {
                 fontFamily: "var(--font-archivo), system-ui, sans-serif",
                 fontSize: "0.86rem",
                 lineHeight: 1.55,
-                color: "#555555",
+                color: "var(--yi-copy, #555555)",
               }}>
                 {item.body}
               </span>
@@ -171,9 +220,9 @@ export default function LoginPage() {
               alignItems: "center",
               justifyContent: "center",
               padding: "14px 32px",
-              border: "1px solid #111111",
-              background: "#111111",
-              color: "#ffffff",
+              border: "1px solid var(--yi-black, #111111)",
+              background: "var(--yi-black, #111111)",
+              color: "var(--yi-white, #ffffff)",
               fontFamily: "var(--font-mono), monospace",
               fontSize: "0.75rem",
               textTransform: "uppercase",
@@ -190,7 +239,7 @@ export default function LoginPage() {
               fontSize: "0.66rem",
               textTransform: "uppercase",
               letterSpacing: "0.1em",
-              color: "#111111",
+              color: "var(--yi-ink, #111111)",
               textDecoration: "underline",
             }}
           >
@@ -203,17 +252,24 @@ export default function LoginPage() {
           fontSize: "0.54rem",
           textTransform: "uppercase",
           letterSpacing: "0.08em",
-          color: "#bbbbbb",
+          color: "var(--yi-muted, #bbbbbb)",
           margin: "14px 0 0",
           lineHeight: 1.7,
         }}>
           Paper trading only · Educational simulation · No real money · Not financial advice
         </p>
+        </div>
+
+        {hasSplashImage && (
+          <aside className="splash-image-panel" aria-label="Young Investors splash image">
+            <Image className="splash-side-image" src={SPLASH_IMAGE_SRC} alt="" fill sizes="(max-width: 860px) 100vw, 48vw" priority />
+          </aside>
+        )}
       </div>
 
       {/* Footer */}
       <div style={{
-        borderTop: "1px solid #eeeeee",
+        borderTop: "1px solid var(--yi-hairline, #eeeeee)",
         padding: "12px 24px",
         display: "flex",
         justifyContent: "space-between",
@@ -226,7 +282,7 @@ export default function LoginPage() {
           fontSize: "0.52rem",
           textTransform: "uppercase",
           letterSpacing: "0.08em",
-          color: "#cccccc",
+          color: "var(--yi-muted, #cccccc)",
         }}>
           MOCK_MVP_PAPER_TRADING_ONLY
         </span>
@@ -235,7 +291,7 @@ export default function LoginPage() {
           fontSize: "0.52rem",
           textTransform: "uppercase",
           letterSpacing: "0.08em",
-          color: "#cccccc",
+          color: "var(--yi-muted, #cccccc)",
         }}>
           Young Investors · We Cook
         </span>

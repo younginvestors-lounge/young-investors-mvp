@@ -37,8 +37,8 @@ def _frontend_url() -> str:
 def _send_email_resilient(subject: str, message: str, recipient: str) -> bool:
     """Send an email without letting a failure roll back the surrounding transaction.
 
-    Returns True if the email was dispatched, False otherwise. The verification/
-    reset link is always logged so local development never blocks on email.
+    Returns True if the email was dispatched, False otherwise. One-time links are
+    never logged here because verification and reset tokens are sensitive.
     """
     try:
         send_mail(
@@ -50,7 +50,7 @@ def _send_email_resilient(subject: str, message: str, recipient: str) -> bool:
         )
         return True
     except Exception:  # noqa: BLE001 — email must never break account creation
-        logger.exception("Email send failed for %s. Message body:\n%s", recipient, message)
+        logger.exception("Email send failed during auth flow.")
         return False
 
 

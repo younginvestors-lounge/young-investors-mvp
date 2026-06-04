@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from academy.models import AcademyModule, UserModuleCompletion
 from academy.services import REQUIRED_MVP_MODULE_CODES
@@ -15,7 +17,13 @@ from .services import cast_vote
 
 
 class KitchenGovernanceTests(TestCase):
+    def _authenticate(self, user) -> None:
+        """Authenticate the API client with a real JWT (DRF is JWT-only — no sessions)."""
+        token = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
     def setUp(self) -> None:
+        self.client = APIClient()
         self.kitchen = Kitchen.objects.create(
             name="UCT Alpha Kitchen",
             slug="uct-alpha",
@@ -87,7 +95,7 @@ class KitchenGovernanceTests(TestCase):
             total_members_snapshot=2,
         )
 
-        self.client.force_login(member)
+        self._authenticate(member)
         response = self.client.get(reverse("kitchen-recipe-list", kwargs={"kitchen_id": self.kitchen.id}))
 
         self.assertEqual(response.status_code, 200)
@@ -104,7 +112,7 @@ class KitchenGovernanceTests(TestCase):
             quorum_required=2,
         )
 
-        self.client.force_login(voter)
+        self._authenticate(voter)
         response = self.client.post(
             reverse(
                 "kitchen-recipe-cast-vote",

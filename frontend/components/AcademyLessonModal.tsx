@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChefHat, Dumbbell, Maximize2, MessageCircle, Minimize2, Sparkles, X } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
+import { useAuth } from "@/lib/auth-context";
+import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
+import { success, tap, warn } from "@/lib/haptics";
+import { glossaryForModule, READER_LEVELS, type GlossaryLevels } from "@/lib/gordonGlossary";
+
+/** What each class promises — Gordon as lecturer/master chef. */
+const LESSON_OUTCOMES: Record<string, string[]> = {
+  "markets-001": ["Know what a share, an index and the JSE actually are", "Read why a price moves up or down"],
+  "risk-001": ["Tell risk from reward — and why bet size matters most", "Spot when a plate is too heavy to survive"],
+  "portfolio-001": ["Build a balanced plate that doesn't tip over", "See why what you own together beats any single pick"],
+  "bias-001": ["Name the mind-traps that make smart chefs slip", "Catch yourself before the trap catches you"],
+  "governance-001": ["Explain the 60% Rule and quorum in your own words", "See why the table decides, not one chef"],
+  "mutual-001": ["Understand the slow-cook, long-game Kitchen", "See how patience and compounding stack up"],
+  "hedge-001": ["Understand the high-heat Kitchen and its hard exits", "Respect why strict rules keep you alive"],
+  "ethics-001": ["Know the line: fair play vs an insider edge", "Build clean habits before real money shows up"],
+};
 
 interface LessonQuiz {
   question: string;
@@ -18,6 +35,12 @@ interface LessonContent {
   cookingBridge: string;
   quiz: LessonQuiz;
   passLine: string;
+}
+
+interface PracticeBeat {
+  setup: string;
+  task: string;
+  check: string;
 }
 
 const LESSONS: Record<string, LessonContent> = {
@@ -207,6 +230,49 @@ const LESSONS: Record<string, LessonContent> = {
   },
 };
 
+const PRACTICE_BEATS: Record<string, PracticeBeat> = {
+  "markets-001": {
+    setup: "NPN.JO opens up while the JSE Top 40 is flat.",
+    task: "Name one reason buyers might be pushing this specific share higher.",
+    check: "Reason before reaction: price move plus possible catalyst.",
+  },
+  "risk-001": {
+    setup: "A recipe wants half the Kitchen in one stock.",
+    task: "Shrink the plate into a survivable serving.",
+    check: "A wrong call must hurt, not end the Kitchen.",
+  },
+  "portfolio-001": {
+    setup: "Your Vault is heavy in banks.",
+    task: "Spot one holding that would diversify the plate.",
+    check: "Different drivers beat more of the same.",
+  },
+  "bias-001": {
+    setup: "Everyone says, 'It has to recover.'",
+    task: "Name the thinking trap before you vote.",
+    check: "Bias named, bias weakened.",
+  },
+  "governance-001": {
+    setup: "Six chefs are at the table.",
+    task: "Work out the first vote count that clears 60%.",
+    check: "Governance is maths before mood.",
+  },
+  "mutual-001": {
+    setup: "One chef brings more capital than everyone else.",
+    task: "Decide whether that chef gets more votes.",
+    check: "Mutual means one chef, one vote.",
+  },
+  "hedge-001": {
+    setup: "A high-heat position breaks its loss threshold.",
+    task: "Decide before feelings negotiate the rule.",
+    check: "Exit rules are written while heads are clear.",
+  },
+  "ethics-001": {
+    setup: "A chef brings private company information.",
+    task: "Choose what the Kitchen must do with that recipe.",
+    check: "Clean kitchen, clean conscience.",
+  },
+};
+
 interface Props {
   moduleId: string;
   moduleTitle: string;
@@ -214,7 +280,7 @@ interface Props {
   onPass: (moduleId: string) => void;
 }
 
-type ModalPhase = "concept" | "quiz" | "result";
+type ModalPhase = "glossary" | "concept" | "practice" | "quiz" | "result";
 
 function GordonLine({ text, speed = 16, delay = 200 }: { text: string; speed?: number; delay?: number }) {
   const { displayed, done } = useTypewriter(text, { speed, delay });
@@ -229,13 +295,22 @@ function GordonLine({ text, speed = 16, delay = 200 }: { text: string; speed?: n
 }
 
 export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: Props) {
+  const { user } = useAuth();
   const lesson = LESSONS[moduleId];
-  const [phase, setPhase] = useState<ModalPhase>("concept");
+  const practice = PRACTICE_BEATS[moduleId];
+  const terms = glossaryForModule(moduleId);
+  const outcomes = LESSON_OUTCOMES[moduleId] ?? [];
+  const [phase, setPhase] = useState<ModalPhase>(terms.length > 0 ? "glossary" : "concept");
+  const [level, setLevel] = useState<keyof GlossaryLevels>("twelve");
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [correct, setCorrect] = useState(false);
   const [attempts, setAttempts] = useState(0);
+  const [full, setFull] = useState(false);
+  const [desktop, setDesktop] = useState(false);
+  const [reflection, setReflection] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -244,6 +319,36 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Full-screen is the user's choice and is remembered across popups.
+  useEffect(() => {
+    try { setFull(localStorage.getItem("yi_full_lesson") === "1"); } catch {}
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    if (media.addEventListener) media.addEventListener("change", update);
+    else media.addListener?.(update);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener("change", update);
+      else media.removeListener?.(update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  }, [phase, moduleId]);
+
+  function toggleFull() {
+    tap();
+    setFull((f) => {
+      const next = !f;
+      try { localStorage.setItem("yi_full_lesson", next ? "1" : "0"); } catch {}
+      return next;
+    });
+  }
 
   if (!lesson) {
     return (
@@ -262,6 +367,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
     setAnswered(true);
     setCorrect(isCorrect);
     setAttempts((a) => a + 1);
+    if (isCorrect) success(); else warn();
   }
 
   function handleRetry() {
@@ -271,21 +377,47 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
   }
 
   function handlePass() {
-    onPass(moduleId);
+    tap();
     setPhase("result");
   }
+
+  const reflectionWord = reflection.trim();
+  const reflectionOk = reflectionWord.length > 0 && !/\s/.test(reflectionWord);
+
+  function finishLesson() {
+    if (!reflectionOk) return;
+    if (user) {
+      rememberGordonChefReason(user.id, {
+        source: "academy",
+        action: "reflection",
+        reason: `${moduleTitle}: ${reflectionWord}`,
+      });
+    }
+    success();
+    onPass(moduleId);
+    onClose();
+  }
+
+  const activeOverlayStyle: React.CSSProperties = {
+    ...overlayStyle,
+    alignItems: full ? "stretch" : desktop ? "center" : "flex-end",
+    padding: full ? 0 : desktop ? 24 : 0,
+  };
+  const activeModalStyle: React.CSSProperties = full
+    ? { ...modalStyle, maxWidth: "none", maxHeight: "100%", height: "100%", borderBottom: "1px solid var(--yi-frame)" }
+    : { ...modalStyle, borderBottom: desktop ? "1px solid var(--yi-frame)" : "none", maxHeight: desktop ? "86svh" : "92svh" };
 
   return (
     <div
       ref={overlayRef}
-      style={overlayStyle}
+      style={activeOverlayStyle}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="lesson-modal-title"
     >
       <style>{`@keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}} @keyframes modal-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div style={modalStyle}>
+      <div style={activeModalStyle}>
 
         {/* Top bar */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--yi-hairline)", padding: "14px 20px", flexShrink: 0 }}>
@@ -295,18 +427,31 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               {moduleTitle}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close lesson"
-            style={{ background: "transparent", border: "none", color: "var(--yi-muted)", fontSize: "1.2rem", cursor: "pointer", padding: "4px 8px", lineHeight: 1, fontFamily: "var(--font-mono), monospace" }}
-          >
-            ✕
-          </button>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <button
+              type="button"
+              onClick={toggleFull}
+              aria-label={full ? "Exit full screen" : "Full screen"}
+              title={full ? "Exit full screen" : "Full screen"}
+              style={modalIconBtn}
+            >
+              {full ? <Minimize2 size={15} strokeWidth={1.8} aria-hidden /> : <Maximize2 size={15} strokeWidth={1.8} aria-hidden />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close lesson"
+              title="Close"
+              style={modalIconBtn}
+            >
+              <X size={16} strokeWidth={1.8} aria-hidden />
+            </button>
+          </div>
         </div>
 
         {/* Progress tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid var(--yi-hairline)", flexShrink: 0 }}>
-          {(["concept", "quiz", "result"] as ModalPhase[]).map((p, i) => (
+          {(["glossary", "concept", "practice", "quiz", "result"] as ModalPhase[]).map((p, i) => (
             <div
               key={p}
               style={{
@@ -327,7 +472,120 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "grid", gap: 18 }}>
+        <div ref={contentRef} style={{ flex: 1, overflowY: "auto", padding: "20px", display: "grid", gap: 18 }}>
+
+          {phase === "glossary" && (
+            <>
+              {/* Gordon frames the class — lecturer / master chef */}
+              <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 14 }}>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon · Today&apos;s class</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.92rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
+                  <GordonLine text={`"Today we're cooking ${lesson.concept.toLowerCase()}. Four stations - words, theory, practice, then the quiz. Sharp sharp."`} />
+                </p>
+              </div>
+
+              {/* Lesson outline + learning outcomes */}
+              <div style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px", background: "var(--yi-card-bg)" }}>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 8px" }}>Lesson outline</p>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {["Glossary check - the words", "Theory - Gordon's bridge", "Practice - apply it once", "The cook - your quiz"].map((s, i) => (
+                    <div key={s} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                      <span style={{ ...monoSmall, color: "var(--yi-ink)" }}>{String(i + 1).padStart(2, "0")}</span>
+                      <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.85rem", color: "var(--yi-copy)" }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+                {outcomes.length > 0 && (
+                  <>
+                    <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "12px 0 6px" }}>By the end you&apos;ll be able to</p>
+                    <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
+                      {outcomes.map((o) => (
+                        <li key={o} style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.85rem", lineHeight: 1.5, color: "var(--yi-copy)" }}>{o}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+
+              {/* Glossary check intro */}
+              <div>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon&apos;s Glossary Check</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: 0 }}>
+                  Same word, your station. Slide between Junior, Intermediate and Master — no shame, just understanding.
+                </p>
+              </div>
+
+              {/* Chef-rank segmented control */}
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${READER_LEVELS.length}, 1fr)`, border: "1px solid var(--yi-frame)" }}>
+                  {READER_LEVELS.map(({ key, label }, i) => {
+                    const active = level === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { setLevel(key); tap(); }}
+                        aria-pressed={active}
+                        style={{
+                          border: "none",
+                          borderRight: i < READER_LEVELS.length - 1 ? "1px solid var(--yi-frame)" : "none",
+                          background: active ? "var(--yi-black)" : "transparent",
+                          color: active ? "var(--yi-white)" : "var(--yi-ink)",
+                          minHeight: 42,
+                          fontFamily: "var(--font-mono), monospace",
+                          fontSize: "0.6rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                          transition: "background 160ms ease",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  title="Full Gordon AI is still in training — coming soon"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start", border: "1px dashed var(--yi-frame)", background: "transparent", color: "var(--yi-muted)", padding: "7px 11px", fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "not-allowed" }}
+                >
+                  <Sparkles size={12} strokeWidth={1.8} aria-hidden /> Ask Gordon · coming soon
+                </button>
+              </div>
+
+              {/* Terms */}
+              <div style={{ display: "grid", gap: 12 }}>
+                {terms.map((t) => (
+                  <div key={t.key} style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px", background: "var(--yi-card-bg)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                      <h4 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.05rem", fontWeight: 600, margin: 0 }}>{t.term}</h4>
+                      <span style={{ ...monoSmall, color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "2px 6px" }}>{t.kitchen}</span>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--yi-ink)", margin: "8px 0 0" }}>
+                      {t.levels[level]}
+                    </p>
+                    <p style={{ display: "flex", alignItems: "flex-start", gap: 6, fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0", fontStyle: "italic" }}>
+                      <ChefHat size={13} strokeWidth={1.8} aria-hidden style={{ marginTop: 3, flexShrink: 0 }} /> <span>{t.cooking}</span>
+                    </p>
+                    <p style={{ ...monoSmall, display: "flex", alignItems: "flex-start", gap: 6, color: "#167a3a", margin: "8px 0 0", letterSpacing: "0.04em", textTransform: "none", fontSize: "0.72rem" }}>
+                      <MessageCircle size={12} strokeWidth={1.8} aria-hidden style={{ marginTop: 2, flexShrink: 0 }} /> <span>{t.slang}</span>
+                    </p>
+                    {t.related.length > 0 && (
+                      <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "8px 0 0", textTransform: "none", fontSize: "0.6rem" }}>
+                        connects to: {t.related.join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => { tap(); setPhase("concept"); }} style={btnPrimary}>
+                Got the words — start the class →
+              </button>
+            </>
+          )}
 
           {phase === "concept" && (
             <>
@@ -350,10 +608,51 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               </div>
 
               <button
-                onClick={() => setPhase("quiz")}
+                onClick={() => setPhase("practice")}
                 style={btnPrimary}
               >
-                Take the quiz →
+                Practice station -&gt;
+              </button>
+            </>
+          )}
+
+          {phase === "practice" && (
+            <>
+              <div>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>Theory to practice</p>
+                <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.3rem", fontWeight: 600, margin: 0, lineHeight: 1.1 }}>
+                  Apply it once.
+                </h3>
+              </div>
+
+              <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)", display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <Dumbbell size={17} strokeWidth={1.8} aria-hidden style={{ marginTop: 3, color: "#b42318", flexShrink: 0 }} />
+                  <div>
+                    <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Setup</p>
+                    <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+                      {practice?.setup ?? "A Kitchen has to explain the reason before the table votes."}
+                    </p>
+                  </div>
+                </div>
+
+                <details style={{ borderTop: "1px solid var(--yi-hairline)", paddingTop: 10 }}>
+                  <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>Task</summary>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
+                    {practice?.task ?? "Name the concept Gordon should check before the recipe moves forward."}
+                  </p>
+                </details>
+
+                <details>
+                  <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>Gordon&apos;s check</summary>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
+                    {practice?.check ?? "A reason can be repeated. A hunch cannot."}
+                  </p>
+                </details>
+              </div>
+
+              <button onClick={() => setPhase("quiz")} style={btnPrimary}>
+                Take the quiz -&gt;
               </button>
             </>
           )}
@@ -386,7 +685,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                       key={i}
                       type="button"
                       disabled={answered}
-                      onClick={() => setSelectedAnswer(i)}
+                      onClick={() => { setSelectedAnswer(i); tap(); }}
                       style={{
                         textAlign: "left",
                         padding: "12px 14px",
@@ -464,8 +763,37 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                   <GordonLine text={`"${lesson.passLine}"`} />
                 </p>
               </div>
-              <button onClick={onClose} style={btnPrimary}>
-                Back to Academy
+              <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)", display: "grid", gap: 8 }}>
+                <p style={{ ...monoSmall, color: "#167a3a", margin: 0 }}>One-word reflection</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.5, color: "var(--yi-copy)", margin: 0 }}>
+                  Give Gordon one word to remember from this lesson.
+                </p>
+                <input
+                  aria-label="One-word reflection"
+                  value={reflection}
+                  maxLength={32}
+                  onChange={(e) => setReflection(e.target.value.trimStart().split(/\s+/)[0] ?? "")}
+                  placeholder="sizing"
+                  style={{
+                    minHeight: 42,
+                    border: "1px solid var(--yi-frame)",
+                    background: "var(--yi-paper)",
+                    color: "var(--yi-ink)",
+                    padding: "0 10px",
+                    fontFamily: "var(--font-mono), monospace",
+                    fontSize: "0.72rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    outline: "none",
+                  }}
+                />
+              </div>
+              <button
+                onClick={finishLesson}
+                disabled={!reflectionOk}
+                style={{ ...btnPrimary, opacity: reflectionOk ? 1 : 0.45, cursor: reflectionOk ? "pointer" : "not-allowed" }}
+              >
+                Save reflection &amp; finish -&gt;
               </button>
             </>
           )}
@@ -511,6 +839,18 @@ const monoSmall: React.CSSProperties = {
   textTransform: "uppercase",
   letterSpacing: "0.12em",
   color: "var(--yi-muted)",
+};
+
+const modalIconBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 30,
+  height: 30,
+  background: "transparent",
+  border: "1px solid var(--yi-hairline)",
+  color: "var(--yi-muted)",
+  cursor: "pointer",
 };
 
 const btnPrimary: React.CSSProperties = {

@@ -1,14 +1,20 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient, ApiError } from "@/lib/api-client";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 function ResetPasswordInner() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token");
+  const supaMode = isSupabaseConfigured();
 
   // Request-link mode
   const [email, setEmail] = useState("");
@@ -19,8 +25,30 @@ function ResetPasswordInner() {
   const [confirm, setConfirm] = useState("");
   const [done, setDone] = useState(false);
 
+  // Supabase delivers recovery via a session (not a ?token=), so detect it.
+  const [hasRecovery, setHasRecovery] = useState(false);
+  const newPwMode = supaMode ? hasRecovery : !!token;
+
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!supaMode || !supabase) return;
+    const sb = supabase;
+    let cancelled = false;
+    // A recovery link establishes a session; either path flips us to "set password".
+    sb.auth.getSession().then(({ data }) => {
+      if (!cancelled && data.session) setHasRecovery(true);
+    });
+    const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) setHasRecovery(true);
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [supaMode]);
 
   async function handleRequest(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +56,14 @@ function ResetPasswordInner() {
     setError(null);
     setSubmitting(true);
     try {
-      await apiClient.passwordResetRequest(email.trim());
+      if (supaMode && supabase) {
+        // No email enumeration leak — Supabase returns success regardless.
+        await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: SITE_URL ? `${SITE_URL}/reset-password` : undefined,
+        });
+      } else {
+        await apiClient.passwordResetRequest(email.trim());
+      }
       setRequested(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -47,11 +82,16 @@ function ResetPasswordInner() {
     }
     setSubmitting(true);
     try {
-      await apiClient.passwordResetConfirm(token as string, password, confirm);
+      if (supaMode && supabase) {
+        const { error: upErr } = await supabase.auth.updateUser({ password });
+        if (upErr) throw new Error(upErr.message);
+      } else {
+        await apiClient.passwordResetConfirm(token as string, password, confirm);
+      }
       setDone(true);
       setTimeout(() => router.replace("/signin"), 1800);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Reset failed.");
+      setError(err instanceof Error ? err.message : "Reset failed.");
     } finally {
       setSubmitting(false);
     }
@@ -70,8 +110,8 @@ function ResetPasswordInner() {
           Password reset
         </p>
 
-        {/* MODE 1: set a new password from token */}
-        {token ? (
+        {/* MODE 1: set a new password (Django token, or Supabase recovery session) */}
+        {newPwMode ? (
           done ? (
             <>
               <h1 style={heading}>Done.</h1>
@@ -97,8 +137,10 @@ function ResetPasswordInner() {
           /* MODE 2 (after request): generic confirmation */
           <>
             <h1 style={heading}>Check your email.</h1>
-            <p style={body}>If that email is registered, a reset link is on its way. It expires in 2 hours.</p>
-            <p style={{ ...body, color: "#888", fontSize: "0.78rem" }}>Running locally? The link is printed in the Django server console.</p>
+            <p style={body}>If that email is registered, a reset link is on its way.</p>
+            {!supaMode && (
+              <p style={{ ...body, color: "#888", fontSize: "0.78rem" }}>Running locally? The link is saved in the Django local email outbox.</p>
+            )}
             <Link href="/signin" style={primaryButton}>Back to sign in</Link>
           </>
         ) : (

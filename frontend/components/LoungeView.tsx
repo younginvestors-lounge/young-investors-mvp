@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Check, UserPlus } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
+import { LoungeMusic } from "@/components/LoungeMusic";
+import { useAuth } from "@/lib/auth-context";
+import { tap } from "@/lib/haptics";
 import type { RankingRow } from "@/lib/types";
 import { formatPercent } from "@/lib/domain";
 
@@ -38,6 +43,9 @@ function SiciliaPanel({ name, gordonReturn, beatCount }: { name: string; gordonR
     : `Benvenuta, Chef ${name}. The Kitchen feeds you. The Lounge shows you what you're cooking toward. Gordon's benchmark sits at +${gordonReturn.toFixed(1)}% this week. The question isn't how he did it — the question is whether you're ready to beat it.`;
 
   const { displayed, done } = useTypewriter(beatText, { speed: 17, delay: 300 });
+  const linkedOpener = beatCount >= 2 ? "Allora" : "Benvenuta";
+  const displayPrefix = `${linkedOpener}, Chef ${name}. `;
+  const displayBody = displayed.slice(Math.min(displayed.length, displayPrefix.length));
   return (
     <p style={{
       fontFamily: "var(--font-archivo), system-ui, sans-serif",
@@ -48,7 +56,15 @@ function SiciliaPanel({ name, gordonReturn, beatCount }: { name: string; gordonR
       fontStyle: "italic",
       wordBreak: "break-word",
     }}>
-      {displayed}
+      {displayed.length > 0 && (
+        <>
+          {linkedOpener},{" "}
+          <Link href="/profile" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Chef {name}
+          </Link>.{" "}
+          {displayBody}
+        </>
+      )}
       {!done && (
         <span style={{ display: "inline-block", width: 2, height: "1em", background: "var(--yi-ink)", marginLeft: 2, verticalAlign: "text-bottom", animation: "cursor-blink 700ms step-end infinite" }} aria-hidden />
       )}
@@ -121,6 +137,53 @@ function RankCard({ row, gordonReturn }: { row: RankingRow; gordonReturn: number
   );
 }
 
+function ReferFriendCard() {
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+  const refCode = user?.member_number != null ? `chef-${user.member_number}` : (user?.chef_alias || "");
+
+  function invite() {
+    tap();
+    const nav = typeof navigator !== "undefined" ? navigator : undefined;
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+    const url = `${site}/onboarding${refCode ? `?ref=${encodeURIComponent(refCode)}` : ""}`;
+    const text = `Come cook with me on Young Investors — learn to invest, beat Gordon, and start a Kitchen. 2 chefs is enough. ${url}`;
+    if (nav?.share) {
+      nav.share({ title: "Young Investors · We Cook", text, url }).catch(() => {});
+    } else if (nav?.clipboard) {
+      nav.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }).catch(() => {});
+    }
+  }
+
+  return (
+    <div style={{ border: "1px solid var(--yi-frame)", borderLeft: "2px solid var(--yi-black)", padding: "16px 18px", background: "var(--yi-card-bg)" }}>
+      <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.6rem)", textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
+        Start a Kitchen · bottom-up
+      </p>
+      <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.1rem,4vw,1.35rem)", fontWeight: 600, lineHeight: 1.25, color: "var(--yi-ink)", margin: "0 0 10px" }}>
+        Two chefs is enough to start a Kitchen.
+      </p>
+      <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: "0 0 14px" }}>
+        You don&apos;t need a crowd. Bring one chef you trust, form a Kitchen, propose recipes, and vote together. That&apos;s how the best tables are built — organic, and yours.
+      </p>
+      <button
+        type="button"
+        onClick={invite}
+        style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 46, padding: "0 20px", background: "var(--yi-black)", color: "var(--yi-white)", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer" }}
+      >
+        {copied ? <Check size={15} strokeWidth={1.8} aria-hidden /> : <UserPlus size={15} strokeWidth={1.8} aria-hidden />}
+        {copied ? "Invite copied" : "Refer a friend"}
+      </button>
+      <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: "12px 0 0" }}>
+        Kitchen forming & voting unlock next · Educational simulation
+      </p>
+    </div>
+  );
+}
+
 export function LoungeView({ rankings }: LoungeViewProps) {
   const [chefName, setChefName] = useState("Chef");
   const [userRank] = useState(0); // index in rank ladder (0 = Commis)
@@ -142,13 +205,16 @@ export function LoungeView({ rankings }: LoungeViewProps) {
       <style>{`@keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
 
       {/* Header */}
-      <div>
-        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.65rem)", textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--yi-muted)", margin: "0 0 6px" }}>
-          Members&apos; room · status board · ranked Kitchens
-        </p>
-        <h2 id="lounge-heading" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.3rem,5vw,1.55rem)", fontWeight: 600, margin: 0, lineHeight: 1.08 }}>
-          The Lounge
-        </h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.65rem)", textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--yi-muted)", margin: "0 0 6px" }}>
+            Members&apos; room · status board · ranked Kitchens
+          </p>
+          <h2 id="lounge-heading" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.3rem,5vw,1.55rem)", fontWeight: 600, margin: 0, lineHeight: 1.08 }}>
+            The Lounge
+          </h2>
+        </div>
+        <LoungeMusic />
       </div>
 
       {/* Sicilia welcome */}
@@ -194,23 +260,30 @@ export function LoungeView({ rankings }: LoungeViewProps) {
         </div>
       </div>
 
-      {/* Beat Gordon leaderboard */}
+      {/* Beat Gordon leaderboard — no Kitchens have formed yet (this is the real thing) */}
       <div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
-          30-day return · Beat Gordon benchmark · {beatCount} Kitchen{beatCount !== 1 ? "s" : ""} ahead this week
+          30-day return · Beat Gordon benchmark
         </p>
 
-        <div role="table" aria-label="Beat Gordon leaderboard" style={{ border: "1px solid var(--yi-frame)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <div role="row" style={{ display: "grid", gridTemplateColumns: "36px minmax(0,1fr) 64px minmax(72px,auto)", gap: 6, padding: "8px 12px", borderBottom: "1px solid var(--yi-hairline)", background: "var(--yi-soft)", minWidth: 0 }}>
-            {["#", "Kitchen", "Return", "Status"].map((h) => (
-              <span key={h} role="columnheader" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.48rem,1.5vw,0.58rem)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", minWidth: 0 }}>{h}</span>
-            ))}
-          </div>
-          {rankings.map((row) => (
-            <RankCard key={row.name} row={row} gordonReturn={gordonReturn} />
-          ))}
+        <div style={{ border: "1px solid var(--yi-frame)", padding: "30px 20px", background: "var(--yi-card-bg)", textAlign: "center" }}>
+          <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.15rem,4.5vw,1.5rem)", fontWeight: 600, color: "var(--yi-ink)", margin: "0 0 8px", lineHeight: 1.2 }}>
+            No Kitchens Trying to Beat Gordon Yet
+          </p>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--yi-muted)", margin: "0 0 14px" }}>
+            follow the money
+          </p>
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: "0 auto 12px", maxWidth: 360 }}>
+            This is the real thing now — no fake Kitchens, no fake scores. When the first Kitchen forms and posts a 30-day return, it shows up here, chasing Gordon&apos;s +{gordonReturn.toFixed(1)}%.
+          </p>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-ink)", margin: 0 }}>
+            Be the first. Earn your seat. Letsss go.
+          </p>
         </div>
       </div>
+
+      {/* Start a Kitchen · refer a friend (2 chefs is enough) */}
+      <ReferFriendCard />
 
       {/* Sicilia lifestyle card */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px 18px", background: "var(--yi-card-bg)" }}>

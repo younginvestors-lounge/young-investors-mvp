@@ -33,12 +33,12 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const ageNum = Number(age);
-  const ageInvalid = age !== "" && (ageNum < 13 || Number.isNaN(ageNum));
-  const ageMinor = age !== "" && ageNum >= 13 && ageNum < 18;
+  // 18+ only for now. A Young Investors Junior Academy will open for under-18s later.
+  const ageInvalid = age !== "" && (ageNum < 18 || Number.isNaN(ageNum));
 
   function canAdvance(): boolean {
     if (step === 0) return alias.trim().length > 0;
-    if (step === 1) return age !== "" && ageNum >= 13 && !Number.isNaN(ageNum);
+    if (step === 1) return age !== "" && ageNum >= 18 && !Number.isNaN(ageNum);
     if (step === 2) return intent !== "";
     if (step === 3) return icon !== "";
     if (step === 4) return email.trim() !== "" && password.length >= 8 && confirm.length >= 8;
@@ -60,7 +60,7 @@ export default function OnboardingPage() {
     }
     setSubmitting(true);
     try {
-      await signup({
+      const res = await signup({
         email: email.trim(),
         username: email.trim(), // email-first auth; username kept unique = email
         password,
@@ -70,7 +70,13 @@ export default function OnboardingPage() {
         intent,
         profile_icon: icon,
       });
-      router.push("/verify-email");
+      // Session already issued (Supabase email-confirm off, or local demo) → into the
+      // first-session briefing with Gordon & Sicilia. Otherwise confirm email first.
+      if (res.needsEmailConfirm) {
+        router.push("/verify-email");
+      } else {
+        router.replace("/gordon-intro");
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setFieldErrors(err.fieldErrors);
@@ -118,11 +124,10 @@ export default function OnboardingPage() {
         {step === 1 && (
           <>
             <h1 style={heading}>How old are you, Chef {alias}?</h1>
-            <p style={sub}>Age sets your simulation tier. Under 18 cooks in the Training Kitchen.</p>
-            <input autoFocus type="number" min={13} max={99} value={age} onChange={(e) => setAge(e.target.value)} onKeyDown={onKeyDown} placeholder="__"
+            <p style={sub}>Young Investors is 18+ for now. A Junior Academy is coming for younger chefs.</p>
+            <input autoFocus type="number" min={18} max={99} value={age} onChange={(e) => setAge(e.target.value)} onKeyDown={onKeyDown} placeholder="__"
               style={{ ...bigInput, borderBottomColor: ageInvalid ? "#b42318" : "#111" }} />
-            {ageInvalid && <p style={errLine}>Minimum age 13 to enter.</p>}
-            {ageMinor && !ageInvalid && <p style={{ ...errLine, color: "#888" }}>Training Kitchen · simulation only.</p>}
+            {ageInvalid && <p style={errLine}>You must be 18 or older to enter. Junior Academy coming soon.</p>}
           </>
         )}
 

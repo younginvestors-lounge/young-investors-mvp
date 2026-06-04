@@ -8,12 +8,14 @@ import { ApiError } from "@/lib/api-client";
 
 export default function SignInPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, resendVerification } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [unverified, setUnverified] = useState(false);
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const canSubmit = email.trim() !== "" && password !== "" && !submitting;
@@ -23,6 +25,7 @@ export default function SignInPage() {
     if (!canSubmit) return;
     setError(null);
     setUnverified(false);
+    setVerificationNotice(null);
     setSubmitting(true);
     try {
       await login({ email: email.trim(), password });
@@ -35,6 +38,21 @@ export default function SignInPage() {
         setError("Something went wrong. Try again.");
       }
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || resendingVerification) return;
+    setVerificationNotice(null);
+    setResendingVerification(true);
+    try {
+      await resendVerification(cleanEmail);
+      setVerificationNotice("If that account is still waiting for confirmation, a fresh link is on its way.");
+    } catch {
+      setVerificationNotice("We could not send a fresh link right now. Check the email and try again.");
+    } finally {
+      setResendingVerification(false);
     }
   }
 
@@ -89,11 +107,21 @@ export default function SignInPage() {
               {unverified && (
                 <>
                   {" "}
-                  <Link href="/verify-email" style={{ color: "#b42318", textDecoration: "underline" }}>
-                    Resend / verify
-                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendingVerification || !email.trim()}
+                    style={inlineButtonStyle}
+                  >
+                    {resendingVerification ? "Sending..." : "Resend verification"}
+                  </button>
                 </>
               )}
+            </p>
+          )}
+          {verificationNotice && (
+            <p role="status" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", color: "#555", margin: "10px 0 0", lineHeight: 1.5 }}>
+              {verificationNotice}
             </p>
           )}
 
@@ -165,6 +193,16 @@ const linkStyle: React.CSSProperties = {
   textTransform: "uppercase",
   letterSpacing: "0.08em",
   color: "#111",
+  textDecoration: "underline",
+};
+
+const inlineButtonStyle: React.CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#b42318",
+  cursor: "pointer",
+  padding: 0,
+  font: "inherit",
   textDecoration: "underline",
 };
 

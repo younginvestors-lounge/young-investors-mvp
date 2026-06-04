@@ -4,6 +4,11 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient, ApiError } from "@/lib/api-client";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 type Phase = "verifying" | "success" | "error" | "no-token";
 
@@ -11,16 +16,24 @@ function VerifyEmailInner() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token");
-  const [phase, setPhase] = useState<Phase>(token ? "verifying" : "no-token");
+  const supaMode = isSupabaseConfigured();
+  // Supabase confirmation links redirect to /kitchen and are handled by the auth
+  // listener, so the token-verify path is Django-only. In Supabase/local mode this
+  // page is only a calm "check your email" notice.
+  const usesToken = !!token && !supaMode;
+  const [phase, setPhase] = useState<Phase>(usesToken ? "verifying" : "no-token");
   const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const ran = useRef(false);
 
   useEffect(() => {
-    if (!token || ran.current) return;
+    if (!usesToken || ran.current) return;
     ran.current = true; // guard React StrictMode double-invoke (token is one-time-use)
     (async () => {
       try {
-        const res = await apiClient.verifyEmail(token);
+        const res = await apiClient.verifyEmail(token as string);
         setMessage(res.message);
         setPhase("success");
         setTimeout(() => router.replace("/signin"), 1800);
@@ -29,7 +42,30 @@ function VerifyEmailInner() {
         setPhase("error");
       }
     })();
-  }, [token, router]);
+  }, [usesToken, token, router]);
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanEmail = email.trim();
+    if (!cleanEmail || resending || !supaMode || !supabase) return;
+    setResendMessage(null);
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: SITE_URL ? `${SITE_URL}/kitchen` : undefined,
+        },
+      });
+      if (error) throw error;
+      setResendMessage("If that account is still waiting for confirmation, a fresh link is on its way.");
+    } catch {
+      setResendMessage("We could not send a fresh link right now. Check the email and try again.");
+    } finally {
+      setResending(false);
+    }
+  }
 
   return (
     <main style={{ minHeight: "100svh", background: "#fff", color: "#111", display: "grid", gridTemplateRows: "auto 1fr auto" }}>
@@ -73,11 +109,35 @@ function VerifyEmailInner() {
           <>
             <h1 style={headingStyle}>Check your email.</h1>
             <p style={bodyStyle}>
-              We sent a verification link to your inbox. Click it to open the Kitchen. The link expires in 24 hours.
+              We sent a confirmation link to your inbox. Click it to open the Kitchen.
             </p>
-            <p style={{ ...bodyStyle, color: "#888", fontSize: "0.78rem" }}>
-              Running locally? The link is printed in the Django server console.
-            </p>
+            {supaMode && (
+              <form onSubmit={handleResend} noValidate style={{ margin: "20px 0 4px", maxWidth: 420 }}>
+                <label style={labelStyle} htmlFor="verify-email-resend">Need a fresh link?</label>
+                <input
+                  id="verify-email-resend"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  style={inputStyle}
+                />
+                <button
+                  type="submit"
+                  disabled={!email.trim() || resending}
+                  style={{ ...buttonStyle, width: "100%", opacity: !email.trim() || resending ? 0.4 : 1 }}
+                >
+                  {resending ? "Sending..." : "Resend verification"}
+                </button>
+                {resendMessage && <p role="status" style={{ ...bodyStyle, color: "#555", fontSize: "0.78rem", marginTop: 12 }}>{resendMessage}</p>}
+              </form>
+            )}
+            {!supaMode && (
+              <p style={{ ...bodyStyle, color: "#888", fontSize: "0.78rem" }}>
+                Running locally? The link is saved in the Django local email outbox.
+              </p>
+            )}
             <Link href="/signin" style={buttonStyle}>Back to sign in</Link>
           </>
         )}
@@ -116,6 +176,28 @@ const bodyStyle: React.CSSProperties = {
   color: "#444",
   margin: "0 0 14px",
   maxWidth: 420,
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontFamily: "var(--font-mono), monospace",
+  fontSize: "0.6rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  color: "#888",
+  marginBottom: 8,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  borderBottom: "2px solid #111",
+  background: "transparent",
+  color: "#111",
+  padding: "10px 0",
+  fontFamily: "var(--font-archivo), sans-serif",
+  fontSize: "1.05rem",
+  outline: "none",
 };
 
 const buttonStyle: React.CSSProperties = {

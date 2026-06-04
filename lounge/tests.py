@@ -3,13 +3,21 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from kitchen.models import Kitchen
 from vault.models import PaperHolding, PaperPortfolio
 
 
 class LoungeApiTests(TestCase):
+    def _authenticate(self, user) -> None:
+        """Authenticate the API client with a real JWT (DRF is JWT-only — no sessions)."""
+        token = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
     def setUp(self) -> None:
+        self.client = APIClient()
         self.user = get_user_model().objects.create_user(username="lounge-user", password="test-password")
         top_kitchen = Kitchen.objects.create(
             name="UCT Alpha Kitchen",
@@ -44,7 +52,7 @@ class LoungeApiTests(TestCase):
         )
 
     def test_lounge_rankings_are_aggregated_across_kitchens(self) -> None:
-        self.client.force_login(self.user)
+        self._authenticate(self.user)
 
         response = self.client.get(reverse("lounge-kitchen-rankings"))
 

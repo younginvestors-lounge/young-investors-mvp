@@ -9,6 +9,31 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "MOCK_MVP_DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+
+def _clean_site_url(raw):
+    return (raw or "").strip().rstrip("/")
+
+
+def _validated_frontend_url():
+    frontend_url = _clean_site_url(os.environ.get("FRONTEND_URL") or os.environ.get("NEXT_PUBLIC_SITE_URL"))
+    if not frontend_url and DEBUG:
+        frontend_url = "http://localhost:3000"
+    if not frontend_url:
+        raise RuntimeError("FRONTEND_URL must be set when DEBUG=False so email links open the correct app.")
+
+    parsed = urlparse(frontend_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise RuntimeError("FRONTEND_URL must be an absolute http(s) URL.")
+    if not DEBUG and parsed.hostname in ("localhost", "127.0.0.1", "0.0.0.0"):
+        raise RuntimeError("FRONTEND_URL must not point to localhost when DEBUG=False.")
+    return frontend_url
+
+
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == "MOCK_MVP_DJANGO_SECRET_KEY" or len(SECRET_KEY) < 32):
+    raise RuntimeError("A strong SECRET_KEY must be set when DEBUG=False.")
+
+FRONTEND_URL = _validated_frontend_url()
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -59,8 +84,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-# Database routing: prefer DATABASE_URL (Azure Postgres), then individual env vars, then SQLite
-if os.environ.get("DATABASE_URL"):
+# Database routing — explicit precedence so local DB mode is never hidden env state:
+#   1. USE_SQLITE=True          → SQLite (turnkey local dev + tests; `USE_SQLITE=True python manage.py test`)
+#   2. DATABASE_URL             → Postgres (Azure / managed)
+#   3. DB_HOST set, or DEBUG=False → Postgres from DB_* vars
+#   4. DEBUG with nothing set   → SQLite fallback (turnkey first run)
+USE_SQLITE = os.environ.get("USE_SQLITE", "").strip().lower() in ("1", "true", "yes")
+
+
+def _sqlite_config():
+    return {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
+
+
+if USE_SQLITE:
+    DATABASES = {"default": _sqlite_config()}
+elif os.environ.get("DATABASE_URL"):
     db_url = urlparse(os.environ.get("DATABASE_URL"))
     DATABASES = {
         "default": {
@@ -72,7 +110,7 @@ if os.environ.get("DATABASE_URL"):
             "PORT": db_url.port or 5432,
         }
     }
-else:
+elif os.environ.get("DB_HOST") or not DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -83,13 +121,9 @@ else:
             "PORT": os.environ.get("DB_PORT", "5432"),
         }
     }
-
-# Fallback to SQLite for local development if Postgres unavailable
-if DEBUG and not os.environ.get("DATABASE_URL") and not os.environ.get("DB_HOST"):
-    DATABASES["default"] = {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+else:
+    # DEBUG with no DB configured → turnkey SQLite so a fresh checkout just runs.
+    DATABASES = {"default": _sqlite_config()}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -147,8 +181,6 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-
 # CORS / CSRF
 _default_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 CORS_ALLOWED_ORIGINS = list(
@@ -169,7 +201,8 @@ CSRF_TRUSTED_ORIGINS = list(
 
 # Email configuration
 if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.filebased.EmailBackend")
+    EMAIL_FILE_PATH = os.environ.get("EMAIL_FILE_PATH", str(BASE_DIR / ".local-emails"))
 else:
     EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")

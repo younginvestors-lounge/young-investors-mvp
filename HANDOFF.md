@@ -2,6 +2,80 @@
 
 ---
 
+## 2026-06-03 — Vercel + Supabase Tester Stack (frontend-only)
+
+**Decision (Carl):** ship the public 20–101 chef test on **Vercel (frontend) +
+Supabase (auth/db/storage)** at `younginvestors.co.za`. Django is **preserved in the
+repo but not deployed**. Still `MOCK_MVP_PAPER_TRADING_ONLY` — no real money, broker,
+bank, FICA, payments, live data, or advice.
+
+### Architecture
+- `useAuth()` now branches on whether Supabase env vars are present:
+  - **Supabase configured** → Supabase Auth + `profiles` table + Storage.
+  - **Not configured** → a clearly labelled **Local demo** (localStorage) so the app
+    never breaks for a fresh checkout. (Local "session" flag separates a stored
+    profile from an active session, so sign-out/sign-in behave.)
+- The Django client (`lib/api-client.ts`) is untouched and off the active path; its
+  `ChefUser`/`ApiError` types are reused so the UI contract is stable.
+- All Supabase data is mapped into one `ChefProfile` shape → **TopBar, AppShell, and
+  the dashboard views needed no rewrites.**
+
+### Capacity & chef numbers (per Carl)
+- **No signup cap** — comfortably supports >30, target ~**101** testers.
+- `member_number` is assigned by a Postgres **sequence (`chef_number_seq`, starts at
+  2)** via a `BEFORE INSERT` trigger → unique & race-safe even on simultaneous signups.
+- **Chef No. 0 = Gordon, No. 1 = Sicilia** (AI characters; no DB rows). Surfaced in
+  the Chef Profile and the Academy "Founding 100" reward indicator.
+
+### What persists (Supabase, or localStorage in demo mode)
+- **Auth + profile:** alias, age, intent, icon, profile picture, rank, current kitchen.
+- **Academy:** `Submit Practice Attempt` (capped at **3**) → best `academy_score`,
+  `attempts_used`, `credential_status` (cleared ≥ 60), rank; each attempt logged to
+  `academy_attempts`.
+- **Kitchen:** the user's cast vote → `kitchen_votes` (best-effort, never blocks the
+  vote); nudges the demo `kitchen_score`.
+- **Predictions:** `prediction_logs` helper wired through `recordPrediction` (best-effort).
+- **Feedback:** `submitFeedback` → `tester_feedback`.
+
+### Files
+**New:** `frontend/lib/supabaseClient.ts`, `frontend/lib/profileStore.ts`,
+`frontend/app/profile/page.tsx` (Chef Profile), `frontend/supabase/schema.sql`,
+`frontend/.env.local.example`, `frontend/SUPABASE_SETUP.md`,
+`frontend/DEPLOY_VERCEL_SUPABASE.md`, plus `@supabase/supabase-js`.
+**Edited (surgical):** `lib/auth-context.tsx` (Supabase|local branch, same surface +
+`submitAttempt`/`recordKitchenVote`/`recordPrediction`/`resendVerification`),
+`app/onboarding/page.tsx` (route to `/kitchen` on instant session, else `/verify-email`),
+`app/verify-email/page.tsx` + `app/reset-password/page.tsx` (Supabase-aware, Django
+fallback), `components/AcademyView.tsx` (score card), `components/KitchenView.tsx`
+(vote log), `components/TopBar.tsx` (identity → `/profile`).
+
+### To run locally
+```powershell
+cd frontend
+Copy-Item .env.local.example .env.local   # fill in Supabase URL + anon key (or leave blank for Local demo)
+npm.cmd install
+npm.cmd run dev                            # http://localhost:3000
+```
+
+### Env vars (Vercel + local)
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`NEXT_PUBLIC_SITE_URL` (`https://younginvestors.co.za` in prod). **anon key only —
+never `service_role`.** Do **not** set `NEXT_PUBLIC_API_BASE_URL` (Django not deployed).
+
+### Supabase setup (one-time)
+Run `frontend/supabase/schema.sql` in the SQL editor (tables + RLS + chef-number
+sequence + `profile-pictures` bucket); turn **Confirm email OFF** for frictionless
+testing; add localhost + apex/www redirect URLs. Full steps: `frontend/SUPABASE_SETUP.md`.
+Deploy steps: `frontend/DEPLOY_VERCEL_SUPABASE.md`.
+
+### Remaining for future Django/Azure migration
+Beat Gordon / Recipe Lens / Lounge / Vault / Times stay local mock data (no DB needed
+for the test). After the tester proof: deploy Django to Azure App Service + Azure
+PostgreSQL, set `NEXT_PUBLIC_API_BASE_URL`, create `api.younginvestors.co.za`, move
+governance server-side.
+
+---
+
 ## 2026-06-03 — Local Auth Integration (frontend ↔ Django) — VERIFIED
 
 **Status:** Real authentication is wired and verified locally end-to-end. No Azure
@@ -13,8 +87,9 @@ bank, FICA, or live trading.
   creation; email normalised to lowercase; profile icon saved at creation; a unique
   **join number** ("Chef #N") allocated race-safely via `select_for_update`.
 - **Email verification** (`POST /api/auth/verify_email/`): token-based, 24h expiry,
-  one-time use. The verification link is included in the email body and printed to
-  the Django console in local dev (console email backend).
+  one-time use. The verification link is included in the email body. In local dev,
+  DEBUG defaults to the Django file email backend so token links are saved in the
+  git-ignored `.local-emails/` outbox instead of printed to logs.
 - **Login** (`POST /api/auth/login/`): email-first (case-insensitive) via a custom
   `EmailBackend`; returns JWT access (24h) + refresh (7d); blocks unverified users
   with `403 {code: "email_unverified"}`.
@@ -46,7 +121,7 @@ bank, FICA, or live trading.
 
 ### Verified flow
 `/login` (splash) → `/onboarding` (creates real account) → `/verify-email`
-(click console link locally) → `/signin` → `/kitchen` (guarded, shows Chef No.).
+(open local outbox link in dev) → `/signin` → `/kitchen` (guarded, shows Chef No.).
 Returning authenticated users skip the splash straight to `/kitchen`.
 
 ### How to run locally
@@ -54,10 +129,10 @@ Returning authenticated users skip the splash straight to `/kitchen`.
    `python manage.py runserver 127.0.0.1:8000`
 2. Frontend: `frontend/.env.local` contains `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`;
    then `npm install` && `npm run dev` (→ http://localhost:3000).
-3. On signup, copy the verification link from the **Django console** to verify.
+3. On signup, open the verification link from the git-ignored `.local-emails/` outbox.
 
 ### Known follow-ups (not blockers for local proof)
-- Verification/reset emails are console-only in DEBUG; SendGrid wires in for prod.
+- Verification/reset emails use the file email backend in DEBUG; SendGrid wires in for prod.
 - `/gordon-intro` still reads localStorage and is currently outside the auth path
   (orphaned, not broken) — fold into the post-verify journey in a later pass.
 - Kitchen/Academy/Vault/Shop/Lounge still render mock data; backend data wiring is

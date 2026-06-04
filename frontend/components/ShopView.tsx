@@ -1,5 +1,7 @@
 "use client";
 
+import { CandlestickChart } from "lucide-react";
+import { JSEMarket } from "@/components/JSEMarket";
 import { useLiveTickers } from "@/lib/useLiveTickers";
 import { formatMoney, formatPercent } from "@/lib/domain";
 import type { MacroNewsCard, MarketTicker, TimesFeature } from "@/lib/types";
@@ -31,6 +33,17 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
         <h2 id="shop-heading" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.3rem,5vw,1.55rem)", fontWeight: 600, margin: 0, lineHeight: 1.08 }}>
           The Shop
         </h2>
+      </div>
+
+      {/* The JSE — what's on the menu, with Gordon's heat check */}
+      <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <CandlestickChart size={16} strokeWidth={1.8} aria-hidden style={{ color: "var(--yi-ink)" }} />
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
+            The JSE · Top 40 · tap a stock for Gordon&apos;s heat check
+          </p>
+        </div>
+        <JSEMarket />
       </div>
 
       {/* Lead article */}
