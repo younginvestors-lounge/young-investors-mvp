@@ -26,7 +26,7 @@ const GREETINGS = [
   { word: "Aweh",      lang: "SA Slang" },
 ];
 
-const SPLASH_IMAGE_SRC = process.env.NEXT_PUBLIC_SPLASH_IMAGE_SRC?.trim() || "/images/splash-side.png";
+const LOGO_SRC = "/images/young-investors-logo.png";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,7 +54,6 @@ export default function LoginPage() {
   }, []);
 
   const g = GREETINGS[idx];
-  const hasSplashImage = SPLASH_IMAGE_SRC.length > 0;
 
   return (
     <main style={{
@@ -98,7 +97,7 @@ export default function LoginPage() {
 
       {/* Main content */}
       <div
-        className={hasSplashImage ? "splash-grid splash-grid-with-image" : "splash-grid"}
+        className="splash-grid"
         style={{ padding: "clamp(24px,6vw,52px) 24px 32px" }}
       >
         <style>{`
@@ -106,46 +105,37 @@ export default function LoginPage() {
             display: grid;
             grid-template-columns: minmax(0, 520px);
             gap: 28px;
-            align-items: stretch;
-            max-width: 1120px;
+            align-items: center;
+            justify-content: center;
+            max-width: 720px;
             width: 100%;
-          }
-          .splash-grid-with-image {
-            grid-template-columns: minmax(0, 520px) minmax(280px, 1fr);
+            margin: 0 auto;
           }
           .splash-copy {
             min-width: 0;
+            display: grid;
+            gap: clamp(18px, 4vw, 28px);
           }
-          .splash-image-panel {
-            position: relative;
-            border: 1px solid var(--yi-frame, #111111);
-            min-height: 560px;
-            display: flex;
-            overflow: hidden;
-            background: var(--yi-card-bg, #f6f6f6);
+          .login-brand-mark {
+            width: clamp(112px, 24vw, 172px);
+            height: auto;
+            filter: invert(1);
           }
-          .splash-side-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: grayscale(1);
+          :root[data-theme="dark"] .login-brand-mark {
+            filter: none;
           }
           @media (max-width: 860px) {
-            .splash-grid,
-            .splash-grid-with-image {
+            .splash-grid {
               grid-template-columns: minmax(0, 1fr);
               max-width: 560px;
-            }
-            .splash-image-panel {
-              min-height: 260px;
-              order: -1;
             }
           }
         `}</style>
         <div className="splash-copy">
+        <Image className="login-brand-mark" src={LOGO_SRC} alt="Young Investors" width={858} height={850} priority />
 
         {/* Greeting carousel */}
-        <div style={{ marginBottom: "clamp(20px,5vw,36px)" }}>
+        <div>
           <span style={{
             fontFamily: "var(--font-bodoni), Georgia, serif",
             fontSize: "clamp(3rem, 13vw, 5.2rem)",
@@ -175,7 +165,7 @@ export default function LoginPage() {
         </div>
 
         {/* Three pillars */}
-        <div style={{ borderTop: "1px solid var(--yi-hairline, #eeeeee)", marginBottom: "clamp(24px,5vw,36px)" }}>
+        <div style={{ borderTop: "1px solid var(--yi-hairline, #eeeeee)" }}>
           {[
             { label: "The Academy",  body: "Complete modules, earn clearance, unlock the Kitchen. No shortcuts." },
             { label: "The Kitchen",  body: "Propose recipes, vote with your table, reach 60% consensus before anything cooks." },
@@ -260,11 +250,6 @@ export default function LoginPage() {
         </p>
         </div>
 
-        {hasSplashImage && (
-          <aside className="splash-image-panel" aria-label="Young Investors splash image">
-            <Image className="splash-side-image" src={SPLASH_IMAGE_SRC} alt="" fill sizes="(max-width: 860px) 100vw, 48vw" priority />
-          </aside>
-        )}
       </div>
 
       {/* Footer */}

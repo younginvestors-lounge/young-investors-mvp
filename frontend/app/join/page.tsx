@@ -1,16 +1,11 @@
 "use client";
 
 /**
- * /join — "Join The Syndicate" landing + install splash.
- *
- * Brutalist, high-contrast, Sicilia-doctrine (sharp corners, NO blur, NO shadow,
- * NO gradient). A field of charcoal triangles drifts on black; the content fades in
- * from the LEFT. "Download Now" fires the real PWA install (Add to Home Screen) so it
- * runs native-feel on devices — with a graceful iOS fallback and an "enter the app" link.
- *
- * MOCK_MVP_PAPER_TRADING_ONLY — educational simulation, no real money.
+ * /join - official Young Investors install landing.
+ * MOCK_MVP_PAPER_TRADING_ONLY - educational simulation, no real money.
  */
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Download, Share, Smartphone } from "lucide-react";
@@ -20,22 +15,22 @@ interface InstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-// Deterministic pseudo-random (same on server + client → no hydration mismatch).
 function rnd(seed: number): number {
   return Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1;
 }
-const TRIS = Array.from({ length: 26 }, (_, i) => {
-  const a = rnd(i + 1);
-  const b = rnd(i + 11.3);
-  const c = rnd(i + 27.7);
+
+const LOGO_SRC = "/images/young-investors-logo.png";
+const PAN_MARKS = ["60%", "JSE", "VOTE", "VAULT", "RISK", "HOLD", "BUY", "SELL", "SHELF", "CHEF"];
+const PAN_TILES = Array.from({ length: 168 }, (_, i) => {
+  const row = Math.floor(i / 14);
+  const a = rnd(i + 1.2);
+  const b = rnd(i + 17.4);
   return {
-    top: Math.round(a * 100),
-    left: Math.round(b * 100),
-    size: 44 + Math.round(c * 130),
-    dur: 16 + Math.round(a * 18),
-    delay: -Math.round(b * 22),
-    dir: c > 0.5 ? 1 : -1,
-    op: 0.05 + c * 0.07,
+    key: i,
+    mark: PAN_MARKS[(i + row) % PAN_MARKS.length],
+    rot: `${[0, 90, 180, 270][(i + row) % 4]}deg`,
+    delay: `${-Math.round((a * 3600 + b * 2200) % 5800)}ms`,
+    scale: (0.86 + a * 0.34).toFixed(2),
   };
 });
 
@@ -60,6 +55,7 @@ export default function JoinPage() {
       setInstalled(true);
       setDeferred(null);
     }
+
     window.addEventListener("beforeinstallprompt", onBIP);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
@@ -80,99 +76,278 @@ export default function JoinPage() {
       setShowIosHelp(true);
       return;
     }
-    // Desktop / not-yet-installable browsers: take them into the app.
     window.location.href = "/login";
   }
 
-  const ctaLabel = installed ? "Open the app" : "Download Now";
+  const ctaLabel = installed ? "Open the App" : "Download Now";
 
   return (
-    <main style={shell}>
+    <main className="join-page" style={shell}>
       <style>{`
-        @keyframes tri-drift { from { transform: translate3d(0,0,0) rotate(0deg); } to { transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--rot)); } }
-        @keyframes slide-in-left { from { opacity: 0; transform: translateX(-44px); } to { opacity: 1; transform: translateX(0); } }
-        .join-rise { opacity: 0; animation: slide-in-left 620ms cubic-bezier(.16,.84,.44,1) both; }
+        .join-page {
+          --join-bg: #ffffff;
+          --join-fg: #000000;
+          --join-muted: rgba(0,0,0,0.62);
+          --join-soft: rgba(0,0,0,0.035);
+          --join-line: rgba(0,0,0,0.16);
+          --join-cell-off: rgba(0,0,0,0.018);
+          --join-cell-on: rgba(0,0,0,0.12);
+          --join-mark-off: rgba(0,0,0,0.14);
+          --join-mark-on: rgba(255,255,255,0.68);
+          --join-logo-filter: invert(1);
+        }
+        :root[data-theme="dark"] .join-page {
+          --join-bg: #000000;
+          --join-fg: #ffffff;
+          --join-muted: rgba(255,255,255,0.62);
+          --join-soft: rgba(255,255,255,0.035);
+          --join-line: rgba(255,255,255,0.16);
+          --join-cell-off: rgba(255,255,255,0.014);
+          --join-cell-on: rgba(255,255,255,0.14);
+          --join-mark-off: rgba(255,255,255,0.14);
+          --join-mark-on: rgba(0,0,0,0.62);
+          --join-logo-filter: none;
+        }
+        @keyframes join-stage-pan {
+          0% { transform: translate3d(-10vw, 2vh, 0) rotate(-8deg); }
+          50% { transform: translate3d(0, -1vh, 0) rotate(-8deg); }
+          100% { transform: translate3d(10vw, -3vh, 0) rotate(-8deg); }
+        }
+        @keyframes join-stage-pan-two {
+          0% { transform: translate3d(9vw, -4vh, 0) rotate(8deg); }
+          50% { transform: translate3d(0, 1vh, 0) rotate(8deg); }
+          100% { transform: translate3d(-9vw, 3vh, 0) rotate(8deg); }
+        }
+        @keyframes join-cell-tone {
+          0%, 44% { background: var(--join-cell-off); }
+          45%, 56% { background: var(--join-cell-on); }
+          57%, 100% { background: var(--join-cell-off); }
+        }
+        @keyframes join-triangle-cycle {
+          0% {
+            transform: scale(calc(var(--scale) * 1.25)) rotate(var(--rot));
+            background: var(--join-fg);
+            opacity: 0.045;
+          }
+          34% {
+            transform: scale(calc(var(--scale) * 0.46)) rotate(calc(var(--rot) + 14deg));
+            background: var(--join-fg);
+            opacity: 0.2;
+          }
+          49% {
+            transform: scale(calc(var(--scale) * 0.18)) rotate(calc(var(--rot) + 22deg));
+            background: var(--join-fg);
+            opacity: 0.28;
+          }
+          50% {
+            transform: scale(calc(var(--scale) * 0.22)) rotate(calc(var(--rot) + 22deg));
+            background: var(--join-bg);
+            opacity: 0.55;
+          }
+          73% {
+            transform: scale(calc(var(--scale) * 0.72)) rotate(calc(var(--rot) + 38deg));
+            background: var(--join-bg);
+            opacity: 0.28;
+          }
+          100% {
+            transform: scale(calc(var(--scale) * 1.18)) rotate(calc(var(--rot) + 52deg));
+            background: var(--join-fg);
+            opacity: 0.05;
+          }
+        }
+        @keyframes join-mark-cycle {
+          0%, 44% { color: var(--join-mark-off); }
+          45%, 56% { color: var(--join-mark-on); }
+          57%, 100% { color: var(--join-mark-off); }
+        }
+        @keyframes join-content-in {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .join-pan-grid {
+          position: absolute;
+          inset: -22vh -24vw;
+          display: grid;
+          grid-template-columns: repeat(14, minmax(58px, 8vw));
+          grid-auto-rows: minmax(58px, 8vw);
+          border-top: 1px solid var(--join-line);
+          border-left: 1px solid var(--join-line);
+          animation: join-stage-pan 10s linear infinite alternate;
+        }
+        .join-pan-grid-alt {
+          opacity: 0.72;
+          animation-name: join-stage-pan-two;
+          animation-duration: 13s;
+        }
+        .join-pan-tile {
+          position: relative;
+          overflow: hidden;
+          border-right: 1px solid var(--join-line);
+          border-bottom: 1px solid var(--join-line);
+          animation: join-cell-tone 5800ms steps(1, end) infinite;
+          animation-delay: var(--delay);
+        }
+        .join-pan-tile::before {
+          content: "";
+          position: absolute;
+          inset: 18%;
+          clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+          transform-origin: 50% 62%;
+          animation: join-triangle-cycle 5800ms cubic-bezier(.72,0,.18,1) infinite;
+          animation-delay: var(--delay);
+          will-change: transform, opacity, background-color;
+        }
+        .join-pan-tile::after {
+          content: attr(data-mark);
+          position: absolute;
+          left: 9%;
+          bottom: 8%;
+          font-family: var(--font-mono), monospace;
+          font-size: clamp(0.42rem, 0.68vw, 0.58rem);
+          letter-spacing: 0.14em;
+          animation: join-mark-cycle 5800ms steps(1, end) infinite;
+          animation-delay: var(--delay);
+        }
+        .join-content {
+          width: min(100%, 620px);
+          margin: 0 auto;
+          display: grid;
+          justify-items: center;
+          gap: 18px;
+          padding: clamp(28px, 6vw, 64px) 22px;
+          text-align: center;
+          animation: join-content-in 640ms cubic-bezier(.16,.84,.44,1) both;
+        }
+        .join-logo {
+          width: clamp(148px, 24vw, 230px);
+          height: auto;
+          filter: var(--join-logo-filter);
+        }
+        .join-actions {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 4px;
+        }
+        .join-secondary {
+          display: inline-flex;
+          min-height: 52px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--join-line);
+          color: var(--join-fg);
+          padding: 15px 24px;
+          font-family: var(--font-mono), monospace;
+          font-size: 0.72rem;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          text-decoration: none;
+          background: transparent;
+        }
+        .join-secondary:hover {
+          background: var(--join-soft);
+        }
         @media (prefers-reduced-motion: reduce) {
-          .join-tri { animation: none !important; }
-          .join-rise { animation: none !important; opacity: 1 !important; transform: none !important; }
+          .join-pan-grid,
+          .join-pan-tile,
+          .join-pan-tile::before,
+          .join-pan-tile::after,
+          .join-content {
+            animation: none !important;
+          }
+          .join-pan-tile::before {
+            background: var(--join-fg);
+            opacity: 0.09;
+            transform: scale(0.72) rotate(var(--rot));
+          }
         }
       `}</style>
 
-      {/* Triangle field */}
-      <div aria-hidden style={{ position: "fixed", inset: 0, overflow: "hidden", zIndex: 0, background: "#000" }}>
-        {TRIS.map((t, i) => (
-          <span
-            key={i}
-            className="join-tri"
-            style={{
-              position: "absolute",
-              top: `${t.top}%`,
-              left: `${t.left}%`,
-              width: t.size,
-              height: t.size,
-              background: i % 3 === 0 ? "#2d2d2d" : "#1a1a1a",
-              clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
-              opacity: t.op,
-              ["--dx" as string]: `${t.dir * 60}px`,
-              ["--dy" as string]: `${-t.dir * 40}px`,
-              ["--rot" as string]: `${t.dir * 180}deg`,
-              animation: `tri-drift ${t.dur}s ease-in-out ${t.delay}s infinite alternate`,
-              willChange: "transform",
-            }}
-          />
-        ))}
+      <div aria-hidden style={{ position: "fixed", inset: 0, overflow: "hidden", zIndex: 0, background: "var(--join-bg)" }}>
+        <div className="join-pan-grid">
+          {PAN_TILES.map((tile) => (
+            <span
+              key={tile.key}
+              className="join-pan-tile"
+              data-mark={tile.mark}
+              style={{
+                ["--rot" as string]: tile.rot,
+                ["--delay" as string]: tile.delay,
+                ["--scale" as string]: tile.scale,
+              }}
+            />
+          ))}
+        </div>
+        <div className="join-pan-grid join-pan-grid-alt">
+          {PAN_TILES.slice().reverse().map((tile) => (
+            <span
+              key={`alt-${tile.key}`}
+              className="join-pan-tile"
+              data-mark={tile.mark}
+              style={{
+                ["--rot" as string]: tile.rot,
+                ["--delay" as string]: `${parseInt(tile.delay, 10) - 1900}ms`,
+                ["--scale" as string]: tile.scale,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Content — fades in from the left */}
-      <div style={{ position: "relative", zIndex: 1, minHeight: "100svh", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "0" }}>
-        <div style={{ height: 2, background: "#fff", flexShrink: 0 }} />
+      <div style={{ position: "relative", zIndex: 1, minHeight: "100svh", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 0 }}>
+        <div style={{ height: 2, background: "var(--join-fg)", flexShrink: 0 }} />
 
-        <div className="join-rise" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "18px 24px 0" }}>
-          <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "1rem", fontWeight: 700, letterSpacing: "-0.02em", color: "#fff" }}>Young Investors</span>
-          <span style={mono("rgba(255,255,255,0.5)")}>We Cook.</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "18px 24px 0" }}>
+          <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "1rem", fontWeight: 700, letterSpacing: 0, color: "var(--join-fg)" }}>
+            Young Investors
+          </span>
+          <span style={mono("var(--join-muted)")}>We Cook.</span>
         </div>
 
-        <div style={{ padding: "clamp(24px,6vw,52px) 24px", maxWidth: 620, width: "100%" }}>
-          <p className="join-rise" style={{ ...mono("rgba(255,255,255,0.55)"), margin: "0 0 14px", animationDelay: "60ms" }}>
-            Invitation · Founding Chefs
+        <section className="join-content" aria-labelledby="join-heading">
+          <Image className="join-logo" src={LOGO_SRC} width={858} height={850} alt="Young Investors" priority />
+          <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.35rem, 4vw, 2.35rem)", fontWeight: 600, lineHeight: 1, color: "var(--join-fg)", margin: 0 }}>
+            We Cook.
           </p>
-          <h1 className="join-rise" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.8rem, 13vw, 5.5rem)", fontWeight: 700, lineHeight: 0.92, letterSpacing: "-0.02em", color: "#fff", margin: "0 0 22px", animationDelay: "120ms" }}>
-            Join The<br />Syndicate.
+          <h1 id="join-heading" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.45rem, 11vw, 6.2rem)", fontWeight: 700, lineHeight: 0.9, letterSpacing: 0, color: "var(--join-fg)", margin: 0 }}>
+            Join The<br />Syndicate
           </h1>
-          <p className="join-rise" style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "clamp(0.95rem,3.4vw,1.12rem)", lineHeight: 1.6, color: "rgba(255,255,255,0.82)", margin: "0 0 32px", maxWidth: 440, animationDelay: "200ms" }}>
-            Learn before you earn. Form a Kitchen, cook recipes with your table, and beat Gordon. An educational paper-trading simulation — no real money, no broker, no risk.
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "clamp(0.9rem, 2.8vw, 1rem)", lineHeight: 1.55, color: "var(--join-muted)", margin: 0, maxWidth: 430 }}>
+            Download the Young Investors web app, or continue in your browser.
           </p>
 
-          <div className="join-rise" style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", animationDelay: "280ms" }}>
+          <div className="join-actions">
             <button type="button" onClick={download} style={cta}>
               <Download size={16} strokeWidth={1.9} aria-hidden />
               {ctaLabel}
               <ArrowRight size={15} strokeWidth={1.9} aria-hidden />
             </button>
-            <Link href="/login" style={{ ...mono("#fff"), textDecoration: "underline", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              Enter on the web
+            <Link href="/login" className="join-secondary">
+              Continue to Web
             </Link>
           </div>
 
           {showIosHelp && (
-            <div className="join-rise" style={{ marginTop: 18, border: "1px solid rgba(255,255,255,0.25)", padding: "12px 14px", maxWidth: 440 }}>
-              <p style={{ ...mono("rgba(255,255,255,0.6)"), margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <div style={{ marginTop: 2, border: "1px solid var(--join-line)", padding: "12px 14px", maxWidth: 440 }}>
+              <p style={{ ...mono("var(--join-muted)"), margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Smartphone size={13} strokeWidth={1.9} aria-hidden /> Install on iPhone
               </p>
-              <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "rgba(255,255,255,0.82)", margin: 0, display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--join-muted)", margin: 0, display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 Tap <Share size={14} strokeWidth={1.9} aria-hidden style={{ verticalAlign: "middle" }} /> Share, then <b>Add to Home Screen</b>.
               </p>
             </div>
           )}
 
-          <p className="join-rise" style={{ ...mono("rgba(255,255,255,0.45)"), margin: "22px 0 0", animationDelay: "360ms", fontSize: "0.52rem", lineHeight: 1.7 }}>
-            Installs to your home screen · runs full-screen, native-feel
+          <p style={{ ...mono("var(--join-muted)"), margin: 0, fontSize: "0.52rem", lineHeight: 1.7 }}>
+            Home screen install - full screen, native feel
           </p>
-        </div>
+        </section>
 
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.16)", padding: "12px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <span style={mono("rgba(255,255,255,0.35)")}>MOCK_MVP_PAPER_TRADING_ONLY</span>
-          <span style={mono("rgba(255,255,255,0.35)")}>Not financial advice</span>
+        <div style={{ borderTop: "1px solid var(--join-line)", padding: "12px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <span style={mono("var(--join-muted)")}>MOCK_MVP_PAPER_TRADING_ONLY</span>
+          <span style={mono("var(--join-muted)")}>Not financial advice</span>
         </div>
       </div>
     </main>
@@ -181,26 +356,29 @@ export default function JoinPage() {
 
 const shell: React.CSSProperties = {
   minHeight: "100svh",
-  background: "#000",
-  color: "#fff",
+  background: "var(--join-bg)",
+  color: "var(--join-fg)",
   position: "relative",
   overflow: "hidden",
 };
+
 const cta: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: 9,
-  padding: "15px 26px",
-  background: "#fff",
-  color: "#000",
-  border: "none",
+  padding: "15px 24px",
+  background: "var(--join-fg)",
+  color: "var(--join-bg)",
+  border: "1px solid var(--join-fg)",
   fontFamily: "var(--font-mono), monospace",
-  fontSize: "0.78rem",
+  fontSize: "0.72rem",
   textTransform: "uppercase",
-  letterSpacing: "0.12em",
+  letterSpacing: "0.1em",
   cursor: "pointer",
-  minHeight: 50,
+  minHeight: 52,
 };
+
 function mono(color: string): React.CSSProperties {
   return {
     fontFamily: "var(--font-mono), monospace",

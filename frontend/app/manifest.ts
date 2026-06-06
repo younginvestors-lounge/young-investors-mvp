@@ -3,13 +3,13 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Young Investors",
-    short_name: "YI Kitchen",
+    short_name: "Young Investors",
     description: "Governance-first financial education and paper-trading simulation.",
     start_url: "/login",
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#111111",
+    theme_color: "#000000",
     orientation: "portrait",
     categories: ["education", "finance", "productivity"],
     icons: [
