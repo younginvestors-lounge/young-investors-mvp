@@ -21,7 +21,7 @@ function rnd(seed: number): number {
 
 const LOGO_SRC = "/images/young-investors-logo.png";
 const PAN_MARKS = ["60%", "JSE", "VOTE", "VAULT", "RISK", "HOLD", "BUY", "SELL", "SHELF", "CHEF"];
-const PAN_TILES = Array.from({ length: 168 }, (_, i) => {
+const PAN_TILES = Array.from({ length: 84 }, (_, i) => {
   const row = Math.floor(i / 14);
   const a = rnd(i + 1.2);
   const b = rnd(i + 17.4);
@@ -39,6 +39,16 @@ export default function JoinPage() {
   const [installed, setInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIosHelp, setShowIosHelp] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  // Pause the animated grid whenever the tab is hidden - don't spend GPU on
+  // pixels nobody is looking at. Lighter on integrated/low-power graphics.
+  useEffect(() => {
+    const onVis = () => setPaused(document.hidden);
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   useEffect(() => {
     const standalone =
@@ -82,7 +92,7 @@ export default function JoinPage() {
   const ctaLabel = installed ? "Open the App" : "Download Now";
 
   return (
-    <main className="join-page" style={shell}>
+    <main className={`join-page${paused ? " is-paused" : ""}`} style={shell}>
       <style>{`
         .join-page {
           --join-bg: #ffffff;
@@ -195,7 +205,6 @@ export default function JoinPage() {
           transform-origin: 50% 62%;
           animation: join-triangle-cycle 5800ms cubic-bezier(.72,0,.18,1) infinite;
           animation-delay: var(--delay);
-          will-change: transform, opacity, background-color;
         }
         .join-pan-tile::after {
           content: attr(data-mark);
@@ -248,6 +257,12 @@ export default function JoinPage() {
         }
         .join-secondary:hover {
           background: var(--join-soft);
+        }
+        .join-page.is-paused .join-pan-grid,
+        .join-page.is-paused .join-pan-tile,
+        .join-page.is-paused .join-pan-tile::before,
+        .join-page.is-paused .join-pan-tile::after {
+          animation-play-state: paused !important;
         }
         @media (prefers-reduced-motion: reduce) {
           .join-pan-grid,
