@@ -5,7 +5,6 @@
  * MOCK_MVP_PAPER_TRADING_ONLY - educational simulation, no real money.
  */
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Download, Share, Smartphone } from "lucide-react";
@@ -19,7 +18,6 @@ function rnd(seed: number): number {
   return Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1;
 }
 
-const LOGO_SRC = "/images/young-investors-logo.png";
 const PAN_MARKS = ["60%", "JSE", "VOTE", "VAULT", "RISK", "HOLD", "BUY", "SELL", "SHELF", "CHEF"];
 const PAN_TILES = Array.from({ length: 84 }, (_, i) => {
   const row = Math.floor(i / 14);
@@ -322,10 +320,6 @@ export default function JoinPage() {
         </div>
 
         <section className="join-content" aria-labelledby="join-heading">
-          <Image className="join-logo" src={LOGO_SRC} width={858} height={850} alt="Young Investors" priority />
-          <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.35rem, 4vw, 2.35rem)", fontWeight: 600, lineHeight: 1, color: "var(--join-fg)", margin: 0 }}>
-            We Cook.
-          </p>
           <h1 id="join-heading" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.45rem, 11vw, 6.2rem)", fontWeight: 700, lineHeight: 0.9, letterSpacing: 0, color: "var(--join-fg)", margin: 0 }}>
             Join The<br />Syndicate
           </h1>
