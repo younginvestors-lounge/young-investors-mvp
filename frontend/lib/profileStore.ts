@@ -324,7 +324,12 @@ export async function sbGetOrCreateProfile(seed?: Partial<ProfileSeed>): Promise
   const age = (seed?.age ?? (meta.age as number | undefined)) ?? null;
   const insert = {
     id: auth.id,
-    chef_alias: seed?.chef_alias ?? (meta.chef_alias as string) ?? "Chef",
+    chef_alias:
+      seed?.chef_alias ??
+      (meta.chef_alias as string) ??
+      (meta.full_name as string) ??
+      (meta.name as string) ??
+      "Chef",
     age,
     intent: seed?.intent ?? (meta.intent as string) ?? "",
     profile_icon: seed?.profile_icon ?? (meta.profile_icon as string) ?? "chef-default",

@@ -53,6 +53,8 @@ interface AuthContextValue {
   isLocalMode: boolean;
   signup: (payload: SignupPayload) => Promise<SignupResult>;
   login: (payload: LoginPayload) => Promise<ChefProfile>;
+  /** OAuth sign-in/sign-up with Google (live app only). Redirects the browser. */
+  signInWithGoogle: () => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<ChefProfile>;
@@ -218,6 +220,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   }, []);
 
+  const signInWithGoogle = useCallback(async (): Promise<void> => {
+    if (!isSupabaseConfigured()) {
+      throw new ApiError(400, "Google sign-in is only available on the live app.");
+    }
+    const sb = requireSupabase();
+    // Use the current origin so OAuth returns to whatever host the Chef started on.
+    // Must be allow-listed in Supabase Auth → URL Configuration.
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/kitchen`
+        : SITE_URL
+          ? `${SITE_URL}/kitchen`
+          : undefined;
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) throw toApiError(error);
+    // The browser is now redirecting to Google; onAuthStateChange finishes on return.
+  }, []);
+
   const resendVerification = useCallback(async (email: string): Promise<void> => {
     const cleanEmail = email.trim();
     if (!cleanEmail) throw new ApiError(400, "Enter your email first.");
@@ -309,6 +332,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLocalMode,
       signup,
       login,
+      signInWithGoogle,
       resendVerification,
       logout,
       updateProfile,
@@ -323,6 +347,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLocalMode,
       signup,
       login,
+      signInWithGoogle,
       resendVerification,
       logout,
       updateProfile,

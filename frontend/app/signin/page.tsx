@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api-client";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -76,6 +77,14 @@ export default function SignInPage() {
         <h1 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2rem,8vw,3rem)", fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", margin: "0 0 28px" }}>
           Sign in.
         </h1>
+
+        <GoogleSignInButton />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0 6px" }} aria-hidden>
+          <span style={{ flex: 1, height: 1, background: "#e5e5e5" }} />
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "#aaa" }}>or use email</span>
+          <span style={{ flex: 1, height: 1, background: "#e5e5e5" }} />
+        </div>
 
         <form onSubmit={handleSubmit} noValidate>
           <label style={labelStyle} htmlFor="email">Email</label>
