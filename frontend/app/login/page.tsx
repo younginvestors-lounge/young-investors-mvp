@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,8 +25,6 @@ const GREETINGS = [
   { word: "Bonjour",   lang: "Français" },
   { word: "Aweh",      lang: "SA Slang" },
 ];
-
-const LOGO_SRC = "/images/young-investors-logo.png";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -133,8 +130,6 @@ export default function LoginPage() {
           }
         `}</style>
         <div className="splash-copy">
-        <Image className="login-brand-mark" src={LOGO_SRC} alt="Young Investors" width={858} height={850} priority />
-
         {/* Greeting carousel */}
         <div>
           <span style={{

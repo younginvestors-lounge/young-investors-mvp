@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api-client";
 import { PROFILE_ICONS } from "@/lib/profileIcons";
-import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const INTENTS = [
   { label: "Learn the craft", value: "learn_craft" },
@@ -14,11 +13,9 @@ const INTENTS = [
   { label: "Start a Kitchen", value: "start_kitchen" },
 ] as const;
 
-const TOTAL = 5;
-
 export default function OnboardingPage() {
   const router = useRouter();
-  const { signup } = useAuth();
+  const { signup, updateProfile, user, isAuthenticated, isLoading } = useAuth();
 
   const [step, setStep] = useState(0);
   const [alias, setAlias] = useState("");
@@ -32,6 +29,18 @@ export default function OnboardingPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // "Authed mode": the Chef arrived already signed in (Google created the account).
+  // Onboarding is still mandatory — we just skip the email/password step and save the
+  // answers to the existing account instead of creating a new one.
+  const authedMode = isAuthenticated && !!user;
+  const TOTAL = authedMode ? 4 : 5;
+
+  useEffect(() => {
+    if (isLoading || !authedMode || !user) return;
+    if (user.age != null) { router.replace("/kitchen"); return; }   // already onboarded
+    setAlias((a) => (a === "" && user.chef_alias ? user.chef_alias : a)); // seed Google name
+  }, [isLoading, authedMode, user, router]);
 
   const ageNum = Number(age);
   // 18+ only for now. A Young Investors Junior Academy will open for under-18s later.
@@ -52,9 +61,21 @@ export default function OnboardingPage() {
       setStep((s) => s + 1);
       return;
     }
-    // Final step — create the account.
+    // Final step.
     setFormError(null);
     setFieldErrors({});
+    if (authedMode) {
+      // Account already exists (e.g. Google) — save the onboarding answers to it.
+      setSubmitting(true);
+      try {
+        await updateProfile({ chef_alias: alias.trim(), age: ageNum, intent, profile_icon: icon });
+        router.replace("/gordon-intro");
+      } catch {
+        setFormError("Couldn't save your details. Try again.");
+        setSubmitting(false);
+      }
+      return;
+    }
     if (password !== confirm) {
       setFieldErrors({ password_confirm: "Passwords do not match." });
       return;
@@ -115,12 +136,6 @@ export default function OnboardingPage() {
         {/* STEP 0 — alias */}
         {step === 0 && (
           <>
-            <GoogleSignInButton label="Continue with Google — skip the questions" />
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0 26px" }} aria-hidden>
-              <span style={{ flex: 1, height: 1, background: "#e5e5e5" }} />
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "#aaa" }}>or sign up with email</span>
-              <span style={{ flex: 1, height: 1, background: "#e5e5e5" }} />
-            </div>
             <h1 style={heading}>What should we call you, Chef?</h1>
             <p style={sub}>Your kitchen alias. Make it yours.</p>
             <input autoFocus value={alias} onChange={(e) => setAlias(e.target.value)} onKeyDown={onKeyDown} placeholder="Chef ___" style={bigInput} />
@@ -212,7 +227,7 @@ export default function OnboardingPage() {
             background: "#111", color: "#fff", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.75rem",
             textTransform: "uppercase", letterSpacing: "0.12em", minHeight: 48,
             opacity: !canAdvance() || submitting ? 0.35 : 1, cursor: !canAdvance() || submitting ? "default" : "pointer", transition: "opacity 180ms ease" }}>
-          {step < TOTAL - 1 ? "Continue →" : submitting ? "Creating account…" : "Create my account →"}
+          {step < TOTAL - 1 ? "Continue →" : submitting ? "Saving…" : authedMode ? "Finish setup →" : "Create my account →"}
         </button>
 
         {step === 0 && (

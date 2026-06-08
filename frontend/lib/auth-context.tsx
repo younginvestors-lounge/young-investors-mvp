@@ -227,11 +227,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sb = requireSupabase();
     // Use the current origin so OAuth returns to whatever host the Chef started on.
     // Must be allow-listed in Supabase Auth → URL Configuration.
+    // Land on /onboarding: account creation is separate from onboarding, which is
+    // mandatory for everyone. New Google users complete it; returning users are
+    // bounced straight to the Kitchen by the onboarding page itself.
     const redirectTo =
       typeof window !== "undefined"
-        ? `${window.location.origin}/kitchen`
+        ? `${window.location.origin}/onboarding`
         : SITE_URL
-          ? `${SITE_URL}/kitchen`
+          ? `${SITE_URL}/onboarding`
           : undefined;
     const { error } = await sb.auth.signInWithOAuth({
       provider: "google",
