@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const GREETINGS = [
   { word: "Hello",     lang: "English" },
@@ -202,7 +203,8 @@ export default function LoginPage() {
         </div>
 
         {/* CTA */}
-        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+        <GoogleSignInButton label="Continue with Google" />
+        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", marginTop: 16 }}>
           <Link
             href="/onboarding"
             style={{
@@ -220,7 +222,7 @@ export default function LoginPage() {
               textDecoration: "none",
             }}
           >
-            Start your journey →
+            Sign up with email →
           </Link>
           <Link
             href="/signin"

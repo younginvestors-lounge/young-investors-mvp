@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api-client";
 import { PROFILE_ICONS } from "@/lib/profileIcons";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const INTENTS = [
   { label: "Learn the craft", value: "learn_craft" },
@@ -114,6 +115,12 @@ export default function OnboardingPage() {
         {/* STEP 0 — alias */}
         {step === 0 && (
           <>
+            <GoogleSignInButton label="Continue with Google — skip the questions" />
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0 26px" }} aria-hidden>
+              <span style={{ flex: 1, height: 1, background: "#e5e5e5" }} />
+              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "#aaa" }}>or sign up with email</span>
+              <span style={{ flex: 1, height: 1, background: "#e5e5e5" }} />
+            </div>
             <h1 style={heading}>What should we call you, Chef?</h1>
             <p style={sub}>Your kitchen alias. Make it yours.</p>
             <input autoFocus value={alias} onChange={(e) => setAlias(e.target.value)} onKeyDown={onKeyDown} placeholder="Chef ___" style={bigInput} />
