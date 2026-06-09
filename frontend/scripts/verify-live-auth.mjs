@@ -126,9 +126,17 @@ async function main() {
   async function pageForTest() {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
     page.on("console", (msg) => {
-      // 404: expected missing assets (fonts, icons). 422: expected Supabase duplicate-email
-      // response that Chrome auto-logs even when JS handles it.
-      if (msg.type() === "error" && !msg.text().includes("404") && !msg.text().includes("422"))
+      // Chrome auto-logs failed resource loads even when JS catches them:
+      //   404 — expected missing assets (fonts, icons)
+      //   400 — expected from wrong-password test (Supabase auth/v1/token invalid_credentials)
+      //   422 — expected from duplicate-email signup (Supabase returns 422 for already-registered)
+      // Behaviour for each is verified by explicit DOM checks, not console noise.
+      if (
+        msg.type() === "error" &&
+        !msg.text().includes("404") &&
+        !msg.text().includes("400") &&
+        !msg.text().includes("422")
+      )
         errors.push(msg.text());
     });
     await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
