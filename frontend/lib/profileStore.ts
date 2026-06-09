@@ -846,6 +846,318 @@ export async function leaveKitchen(): Promise<void> {
   }
 }
 
+/* ── Kitchen Proposals ─────────────────────────────────────────────────────── */
+
+export interface ProposalData {
+  id: string;
+  kitchenId: string;
+  proposerId: string;
+  ticker: string;
+  assetName: string | null;
+  side: "BUY" | "SELL";
+  units: number;
+  thesis: string | null;
+  seasoning: string;
+  status: string;
+  createdAt: string;
+}
+
+function mapProposalRow(row: Record<string, unknown>): ProposalData {
+  return {
+    id: String(row.id),
+    kitchenId: String(row.kitchen_id),
+    proposerId: String(row.proposer_id),
+    ticker: String(row.ticker),
+    assetName: (row.asset_name as string) ?? null,
+    side: String(row.side) === "SELL" ? "SELL" : "BUY",
+    units: Number(row.units) || 0,
+    thesis: (row.thesis as string) ?? null,
+    seasoning: String(row.seasoning ?? ""),
+    status: String(row.status ?? "voting"),
+    createdAt: String(row.created_at ?? ""),
+  };
+}
+
+/** Submit a new recipe proposal to the caller's Kitchen. Returns the new proposal id. */
+export async function submitProposal(draft: {
+  ticker: string;
+  assetName: string;
+  side: "BUY" | "SELL";
+  units: number;
+  thesis: string;
+  seasoning: string;
+}): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  const sb = requireSupabase();
+  const { data, error } = await sb.rpc("submit_proposal", {
+    p_ticker: draft.ticker,
+    p_asset_name: draft.assetName,
+    p_side: draft.side,
+    p_units: draft.units,
+    p_thesis: draft.thesis,
+    p_seasoning: draft.seasoning,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+/** Fetch the most recent open proposal for the caller's Kitchen. Best-effort. */
+export async function getActiveProposal(): Promise<ProposalData | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = requireSupabase();
+    const { data, error } = await sb.rpc("active_proposal");
+    if (error) return null;
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return null;
+    return mapProposalRow(rows[0]);
+  } catch {
+    return null;
+  }
+}
+
+/* ── Kitchen Chat ──────────────────────────────────────────────────────────── */
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  chefAlias: string;
+  profileIcon: string;
+  body: string;
+  createdAt: string;
+}
+
+/** Send a message to the caller's Kitchen chat. Returns the new message id. */
+export async function sendKitchenMessage(body: string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  const sb = requireSupabase();
+  const { data, error } = await sb.rpc("send_message", { p_body: body });
+  if (error) throw error;
+  return data as string;
+}
+
+/** Fetch the latest messages for the caller's Kitchen (newest first). */
+export async function getKitchenMessages(before?: string, limit = 40): Promise<ChatMessage[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const sb = requireSupabase();
+    const { data, error } = await sb.rpc("kitchen_messages_page", {
+      p_before: before ?? new Date().toISOString(),
+      p_limit: limit,
+    });
+    if (error) return [];
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      userId: String(r.user_id),
+      chefAlias: String(r.chef_alias ?? "Chef"),
+      profileIcon: String(r.profile_icon ?? "chef-default"),
+      body: String(r.body),
+      createdAt: String(r.created_at),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/* ── Notifications ─────────────────────────────────────────────────────────── */
+
+export interface AppNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  deepLink: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+/** Fetch the caller's unread notifications (newest first, max 50). */
+export async function getNotifications(limit = 50): Promise<AppNotification[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const sb = requireSupabase();
+    const auth = await sbAuthUser();
+    if (!auth) return [];
+    const { data, error } = await sb
+      .from("notifications")
+      .select("id, kind, title, body, deep_link, is_read, created_at")
+      .eq("user_id", auth.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      kind: String(r.kind),
+      title: String(r.title),
+      body: (r.body as string) ?? null,
+      deepLink: (r.deep_link as string) ?? null,
+      isRead: r.is_read === true,
+      createdAt: String(r.created_at),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Mark a notification as read. Best-effort. */
+export async function markNotificationRead(id: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const sb = requireSupabase();
+    await sb.from("notifications").update({ is_read: true }).eq("id", id);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Mark all of the caller's notifications as read. Best-effort. */
+export async function markAllNotificationsRead(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const sb = requireSupabase();
+    const auth = await sbAuthUser();
+    if (!auth) return;
+    await sb.from("notifications").update({ is_read: true }).eq("user_id", auth.id).eq("is_read", false);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/* ── Gordon's Guide ────────────────────────────────────────────────────────── */
+
+export interface GordonGuideResult {
+  score: number;
+  band: string;
+  bandDescription: string;
+  inputs: Record<string, string>;
+  computedAt: string;
+}
+
+export type GuideBand =
+  | "Burn Risk"
+  | "Leaking Pot"
+  | "Simmering Base"
+  | "Controlled Cook"
+  | "Wealth-Creative Path"
+  | "Master Chef Mode";
+
+const BAND_DESCRIPTIONS: Record<GuideBand, string> = {
+  "Burn Risk": "Your Kitchen floor needs reinforcing before the heat goes up. Focus on protecting the base.",
+  "Leaking Pot": "The pot is leaking — repair habits, plug the debt, fill the information bank.",
+  "Simmering Base": "Your pot is simmering upward. Stay patient; low-heat learning builds the base.",
+  "Controlled Cook": "Controlled cook — you can handle low-heat proposals with safeguards in place.",
+  "Wealth-Creative Path": "The Kitchen is running well. Higher complexity unlocked.",
+  "Master Chef Mode": "Master Chef Mode — advanced strategy, mentoring others, leading the Kitchen.",
+};
+
+export function scoreToBand(score: number): GuideBand {
+  if (score <= 20) return "Burn Risk";
+  if (score <= 40) return "Leaking Pot";
+  if (score <= 60) return "Simmering Base";
+  if (score <= 75) return "Controlled Cook";
+  if (score <= 90) return "Wealth-Creative Path";
+  return "Master Chef Mode";
+}
+
+export function bandDescription(band: GuideBand): string {
+  return BAND_DESCRIPTIONS[band] ?? "";
+}
+
+/**
+ * computeGordonGuide — the seam for the full seven-pillar engine.
+ *
+ * TODAY: computes a simple weighted sum from the 10-question diagnostic answers.
+ * Stubs for unbuilt pillars are included; the full engine swaps in behind this
+ * function signature without touching any callers.
+ *
+ * Full weights (for future): GG = .20B + .20T + .15I + .15D + .10C + .10W + .10K
+ */
+export function computeGordonGuide(answers: Record<string, string>): GordonGuideResult {
+  // Simple point map: positive/protective answers score 2, neutral 1, negative 0
+  const positiveMap: Record<string, number> = {
+    // Q1 Base
+    "Yes, comfortably": 2, "Just barely": 1, "No": 0,
+    // Q2 Reserve
+    "Yes, a real reserve": 2, "A little": 1, "None": 0,
+    // Q3 Trajectory
+    "Improved": 2, "Stayed flat": 1, "Got worse": 0, "Swings wildly": 0,
+    // Q4 Surplus
+    "Surplus": 2, "Break even": 1, "Fall short": 0,
+    // Q5 Info bank
+    "Research & evidence": 2, "Ask people I trust": 1, "Gut feeling": 0, "What's trending": 0,
+    // Q6 Decision quality
+    "Step back & review": 2, "Try to win it back quickly": 0, "Avoid the topic": 0, "Hasn't happened yet": 1,
+    // Q7 Wave stability
+    "Steady & planned": 2, "A big spike then tight": 0, "Unpredictable": 0,
+    // Q8 Conversion capacity
+    "Yes, lots": 2, "Some": 1, "Not really": 0,
+    // Q9 Kitchen coordination
+    "With a trusted group": 2, "Mostly alone": 1, "Depends": 1,
+    // Q10 Knowledge
+    "Strong": 2, "Some basics": 1, "Beginner": 0,
+  };
+
+  const values = Object.values(answers);
+  const total = values.reduce((sum, a) => sum + (positiveMap[a] ?? 0), 0);
+  const maxPossible = values.length * 2 || 20;
+  const score = Math.round((total / maxPossible) * 100);
+  const band = scoreToBand(score);
+
+  return {
+    score,
+    band,
+    bandDescription: BAND_DESCRIPTIONS[band],
+    inputs: answers,
+    computedAt: new Date().toISOString(),
+  };
+}
+
+/** Save (upsert) the caller's Gordon Guide result to Supabase. Best-effort. */
+export async function saveGordonGuide(result: GordonGuideResult): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const sb = requireSupabase();
+    const auth = await sbAuthUser();
+    if (!auth) return;
+    await sb.from("gordon_guide").upsert({
+      user_id: auth.id,
+      score: result.score,
+      band: result.band,
+      inputs: result.inputs,
+      computed_at: result.computedAt,
+    }, { onConflict: "user_id" });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Fetch the caller's most recent Gordon Guide result. */
+export async function getGordonGuide(): Promise<GordonGuideResult | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = requireSupabase();
+    const auth = await sbAuthUser();
+    if (!auth) return null;
+    const { data, error } = await sb
+      .from("gordon_guide")
+      .select("score, band, inputs, computed_at")
+      .eq("user_id", auth.id)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as Record<string, unknown>;
+    const band = String(row.band ?? "Burn Risk") as GuideBand;
+    return {
+      score: Number(row.score ?? 0),
+      band,
+      bandDescription: BAND_DESCRIPTIONS[band] ?? "",
+      inputs: (row.inputs as Record<string, string>) ?? {},
+      computedAt: String(row.computed_at ?? ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Each Kitchen member's latest vote on a ticker, as { userId: vote }. Powers the
  * real multi-user vote sync. Local demo returns {} (single user; practice chefs are

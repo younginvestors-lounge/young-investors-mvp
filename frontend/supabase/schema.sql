@@ -419,6 +419,278 @@ $$;
 grant execute on function public.kitchen_votes_for(text) to authenticated;
 
 -- ============================================================================
+-- 8. Kitchen proposals — shared recipe proposals, visible to all Kitchen members
+-- ----------------------------------------------------------------------------
+-- A proposal is tied to a kitchen_id. All members of that kitchen can read it.
+-- SECURITY DEFINER functions avoid direct RLS join-recursion risk.
+-- MOCK_MVP_PAPER_TRADING_ONLY — no live execution, broker, or real money.
+-- ============================================================================
+create table if not exists public.kitchen_proposals (
+  id           uuid primary key default gen_random_uuid(),
+  kitchen_id   uuid not null references public.kitchens(id) on delete cascade,
+  proposer_id  uuid not null references auth.users(id) on delete cascade,
+  ticker       text not null,
+  asset_name   text,
+  side         text not null default 'BUY',   -- 'BUY' | 'SELL'
+  units        integer,
+  thesis       text,
+  seasoning    text not null,                  -- mandatory reason (the seasoning)
+  status       text not null default 'voting', -- 'voting' | 'passed' | 'rejected' | 'withdrawn'
+  created_at   timestamptz default now()
+);
+
+alter table public.kitchen_proposals enable row level security;
+
+-- Members can read their kitchen's proposals (via SECURITY DEFINER function below).
+-- No direct RLS SELECT needed — the RPC enforces membership check.
+-- Direct INSERT also goes through the RPC to verify membership before writing.
+
+-- Submit a proposal (verifies membership before inserting).
+create or replace function public.submit_proposal(
+  p_ticker    text,
+  p_asset_name text,
+  p_side      text,
+  p_units     integer,
+  p_thesis    text,
+  p_seasoning text
+)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+  v_id  uuid;
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  if length(trim(coalesce(p_seasoning, ''))) < 10 then
+    raise exception 'Season your recipe — explain the reason in at least 10 characters.';
+  end if;
+
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km
+  where km.user_id = v_uid
+  order by km.joined_at limit 1;
+
+  if v_kid is null then raise exception 'You must be in a Kitchen to propose a recipe.'; end if;
+
+  insert into public.kitchen_proposals
+    (kitchen_id, proposer_id, ticker, asset_name, side, units, thesis, seasoning, status)
+  values
+    (v_kid, v_uid,
+     upper(trim(p_ticker)),
+     p_asset_name,
+     case when upper(p_side) = 'SELL' then 'SELL' else 'BUY' end,
+     p_units,
+     p_thesis,
+     p_seasoning,
+     'voting')
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+-- Fetch the most recent open proposal for the caller's Kitchen.
+create or replace function public.active_proposal()
+returns table (
+  id uuid, kitchen_id uuid, proposer_id uuid, ticker text, asset_name text,
+  side text, units integer, thesis text, seasoning text, status text, created_at timestamptz
+)
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+begin
+  if v_uid is null then return; end if;
+
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km
+  where km.user_id = v_uid
+  order by km.joined_at limit 1;
+
+  if v_kid is null then return; end if;
+
+  return query
+    select p.id, p.kitchen_id, p.proposer_id, p.ticker, p.asset_name,
+           p.side, p.units, p.thesis, p.seasoning, p.status, p.created_at
+    from public.kitchen_proposals p
+    where p.kitchen_id = v_kid and p.status = 'voting'
+    order by p.created_at desc
+    limit 1;
+end;
+$$;
+
+grant execute on function public.submit_proposal(text, text, text, integer, text, text) to authenticated;
+grant execute on function public.active_proposal() to authenticated;
+
+-- ============================================================================
+-- 9. Kitchen chat — per-kitchen message thread
+-- ----------------------------------------------------------------------------
+-- Polling-friendly (no realtime subscription required). Messages are keyed to
+-- kitchen_id. All members of a kitchen can read and insert messages.
+-- ============================================================================
+create table if not exists public.kitchen_messages (
+  id          uuid primary key default gen_random_uuid(),
+  kitchen_id  uuid not null references public.kitchens(id) on delete cascade,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  body        text not null check (length(trim(body)) between 1 and 1000),
+  created_at  timestamptz default now()
+);
+
+alter table public.kitchen_messages enable row level security;
+
+-- SECURITY DEFINER to avoid join-recursion with kitchen_members RLS.
+create or replace function public.send_message(p_body text)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+  v_id  uuid;
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  if length(trim(coalesce(p_body, ''))) = 0 then raise exception 'Message cannot be empty.'; end if;
+  if length(trim(p_body)) > 1000 then raise exception 'Message is too long (max 1000 chars).'; end if;
+
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km
+  where km.user_id = v_uid
+  order by km.joined_at limit 1;
+
+  if v_kid is null then raise exception 'You must be in a Kitchen to send a message.'; end if;
+
+  insert into public.kitchen_messages (kitchen_id, user_id, body)
+  values (v_kid, v_uid, trim(p_body))
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.kitchen_messages_page(p_before timestamptz default now(), p_limit integer default 40)
+returns table (
+  id uuid, user_id uuid, chef_alias text, profile_icon text, body text, created_at timestamptz
+)
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+begin
+  if v_uid is null then return; end if;
+
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km
+  where km.user_id = v_uid
+  order by km.joined_at limit 1;
+
+  if v_kid is null then return; end if;
+
+  return query
+    select m.id, m.user_id,
+           coalesce(p.chef_alias, 'Chef') as chef_alias,
+           coalesce(p.profile_icon, 'chef-default') as profile_icon,
+           m.body, m.created_at
+    from public.kitchen_messages m
+    left join public.profiles p on p.id = m.user_id
+    where m.kitchen_id = v_kid and m.created_at < p_before
+    order by m.created_at desc
+    limit greatest(1, least(100, p_limit));
+end;
+$$;
+
+grant execute on function public.send_message(text) to authenticated;
+grant execute on function public.kitchen_messages_page(timestamptz, integer) to authenticated;
+
+-- ============================================================================
+-- 10. Notifications — in-app alerts keyed to a user
+-- ============================================================================
+create table if not exists public.notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  kind        text not null,   -- 'proposal' | 'vote_result' | 'join_request' | 'achievement' | 'chat'
+  title       text not null,
+  body        text,
+  deep_link   text,            -- e.g. '/kitchen' or '/academy'
+  is_read     boolean not null default false,
+  created_at  timestamptz default now()
+);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "notifs_select_own" on public.notifications;
+create policy "notifs_select_own" on public.notifications
+  for select using (user_id = auth.uid());
+
+drop policy if exists "notifs_update_own" on public.notifications;
+create policy "notifs_update_own" on public.notifications
+  for update using (user_id = auth.uid());
+
+-- Server-side trigger: notify all kitchen members when a new proposal is submitted.
+create or replace function public.notify_kitchen_proposal()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_alias text;
+  v_member record;
+begin
+  select coalesce(chef_alias, 'A chef') into v_alias
+  from public.profiles where id = new.proposer_id;
+
+  for v_member in
+    select user_id from public.kitchen_members where kitchen_id = new.kitchen_id
+      and user_id <> new.proposer_id
+  loop
+    insert into public.notifications (user_id, kind, title, body, deep_link)
+    values (
+      v_member.user_id,
+      'proposal',
+      'New recipe on the pass',
+      v_alias || ' proposed ' || new.side || ' ' || new.ticker || ' — read the seasoning and vote.',
+      '/kitchen'
+    );
+  end loop;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_proposal on public.kitchen_proposals;
+create trigger trg_notify_proposal
+  after insert on public.kitchen_proposals
+  for each row execute function public.notify_kitchen_proposal();
+
+-- ============================================================================
+-- 11. Gordon's Guide — lightweight diagnostic score + band per user
+-- ============================================================================
+create table if not exists public.gordon_guide (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  score        integer not null default 0 check (score between 0 and 100),
+  band         text not null default 'Burn Risk',
+  inputs       jsonb,   -- raw diagnostic answers
+  computed_at  timestamptz default now(),
+  unique (user_id)
+);
+
+alter table public.gordon_guide enable row level security;
+
+drop policy if exists "guide_select_own" on public.gordon_guide;
+create policy "guide_select_own" on public.gordon_guide
+  for select using (user_id = auth.uid());
+
+drop policy if exists "guide_upsert_own" on public.gordon_guide;
+create policy "guide_upsert_own" on public.gordon_guide
+  for insert with check (user_id = auth.uid());
+
+drop policy if exists "guide_update_own" on public.gordon_guide;
+create policy "guide_update_own" on public.gordon_guide
+  for update using (user_id = auth.uid());
+
+-- ============================================================================
 -- Done. Reminder: testers are numbered from 003. Gordon (001) and Sicilia (002) are
 -- reserved AI seats represented in the frontend, not stored here.
 -- ============================================================================

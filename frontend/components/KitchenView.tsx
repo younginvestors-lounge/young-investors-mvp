@@ -5,7 +5,7 @@ import { CircleCheck } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
-import { getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, type KitchenState } from "@/lib/profileStore";
+import { getActiveProposal, getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, submitProposal, type KitchenState, type ProposalData } from "@/lib/profileStore";
 import { calculateConsensus } from "@/lib/domain";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
 import type { AcademyClearance, ChefVote, KitchenMember, VoteTally } from "@/lib/types";
@@ -57,17 +57,34 @@ function membersToVoteTally(members: KitchenMember[]): VoteTally {
   };
 }
 
-const ACTIVE_PROPOSAL = {
-  id: "proposal-npn-live",
-  number: "014",
-  symbol: "NPN.JO",
+// Fallback demo proposal used in local mode (no Supabase) or when no DB proposal exists.
+const DEMO_PROPOSAL: ProposalData = {
+  id: "proposal-npn-demo",
+  kitchenId: "demo",
+  proposerId: "demo",
+  ticker: "NPN.JO",
   assetName: "Naspers Limited",
-  side: "BUY" as const,
+  side: "BUY",
   units: 50,
   thesis: "Buy 50 units of Naspers at market. Tencent discount thesis — trades below sum-of-parts. ~28% of book.",
-  reason: "Naspers trades at a 35% discount to its Tencent stake alone. The rest of the business — OLX, PayU, Takealot — is free at current prices. This is structural, not cyclical. The catalyst is the Prosus cross-holding unwind. We season this plate small and patient.",
-  gordonNote: "You want 28% of this Kitchen in one stock? I've seen this before. I'm not stopping you — but explain to me why this is smart. \"It looked good on Twitter\" is not a recipe.",
+  seasoning: "Naspers trades at a 35% discount to its Tencent stake alone. The rest of the business — OLX, PayU, Takealot — is free at current prices. This is structural, not cyclical. The catalyst is the Prosus cross-holding unwind. We season this plate small and patient.",
+  status: "voting",
+  createdAt: new Date().toISOString(),
 };
+
+function gordonNoteForProposal(p: ProposalData): string {
+  const upperTicker = p.ticker.toUpperCase();
+  if (upperTicker.includes("NPN") || upperTicker.includes("PRX")) {
+    return `You want this much of this Kitchen in one stock? I've seen this before. I'm not stopping you — but explain to me why this is smart. "It looked good on Twitter" is not a recipe.`;
+  }
+  if (upperTicker.includes("MTN")) {
+    return `MTN is a story of execution risk — regulatory, currency, operations across twelve markets. This is a thesis that needs patience and a clean exit plan, not just hope.`;
+  }
+  if (upperTicker.includes("SOL")) {
+    return `Sasol's thesis lives and dies on the oil price and the rand. Understand your exposure before the Kitchen votes. A bet on Sasol is a bet on macro you cannot control.`;
+  }
+  return `Read the seasoning carefully before you vote. A good reason makes the loss a lesson and the win a skill. A missing reason makes both random.`;
+}
 
 const JSE_INSTRUMENTS = [
   { symbol: "NPN.JO", name: "Naspers Limited" },
@@ -111,18 +128,36 @@ function ProposeScreen({
   const [draft, setDraft] = useState<ProposalDraft>(BLANK_DRAFT);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const reasonWords = draft.reason.trim().split(/\s+/).filter(Boolean).length;
   const reasonOk = reasonWords >= 10;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!draft.symbol) { setError("Choose an instrument."); return; }
     if (!draft.units || isNaN(Number(draft.units)) || Number(draft.units) < 1) { setError("Enter a valid unit amount."); return; }
     if (!reasonOk) { setError("Season your recipe — explain the reason in at least 10 words. Gordon needs to read it."); return; }
     if (!draft.riskAck) { setError("Acknowledge the risk note before submitting."); return; }
     setError("");
+    setSaving(true);
+    try {
+      // Write to DB (no-op in local demo mode — returns null)
+      await submitProposal({
+        ticker: draft.symbol,
+        assetName: draft.assetName,
+        side: draft.side,
+        units: Number(draft.units),
+        thesis: draft.reason,
+        seasoning: draft.reason,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit the recipe. Try again.");
+      setSaving(false);
+      return;
+    }
     setSubmitted(true);
+    setSaving(false);
     setTimeout(() => onSubmit(draft), 1200);
   }
 
@@ -311,16 +346,17 @@ function ProposeScreen({
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button
           type="submit"
+          disabled={saving}
           style={{
             minHeight: 48, padding: "0 24px",
-            background: "var(--yi-black)", color: "var(--yi-white)",
+            background: saving ? "var(--yi-muted)" : "var(--yi-black)", color: "var(--yi-white)",
             border: "none",
             fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem",
             textTransform: "uppercase", letterSpacing: "0.12em",
-            cursor: "pointer",
+            cursor: saving ? "not-allowed" : "pointer",
           }}
         >
-          Submit Recipe →
+          {saving ? "Submitting…" : "Submit Recipe →"}
         </button>
         <button
           type="button"
@@ -347,10 +383,12 @@ function ProposeScreen({
 
 /* ── Active proposal + vote screen ── */
 function VoteScreen({
+  proposal,
   members,
   onVote,
   onBack,
 }: {
+  proposal: ProposalData;
   members: KitchenMember[];
   onVote: (memberId: string, vote: ChefVote) => void;
   onBack: () => void;
@@ -372,28 +410,32 @@ function VoteScreen({
   const userMember = members.find((m) => m.isUser);
   const userHasVoted = userMember?.vote != null;
 
+  const proposalNumber = proposal.id === "proposal-npn-demo" ? "014" : proposal.id.slice(-6).toUpperCase();
+
   return (
     <div style={{ display: "grid", gap: 20 }}>
       {/* Proposal card */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "4px 7px" }}>
-            Recipe #{ACTIVE_PROPOSAL.number}
+            Recipe #{proposalNumber}
           </span>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "4px 7px" }}>
-            {ACTIVE_PROPOSAL.side}
+            {proposal.side}
           </span>
         </div>
 
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "1.55rem", lineHeight: 1, margin: "0 0 4px", color: "var(--yi-ink)" }}>
-          {ACTIVE_PROPOSAL.symbol}
+          {proposal.ticker}
         </p>
         <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.18rem", fontWeight: 600, margin: "0 0 10px", lineHeight: 1.18 }}>
-          {ACTIVE_PROPOSAL.assetName}
+          {proposal.assetName ?? proposal.ticker}
         </h3>
-        <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", color: "var(--yi-copy)", margin: "0 0 14px", lineHeight: 1.55 }}>
-          {ACTIVE_PROPOSAL.thesis}
-        </p>
+        {proposal.thesis && (
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", color: "var(--yi-copy)", margin: "0 0 14px", lineHeight: 1.55 }}>
+            {proposal.thesis}
+          </p>
+        )}
       </div>
 
       {/* THE SEASONING re-surface — last taste at the pass */}
@@ -402,7 +444,7 @@ function VoteScreen({
           The Seasoning · Proposer&apos;s Reason
         </p>
         <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", lineHeight: 1.6, margin: "0 0 14px", fontStyle: "italic" }}>
-          &ldquo;{ACTIVE_PROPOSAL.reason}&rdquo;
+          &ldquo;{proposal.seasoning}&rdquo;
         </p>
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
           <input
@@ -423,7 +465,7 @@ function VoteScreen({
           Gordon · Risk Note
         </p>
         <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: 0, lineHeight: 1.52 }}>
-          <GordonRiskNote text={ACTIVE_PROPOSAL.gordonNote} />
+          <GordonRiskNote text={gordonNoteForProposal(proposal)} />
         </p>
       </div>
 
@@ -517,7 +559,7 @@ function VoteScreen({
             Kitchen is ready to cook
           </p>
           <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", color: "var(--yi-copy)", lineHeight: 1.6, margin: 0 }}>
-            Too many cooks do not burn the pot — they make it better. The table has spoken. Recipe #{ACTIVE_PROPOSAL.number} is cleared.
+            Too many cooks do not burn the pot — they make it better. The table has spoken. Recipe for {proposal.ticker} is cleared.
           </p>
         </div>
       )}
@@ -550,6 +592,8 @@ export function KitchenView({ clearance }: KitchenViewProps) {
   const [kitchen, setKitchen] = useState<KitchenState | null>(null);
   const [loadingKitchen, setLoadingKitchen] = useState(true);
   const [members, setMembers] = useState<KitchenMember[]>([]);
+  // activeProposal: null = no open proposal, DEMO_PROPOSAL = local/fallback, or a real DB proposal
+  const [activeProposal, setActiveProposal] = useState<ProposalData | null>(null);
 
   // Load the chef's real Kitchen (Supabase RPC or local demo).
   useEffect(() => {
@@ -580,15 +624,25 @@ export function KitchenView({ clearance }: KitchenViewProps) {
       }))
     );
     setModel(kitchen.governance === "hedge" ? "high-heat" : "slow-cook");
+    // Once kitchen is known, fetch the active proposal from the DB.
+    getActiveProposal().then((p) => {
+      setActiveProposal(p ?? DEMO_PROPOSAL);
+    }).catch(() => {
+      setActiveProposal(DEMO_PROPOSAL);
+    });
   }, [kitchen]);
 
-  // Real multi-user vote sync: pull co-chefs' actual votes for the active recipe
-  // (Supabase). Your own cast stays authoritative locally; practice chefs keep theirs.
+  // Poll every 5 s: refresh votes AND the active proposal (so user B sees user A's new recipe).
   useEffect(() => {
     if (!kitchen || kitchen.members.length < MIN_KITCHEN_CHEFS) return;
     let cancelled = false;
+
     async function sync() {
-      const votes = await getKitchenVotes(ACTIVE_PROPOSAL.symbol);
+      // Refresh the proposal first so we always vote against the correct ticker.
+      const proposal = await getActiveProposal().catch(() => null) ?? DEMO_PROPOSAL;
+      if (!cancelled) setActiveProposal(proposal);
+
+      const votes = await getKitchenVotes(proposal.ticker);
       if (cancelled || Object.keys(votes).length === 0) return;
       setMembers((prev) =>
         prev.map((m) => {
@@ -598,6 +652,7 @@ export function KitchenView({ clearance }: KitchenViewProps) {
         })
       );
     }
+
     sync();
     const t = setInterval(sync, 5000);
     return () => { cancelled = true; clearInterval(t); };
@@ -608,12 +663,12 @@ export function KitchenView({ clearance }: KitchenViewProps) {
     const next = member && member.vote === vote ? null : vote;
     setMembers((prev) => prev.map((m) => (m.id !== memberId ? m : { ...m, vote: next })));
     // Persist only the user's own cast (not an un-vote). Best-effort, never blocks.
-    if (member?.isUser && next) {
+    if (member?.isUser && next && activeProposal) {
       void recordKitchenVote({
         kitchenName: kitchen?.name ?? "My Kitchen",
-        proposalTicker: ACTIVE_PROPOSAL.symbol,
+        proposalTicker: activeProposal.ticker,
         vote: next,
-        seasoningReason: ACTIVE_PROPOSAL.reason,
+        seasoningReason: activeProposal.seasoning,
       });
     }
   }
@@ -694,6 +749,8 @@ export function KitchenView({ clearance }: KitchenViewProps) {
                 reason: draft.reason,
               });
             }
+            // After submit, refresh the active proposal from DB so all members see it.
+            getActiveProposal().then((p) => { if (p) setActiveProposal(p); }).catch(() => {});
             setTimeout(() => setPhase("browse"), 2000);
           }}
         />
@@ -702,9 +759,10 @@ export function KitchenView({ clearance }: KitchenViewProps) {
   }
 
   if (phase === "vote") {
+    const proposal = activeProposal ?? DEMO_PROPOSAL;
     return (
       <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
-        <VoteScreen members={members} onVote={castVote} onBack={() => setPhase("browse")} />
+        <VoteScreen proposal={proposal} members={members} onVote={castVote} onBack={() => setPhase("browse")} />
       </section>
     );
   }
@@ -721,6 +779,7 @@ export function KitchenView({ clearance }: KitchenViewProps) {
     passes: consensus.approved,
   };
   const passes = result.passes;
+  const floorProposal = activeProposal ?? DEMO_PROPOSAL;
 
   return (
     <section style={{ display: "grid", gap: 22 }} aria-labelledby="kitchen-heading">
@@ -762,14 +821,14 @@ export function KitchenView({ clearance }: KitchenViewProps) {
       {/* Active recipe summary */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "4px 7px" }}>Recipe #{ACTIVE_PROPOSAL.number}</span>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "4px 7px" }}>Active Recipe</span>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: result.quorumMet && passes ? "#167a3a" : "#b46918", border: `1px solid ${result.quorumMet && passes ? "#167a3a" : "#b46918"}`, padding: "4px 7px" }}>
             {result.quorumMet && passes ? "Ready to cook" : "Voting open"}
           </span>
         </div>
-        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "1.55rem", lineHeight: 1, margin: "0 0 4px", color: "var(--yi-ink)" }}>{ACTIVE_PROPOSAL.symbol}</p>
-        <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.18rem", fontWeight: 600, margin: "0 0 8px", lineHeight: 1.18 }}>{ACTIVE_PROPOSAL.assetName}</h3>
-        <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: "0 0 16px", lineHeight: 1.55 }}>{ACTIVE_PROPOSAL.thesis}</p>
+        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "1.55rem", lineHeight: 1, margin: "0 0 4px", color: "var(--yi-ink)" }}>{floorProposal.ticker}</p>
+        <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.18rem", fontWeight: 600, margin: "0 0 8px", lineHeight: 1.18 }}>{floorProposal.assetName}</h3>
+        <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: "0 0 16px", lineHeight: 1.55 }}>{floorProposal.thesis}</p>
 
         {/* Mini vote bar */}
         <div style={{ position: "relative", height: 20, border: "1px solid var(--yi-frame)", background: "var(--yi-white)", marginBottom: 8 }}>
