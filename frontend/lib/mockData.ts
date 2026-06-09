@@ -91,6 +91,24 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
       requiredForKitchen: false,
       estimatedMinutes: 26,
     },
+    {
+      id: "wealth-001",
+      title: "Wealth-Creative Choice",
+      description: "Four thinkers. One question: how does wealth actually get made? Abstract, iconic, and enactive — see it, map it, apply it.",
+      passed: false,
+      locked: false,
+      requiredForKitchen: false,
+      estimatedMinutes: 22,
+    },
+    {
+      id: "wave-001",
+      title: "Wave Literacy",
+      description: "Markets move in five recognisable waves. Chefs who can name the wave they are riding make better, calmer, fewer decisions.",
+      passed: false,
+      locked: false,
+      requiredForKitchen: false,
+      estimatedMinutes: 19,
+    },
   ],
   tradeProposals: [
     {

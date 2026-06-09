@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useAppSettings } from "@/lib/appSettings";
 import { getProfileIcon, PROFILE_ICONS } from "@/lib/profileIcons";
 import { FIRST_TESTER_NUMBER, RESERVED_CHEFS } from "@/lib/profileStore";
+import { GordonGuideSheet } from "@/components/GordonGuideSheet";
 
 const CREDENTIAL_LABEL: Record<string, string> = {
   not_started: "Not started",
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const { theme, toggleTheme, pattern, togglePattern, musicOn, musicAvailable, toggleMusic } = useAppSettings();
 
   useEffect(() => {
@@ -254,6 +256,21 @@ export default function ProfilePage() {
           </select>
         </div>
 
+        {/* Gordon's Guide diagnostic */}
+        <div style={{ margin: "24px 0 0", border: "1px solid var(--yi-frame)", padding: "16px" }}>
+          <p style={{ ...mono, fontSize: "0.56rem", color: "var(--yi-muted)", margin: "0 0 6px" }}>Gordon&apos;s Guide · Baseline Diagnostic</p>
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: "0 0 14px", lineHeight: 1.55 }}>
+            A 10-question financial health check. Gordon reads your starting point and names your band — from Burn Risk to Master Chef Mode.
+          </p>
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            style={{ ...btnGhost, fontSize: "0.62rem" }}
+          >
+            Take Gordon&apos;s Guide →
+          </button>
+        </div>
+
         {/* Reserved seats note — the brand metaphor */}
         <p style={{ ...mono, fontSize: "0.5rem", color: "var(--yi-muted)", margin: "22px 0 0", lineHeight: 1.7 }}>
           Chef No. {String(RESERVED_CHEFS.gordon.number).padStart(3, "0")} is {RESERVED_CHEFS.gordon.name}.
@@ -265,6 +282,8 @@ export default function ProfilePage() {
           Educational simulation · No live execution · Not financial advice · Mock market data
         </p>
       </div>
+
+      {guideOpen && <GordonGuideSheet onClose={() => setGuideOpen(false)} />}
     </main>
   );
 }

@@ -19,6 +19,8 @@ const LESSON_OUTCOMES: Record<string, string[]> = {
   "mutual-001": ["Understand the slow-cook, long-game Kitchen", "See how patience and compounding stack up"],
   "hedge-001": ["Understand the high-heat Kitchen and its hard exits", "Respect why strict rules keep you alive"],
   "ethics-001": ["Know the line: fair play vs an insider edge", "Build clean habits before real money shows up"],
+  "wealth-001": ["See wealth creation through four different thinker lenses", "Choose the mindset — surplus, compound, asymmetric, or cyclical — that matches your Kitchen's style"],
+  "wave-001": ["Name the five market waves and where you are in each", "Choose the right intervention for each wave stage — hold, add, exit, or wait"],
 };
 
 interface LessonQuiz {
@@ -229,6 +231,52 @@ const LESSONS: Record<string, LessonContent> = {
     },
     passLine: "Market Conduct and Ethics complete. Clean kitchen, clean conscience. The Lounge respects it.",
   },
+  "wealth-001": {
+    moduleId: "wealth-001",
+    concept: "Four thinkers, one question: how does wealth get made?",
+    body: [
+      "Adam Smith showed that wealth is created when people specialise and trade surpluses. The more efficiently you produce something others want, the more capital accumulates — then gets reinvested. Surplus is the raw material of wealth.",
+      "Warren Buffett's lens: owning productive assets — businesses, property, intellectual capital — that compound returns through time. Not labour income, but ownership income. The Kitchen's Vault grows the same way: own more than you spend, let the return rate and time do the work.",
+      "Nassim Taleb adds the asymmetry lens: wealth survives not by maximising return but by limiting ruin. An asymmetric recipe risks a small loss for a large gain. This is why Kitchen position sizing matters — you stay in the game long enough for compounding to work.",
+    ],
+    cookingBridge: "Smith gives you the surplus to invest. Buffett tells you to own, not just work. Taleb says survive long enough to win. Your job as a chef is to combine all three: produce a surplus, own productive assets with it, and size your positions so no single dish burns the whole kitchen down.",
+    quiz: {
+      question: "A chef earns R5,000 a month, spends R4,000, and asks: what should I do with the R1,000? Which thinker would tell them to buy a productive asset that compounds?",
+      options: [
+        "Adam Smith — specialise harder to earn more",
+        "Warren Buffett — buy an ownership stake in a productive business",
+        "Nassim Taleb — keep cash for optionality and wait for an asymmetric bet",
+        "All three — they each say the same thing",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Buffett's lens. The R1,000 surplus (Smith's gift) should buy ownership — a productive asset that earns while you sleep. Compounding starts small and builds exponentially. The earlier you own, the longer the runway. Taleb then tells you to size each bet so one bad pick doesn't end the game.",
+      wrongAnswer: "Earning more is Smith's lesson, not what to do with the surplus. Buffett's lens specifically answers 'what do I do with savings?' — buy productive ownership. The three thinkers are complementary, not identical. Surplus → own → compound → survive asymmetrically. That's the full chain.",
+    },
+    passLine: "Wealth-Creative Choice complete. You have four thinkers in your kitchen. Surplus, compound, asymmetric, survive.",
+  },
+  "wave-001": {
+    moduleId: "wave-001",
+    concept: "Five market waves every chef must be able to name",
+    body: [
+      "Markets don't move randomly — they move in five recurring phases. Wave 1: Accumulation. Smart capital enters quietly while the crowd is still scared. Prices stabilise. Volume is low. Most retail investors are not watching yet.",
+      "Wave 2: Mark-up. Trend is confirmed. Volume rises. Early movers show profit. The momentum attracts attention. Wave 3 is Distribution: early buyers sell quietly into rising retail demand. Prices are high. Headlines are positive. This is where uninformed capital arrives.",
+      "Wave 4: Mark-down. Selling overwhelms buying. The crowd realises too late. Wave 5 is Re-accumulation — the reset. Scared sellers offer assets below value to patient buyers. The cycle restarts from Wave 1.",
+    ],
+    cookingBridge: "Accumulation is prep work — quiet, invisible. Mark-up is service — the Kitchen is cooking. Distribution is the end of service — the head chef is plating to go. Mark-down is the mess after close. Re-accumulation is the next mise en place. Kitchens that can read the service cycle don't panic when the rush ends.",
+    quiz: {
+      question: "A chef sees positive headlines everywhere, prices near all-time highs, and high retail trading volume. Which wave are they most likely in?",
+      options: [
+        "Wave 1 — Accumulation: smart money is entering",
+        "Wave 2 — Mark-up: trend is just beginning",
+        "Wave 3 — Distribution: early buyers are selling into the excitement",
+        "Wave 5 — Re-accumulation: the reset is underway",
+      ],
+      correctIndex: 2,
+      gordonsAnswer: "Distribution. Positive headlines and high retail volume at all-time highs are the exact conditions when early buyers are quietly exiting. The crowd's excitement is the exit liquidity for smart money. This is not the entry — it's the warning sign. You don't cook in a kitchen that's already being cleaned.",
+      wrongAnswer: "Accumulation is quiet, low-volume, and happens near bottoms. Mark-up is early trend confirmation. Distribution happens at high prices with strong sentiment — exactly what the question describes. Learn to read which service the kitchen is in before you put anything on the pass.",
+    },
+    passLine: "Wave Literacy complete. Five waves, named. You can read the kitchen service cycle now.",
+  },
 };
 
 const PRACTICE_BEATS: Record<string, PracticeBeat> = {
@@ -271,6 +319,16 @@ const PRACTICE_BEATS: Record<string, PracticeBeat> = {
     setup: "A chef brings private company information.",
     task: "Choose what the Kitchen must do with that recipe.",
     check: "Clean kitchen, clean conscience.",
+  },
+  "wealth-001": {
+    setup: "A chef earns a steady salary and saves R1,500 a month for six months.",
+    task: "Apply Smith, Buffett, and Taleb in sequence: decide where the surplus goes, what to own, and how to size it safely.",
+    check: "Surplus → ownership → asymmetric bet sizing. That's the wealth-creative chain.",
+  },
+  "wave-001": {
+    setup: "A Kitchen is watching NPN.JO after a sharp pullback. Positive analyst sentiment is rising but retail volume is still thin.",
+    task: "Identify which wave NPN.JO is likely entering and name the intervention: hold, add, exit, or wait.",
+    check: "Thin volume + post-pullback + early sentiment = re-accumulation or early mark-up. The intervention is watch or add small. Not chase.",
   },
 };
 
