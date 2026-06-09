@@ -1,81 +1,106 @@
-# Deploy — Vercel (frontend) + Supabase (data)
+# Deploy - Vercel Frontend + Supabase Data
 
-Tester architecture for `younginvestors.co.za`: the Next.js frontend on **Vercel**,
-data/auth/storage on **Supabase**. The Django backend stays in the repo for future
-production and is **not deployed now**.
+Tester architecture for `younginvestors.co.za`: Next.js on Vercel, Supabase for
+Auth/Postgres/Storage. Django remains preserved in the repo for a future backend
+phase and is not deployed for this tester build.
 
-> `MOCK_MVP_PAPER_TRADING_ONLY` — no real money, brokers, banks, FICA, or payments.
+`MOCK_MVP_PAPER_TRADING_ONLY` - no real money, brokers, banks, FICA, payments,
+custody, live order routing, or investment advice.
 
-Do Supabase first → see [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md).
+## 1. Prepare Supabase
 
----
+Complete [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) first:
 
-## 1. Push to GitHub
-Commit the repo and push (no secrets — `.env.local` is gitignored).
+- Run `supabase/schema.sql`.
+- Keep RLS enabled.
+- Configure Email Auth and Google OAuth.
+- Add `/login`, `/onboarding`, and `/reset-password` redirect URLs.
 
-## 2. Import into Vercel
-1. <https://vercel.com> → **Add New… → Project** → import the GitHub repo.
-2. **Root Directory: `frontend`** (important — the Next app lives there).
-3. Framework preset: **Next.js** (auto-detected). Leave build/output defaults.
+## 2. Import Frontend Into Vercel
 
-## 3. Environment variables (Vercel → Settings → Environment Variables)
-Set for **Production** (and Preview if you want preview deploys to work):
+1. Push the repo to GitHub with no secrets committed.
+2. In Vercel, import the GitHub repo.
+3. Set **Root Directory** to `frontend`.
+4. Use the Next.js framework preset.
+
+## 3. Environment Variables
+
+Set these in Vercel for Production and any Preview environment you use:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon public key>
+NEXT_PUBLIC_SITE_URL=https://younginvestors.co.za
 ```
-NEXT_PUBLIC_SUPABASE_URL        = https://<your-project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY   = <your anon public key>
-NEXT_PUBLIC_SITE_URL            = https://younginvestors.co.za
-```
-- **anon key only** — never the `service_role` key.
-- Do **not** set `NEXT_PUBLIC_API_BASE_URL` (Django is not deployed for the test).
 
-## 4. Add the domain (Vercel → Settings → Domains)
-Add both:
+Use the anon public key only. Never set a Supabase `service_role` key in Vercel
+for this frontend.
+
+Do not set `NEXT_PUBLIC_API_BASE_URL` for this tester stack.
+
+## 4. Domain
+
+Add both Vercel domains:
+
 - `younginvestors.co.za`
 - `www.younginvestors.co.za`
 
-Vercel will show the exact DNS targets to use in the next step.
+Use the DNS targets Vercel displays. Do not create `api.younginvestors.co.za`
+yet; reserve it for the future Django/Azure backend.
 
-## 5. Configure DNS at RegisterDomain
-Using the values Vercel shows:
-- **A record** — host `@` → Vercel's apex IP (e.g. `76.76.21.21`, use what Vercel displays).
-- **CNAME** — host `www` → Vercel's target (e.g. `cname.vercel-dns.com`).
+## 5. Supabase Auth URLs
 
-> Do **not** create `api.younginvestors.co.za` yet — that subdomain is reserved
-> for the future Azure Django backend.
+In Supabase **Authentication -> URL Configuration**:
 
-Wait for DNS to propagate and for Vercel to issue SSL (usually minutes).
-
-## 6. Point Supabase auth at the live domain
-In Supabase **Authentication → URL Configuration**, ensure the production URLs are
-present (see [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) step 6):
 - Site URL: `https://younginvestors.co.za`
-- Redirect URLs include both apex + `www`.
+- Redirect URLs include:
+  - `https://younginvestors.co.za/login`
+  - `https://younginvestors.co.za/onboarding`
+  - `https://younginvestors.co.za/reset-password`
+  - `https://www.younginvestors.co.za/login`
+  - `https://www.younginvestors.co.za/onboarding`
+  - `https://www.younginvestors.co.za/reset-password`
 
-## 7. Redeploy & test
-1. Trigger a redeploy in Vercel (or push a commit).
-2. Visit `https://younginvestors.co.za`:
-   - `/` → `/login` splash.
-   - `/onboarding` → creates an account → `/kitchen`.
-   - `/signin` works for a returning chef.
-   - `/profile` shows scores; photo upload works.
-   - Academy **Submit Practice Attempt** persists; Kitchen vote persists.
+## 6. Production Smoke Test
 
-## 8. Confirm no secrets are committed
-- `.env.local` is gitignored (root `.gitignore` already covers `frontend/.env*.local`).
-- Only `NEXT_PUBLIC_*` (anon) values are in the client. No `service_role` anywhere.
+After redeploy:
 
----
+1. Run `npm.cmd run verify:supabase` locally or in CI with the same public
+   Supabase env values used by Vercel.
+2. Visit `/`; it should redirect to `/login`.
+3. On `/login`, verify the two lanes:
+   - New with us: Google signup and email signup.
+   - Already cooking with us: Google sign-in and email sign-in.
+4. Create a new email account.
+5. If email confirmation is ON, confirm by email and return to `/onboarding`.
+6. Complete onboarding and confirm that the app routes to `/academy`.
+7. Sign out, then sign in again from `/login`; completed users should enter the app.
+8. Open `/reset-password`; request a reset link and confirm the copy is generic.
+9. In Supabase, confirm the profile row has `display_name`, `chef_alias`, `age`,
+   `intent`, `profile_icon`, `mode`, and `onboarding_completed=true`.
+10. Check `/profile` image upload only after the `profile-pictures` bucket is
+   configured and RLS/storage policies are present.
 
-## Notes
-- **Capacity:** no signup cap — comfortably supports the 30–101 tester target.
-  Chef numbers are assigned from **2** (Gordon = 0, Sicilia = 1).
-- **Graceful fallback:** if the Supabase env vars are missing, the app runs in a
-  clearly labelled **Local demo** (localStorage) mode instead of breaking.
+`verify:supabase` is read-only and does not create users, send auth emails,
+print secrets, or expose tester rows.
 
-## Future architecture (after the tester proof)
+## 7. Security Checks
+
+- `.env.local` remains gitignored.
+- Browser code uses only `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- RLS is enabled on tester-owned tables.
+- Auth, reset, and verification links are never logged.
+- No live finance, broker, bank, wallet, payment, or identity-verification flow
+  is wired.
+
+## Future Backend Phase
+
+Future architecture:
+
+```text
+Vercel frontend -> api.younginvestors.co.za -> Azure Django + Azure PostgreSQL
 ```
-Vercel frontend  →  api.younginvestors.co.za  →  Azure Django + Azure PostgreSQL
-```
-At that point: deploy Django to Azure App Service, set `NEXT_PUBLIC_API_BASE_URL`
-in Vercel, create the `api` subdomain, and migrate governance server-side. None of
-that is done now — this file covers the Supabase tester stack only.
+
+That phase needs a separate architecture/security review before any live finance,
+broker, bank, payment, FICA, or identity workflow is introduced.

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "verify:supabase": "node scripts/verify-supabase-auth.mjs",
+    "verify:auth-local": "node scripts/verify-local-auth.mjs",
+    "verify:auth-live": "node scripts/verify-live-auth.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0",

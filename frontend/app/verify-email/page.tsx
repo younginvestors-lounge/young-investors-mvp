@@ -17,7 +17,7 @@ function VerifyEmailInner() {
   const params = useSearchParams();
   const token = params.get("token");
   const supaMode = isSupabaseConfigured();
-  // Supabase confirmation links redirect to /kitchen and are handled by the auth
+  // Supabase confirmation links redirect to /onboarding and are handled by the auth
   // listener, so the token-verify path is Django-only. In Supabase/local mode this
   // page is only a calm "check your email" notice.
   const usesToken = !!token && !supaMode;
@@ -36,7 +36,7 @@ function VerifyEmailInner() {
         const res = await apiClient.verifyEmail(token as string);
         setMessage(res.message);
         setPhase("success");
-        setTimeout(() => router.replace("/signin"), 1800);
+        setTimeout(() => router.replace("/login"), 1800);
       } catch (err) {
         setMessage(err instanceof ApiError ? err.message : "Verification failed.");
         setPhase("error");
@@ -55,7 +55,7 @@ function VerifyEmailInner() {
         type: "signup",
         email: cleanEmail,
         options: {
-          emailRedirectTo: SITE_URL ? `${SITE_URL}/kitchen` : undefined,
+          emailRedirectTo: SITE_URL ? `${SITE_URL}/onboarding` : undefined,
         },
       });
       if (error) throw error;
@@ -89,7 +89,7 @@ function VerifyEmailInner() {
           <>
             <h1 style={headingStyle}>You&apos;re in.</h1>
             <p style={bodyStyle}>{message} Taking you to sign in…</p>
-            <Link href="/signin" style={buttonStyle}>Sign in now →</Link>
+            <Link href="/login" style={buttonStyle}>Sign in now</Link>
           </>
         )}
 
@@ -99,8 +99,8 @@ function VerifyEmailInner() {
             <p style={{ ...bodyStyle, color: "#b42318" }}>{message}</p>
             <p style={bodyStyle}>Verification links expire after 24 hours and can only be used once. Sign up again or sign in if you&apos;ve already verified.</p>
             <div style={{ display: "flex", gap: 14, marginTop: 24, flexWrap: "wrap" }}>
-              <Link href="/signin" style={buttonStyle}>Sign in</Link>
-              <Link href="/onboarding" style={{ ...buttonStyle, background: "#fff", color: "#111" }}>Start over</Link>
+              <Link href="/login" style={buttonStyle}>Sign in</Link>
+              <Link href="/login" style={{ ...buttonStyle, background: "#fff", color: "#111" }}>Start over</Link>
             </div>
           </>
         )}
@@ -109,7 +109,7 @@ function VerifyEmailInner() {
           <>
             <h1 style={headingStyle}>Check your email.</h1>
             <p style={bodyStyle}>
-              We sent a confirmation link to your inbox. Click it to open the Kitchen.
+              We sent a confirmation link to your inbox. Click it to finish your Chef profile.
             </p>
             {supaMode && (
               <form onSubmit={handleResend} noValidate style={{ margin: "20px 0 4px", maxWidth: 420 }}>
@@ -138,7 +138,7 @@ function VerifyEmailInner() {
                 Running locally? The link is saved in the Django local email outbox.
               </p>
             )}
-            <Link href="/signin" style={buttonStyle}>Back to sign in</Link>
+            <Link href="/login" style={buttonStyle}>Back to sign in</Link>
           </>
         )}
       </div>

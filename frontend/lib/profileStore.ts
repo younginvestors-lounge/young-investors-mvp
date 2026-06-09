@@ -8,8 +8,8 @@
  * Everything is mapped into a single `ChefProfile` shape (a superset of the Django
  * `ChefUser`) so the existing UI — TopBar, AppShell, etc. — needs no rewrites.
  *
- * Chef numbering: seats 0 and 1 are reserved for Gordon and Sicilia (the AI
- * characters). Real testers are numbered from 2 upward, allocated race-safely by a
+ * Chef numbering: seats 001 and 002 are reserved for Gordon and Sicilia (the AI
+ * characters). Real testers are numbered from 003 upward, allocated race-safely by a
  * Postgres sequence (see supabase/schema.sql). Capacity target is 101 testers — no
  * signup cap is enforced here, so well over 30 testers can play.
  *
@@ -21,15 +21,15 @@ import { rememberGordonChefReason } from "./gordonKnowledgeBank";
 
 /* ── Reserved seats + capacity ── */
 
-/** The two AI characters occupy Chef No. 0 and No. 1. Testers start at 2. */
+/** The two AI characters occupy Chef No. 001 and No. 002. Testers start at 003. */
 export const RESERVED_CHEFS = {
-  gordon: { number: 0, name: "Gordon" },
-  sicilia: { number: 1, name: "Sicilia" },
+  gordon: { number: 1, name: "Gordon" },
+  sicilia: { number: 2, name: "Sicilia" },
 } as const;
 
-export const FIRST_TESTER_NUMBER = 2;
-/** Design capacity for the public test (Gordon 0, Sicilia 1, testers 2–101). */
-export const MAX_TESTER_NUMBER = 101;
+export const FIRST_TESTER_NUMBER = 3;
+/** Design capacity for the public test (Gordon 001, Sicilia 002, testers 003-102). */
+export const MAX_TESTER_NUMBER = 102;
 
 export const ATTEMPT_LIMIT = 3;
 export const PASS_THRESHOLD = 60;
@@ -41,6 +41,7 @@ export interface ChefProfile {
   id: string;
   username: string;
   email: string;
+  display_name: string;
   chef_alias: string;
   age: number | null;
   intent: string;
@@ -51,6 +52,7 @@ export interface ChefProfile {
   profile_picture: string | null;
   // Extended tester scores
   mode: string;
+  onboarding_completed: boolean;
   rank: string;
   academy_score: number;
   jse_market_score: number;
@@ -65,10 +67,12 @@ export interface ChefProfile {
 
 export interface ProfileSeed {
   email: string;
+  display_name?: string;
   chef_alias: string;
   age: number | null;
   intent: string;
   profile_icon: string;
+  onboarding_completed?: boolean;
 }
 
 export interface AttemptResult {
@@ -96,6 +100,8 @@ export interface PredictionInput {
 /** Raw shape of a `profiles` row (loosely typed; columns may be null pre-default). */
 interface ProfileRow {
   id: string;
+  email: string | null;
+  display_name: string | null;
   chef_alias: string | null;
   age: number | null;
   intent: string | null;
@@ -113,6 +119,7 @@ interface ProfileRow {
   credential_status: string | null;
   attempts_used: number | null;
   current_kitchen: string | null;
+  onboarding_completed: boolean | null;
 }
 
 /** Thrown when a tester tries a 4th Academy attempt. */
@@ -149,6 +156,14 @@ function clampScore(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+function modeForAge(age: number | null): string {
+  return age != null && age < 18 ? "training_kitchen" : "full_simulation";
+}
+
+export function profileIsOnboarded(profile: ChefProfile | null | undefined): boolean {
+  return profile?.onboarding_completed === true;
+}
+
 function validateImage(file: File): void {
   if (!file.type.startsWith("image/")) {
     throw new Error("That file isn't an image. Use a JPG, PNG, or WEBP.");
@@ -172,11 +187,42 @@ function fileToDataUrl(file: File): Promise<string> {
 const LOCAL_KEY = "yi_local_profile";
 const LOCAL_SESSION_KEY = "yi_local_session_active";
 
+function normalizeLocalProfile(profile: Partial<ChefProfile>): ChefProfile {
+  const age = profile.age ?? null;
+  return {
+    ...(profile as ChefProfile),
+    id: profile.id ?? `local-${Date.now()}`,
+    username: profile.username ?? profile.email ?? "",
+    email: profile.email ?? "",
+    display_name: profile.display_name ?? profile.chef_alias ?? "Chef",
+    chef_alias: profile.chef_alias ?? "Chef",
+    age,
+    intent: profile.intent ?? "",
+    email_verified: profile.email_verified ?? true,
+    is_training_mode: age != null && age < 18,
+    member_number: profile.member_number ?? FIRST_TESTER_NUMBER,
+    profile_icon: profile.profile_icon ?? "chef-default",
+    profile_picture: profile.profile_picture ?? null,
+    mode: profile.mode ?? modeForAge(age),
+    onboarding_completed: profile.onboarding_completed === true,
+    rank: profile.rank ?? "Commis",
+    academy_score: profile.academy_score ?? 0,
+    jse_market_score: profile.jse_market_score ?? 0,
+    risk_return_score: profile.risk_return_score ?? 0,
+    kitchen_score: profile.kitchen_score ?? 0,
+    personal_prediction_score: profile.personal_prediction_score ?? 0,
+    kitchen_prediction_score: profile.kitchen_prediction_score ?? 0,
+    credential_status: profile.credential_status ?? "not_started",
+    attempts_used: profile.attempts_used ?? 0,
+    current_kitchen: profile.current_kitchen ?? "Rhodes Alpha Kitchen",
+  };
+}
+
 export function readLocalProfile(): ChefProfile | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
-    return raw ? (JSON.parse(raw) as ChefProfile) : null;
+    return raw ? normalizeLocalProfile(JSON.parse(raw) as Partial<ChefProfile>) : null;
   } catch {
     return null;
   }
@@ -232,10 +278,12 @@ export function clearLocalProfile(): void {
 /** Build a fresh local-demo profile. First (and only) local tester takes seat #2. */
 export function makeLocalProfile(seed: ProfileSeed): ChefProfile {
   const age = seed.age;
+  const displayName = seed.display_name?.trim() || seed.chef_alias || "Chef";
   return {
     id: `local-${Date.now()}`,
     username: seed.email,
     email: seed.email,
+    display_name: displayName,
     chef_alias: seed.chef_alias || "Chef",
     age,
     intent: seed.intent || "",
@@ -244,7 +292,8 @@ export function makeLocalProfile(seed: ProfileSeed): ChefProfile {
     member_number: FIRST_TESTER_NUMBER,
     profile_icon: seed.profile_icon || "chef-default",
     profile_picture: null,
-    mode: age != null && age < 18 ? "training" : "full_simulation",
+    mode: modeForAge(age),
+    onboarding_completed: seed.onboarding_completed === true,
     rank: "Commis",
     academy_score: 0,
     jse_market_score: 0,
@@ -268,10 +317,19 @@ interface AuthIdentity {
 
 function rowToProfile(auth: AuthIdentity, row: ProfileRow): ChefProfile {
   const age = row.age ?? null;
+  const meta = auth.user_metadata ?? {};
+  const displayName =
+    row.display_name ??
+    (meta.display_name as string | undefined) ??
+    (meta.full_name as string | undefined) ??
+    (meta.name as string | undefined) ??
+    row.chef_alias ??
+    "Chef";
   return {
     id: auth.id,
-    username: auth.email ?? "",
-    email: auth.email ?? "",
+    username: row.email ?? auth.email ?? "",
+    email: row.email ?? auth.email ?? "",
+    display_name: displayName,
     chef_alias: row.chef_alias ?? "Chef",
     age,
     intent: row.intent ?? "",
@@ -280,7 +338,8 @@ function rowToProfile(auth: AuthIdentity, row: ProfileRow): ChefProfile {
     member_number: row.member_number ?? null,
     profile_icon: row.profile_icon ?? "chef-default",
     profile_picture: row.profile_picture_url ?? null,
-    mode: row.mode ?? "full_simulation",
+    mode: row.mode ?? modeForAge(age),
+    onboarding_completed: row.onboarding_completed === true,
     rank: row.rank ?? "Commis",
     academy_score: row.academy_score ?? 0,
     jse_market_score: row.jse_market_score ?? 0,
@@ -322,8 +381,17 @@ export async function sbGetOrCreateProfile(seed?: Partial<ProfileSeed>): Promise
 
   const meta = auth.user_metadata ?? {};
   const age = (seed?.age ?? (meta.age as number | undefined)) ?? null;
+  const displayName =
+    seed?.display_name ??
+    (meta.display_name as string) ??
+    (meta.full_name as string) ??
+    (meta.name as string) ??
+    (meta.chef_alias as string) ??
+    "Chef";
   const insert = {
     id: auth.id,
+    email: auth.email ?? seed?.email ?? null,
+    display_name: displayName,
     chef_alias:
       seed?.chef_alias ??
       (meta.chef_alias as string) ??
@@ -333,7 +401,8 @@ export async function sbGetOrCreateProfile(seed?: Partial<ProfileSeed>): Promise
     age,
     intent: seed?.intent ?? (meta.intent as string) ?? "",
     profile_icon: seed?.profile_icon ?? (meta.profile_icon as string) ?? "chef-default",
-    mode: age != null && age < 18 ? "training" : "full_simulation",
+    mode: modeForAge(age),
+    onboarding_completed: seed?.onboarding_completed === true,
   };
   const { data: created, error: insErr } = await sb
     .from("profiles")
@@ -345,6 +414,7 @@ export async function sbGetOrCreateProfile(seed?: Partial<ProfileSeed>): Promise
 }
 
 type WritableFields = Partial<{
+  display_name: string;
   chef_alias: string;
   age: number | null;
   intent: string;
@@ -352,6 +422,7 @@ type WritableFields = Partial<{
   profile_picture_url: string;
   current_kitchen: string;
   mode: string;
+  onboarding_completed: boolean;
 }>;
 
 async function sbUpdateFields(fields: WritableFields): Promise<ChefProfile> {
@@ -388,7 +459,15 @@ async function sbUploadAvatar(file: File): Promise<string> {
 /** Persist edited profile fields (+ optional new avatar). Branches on backend. */
 export async function saveProfile(
   base: ChefProfile,
-  fields: { chef_alias?: string; age?: number | null; intent?: string; profile_icon?: string },
+  fields: {
+    display_name?: string;
+    chef_alias?: string;
+    age?: number | null;
+    intent?: string;
+    profile_icon?: string;
+    mode?: string;
+    onboarding_completed?: boolean;
+  },
   picture?: File | null
 ): Promise<ChefProfile> {
   let pictureUrl: string | undefined;
@@ -398,20 +477,30 @@ export async function saveProfile(
   }
 
   if (isSupabaseConfigured()) {
-    return sbUpdateFields({
+    const nextFields: WritableFields = {
       ...fields,
+      ...("age" in fields && fields.age !== undefined && fields.mode === undefined ? { mode: modeForAge(fields.age) } : {}),
+    };
+    return sbUpdateFields({
+      ...nextFields,
       ...(pictureUrl ? { profile_picture_url: pictureUrl } : {}),
     });
   }
 
   // Local mode
+  const nextAge = "age" in fields && fields.age !== undefined ? fields.age : base.age;
+  const nextMode = fields.mode ?? ("age" in fields && fields.age !== undefined ? modeForAge(fields.age) : base.mode);
   const updated: ChefProfile = {
     ...base,
+    ...("display_name" in fields && fields.display_name !== undefined ? { display_name: fields.display_name } : {}),
     ...("chef_alias" in fields && fields.chef_alias !== undefined ? { chef_alias: fields.chef_alias } : {}),
     ...("age" in fields && fields.age !== undefined ? { age: fields.age } : {}),
     ...("intent" in fields && fields.intent !== undefined ? { intent: fields.intent } : {}),
     ...("profile_icon" in fields && fields.profile_icon !== undefined ? { profile_icon: fields.profile_icon } : {}),
+    ...("onboarding_completed" in fields && fields.onboarding_completed !== undefined ? { onboarding_completed: fields.onboarding_completed } : {}),
     ...(pictureUrl ? { profile_picture: pictureUrl } : {}),
+    is_training_mode: nextAge != null && nextAge < 18,
+    mode: nextMode,
   };
   writeLocalProfile(updated);
   return updated;

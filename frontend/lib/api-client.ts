@@ -21,8 +21,9 @@ export interface SignupPayload {
   username: string;
   password: string;
   password_confirm: string;
+  display_name?: string;
   chef_alias: string;
-  age?: number;
+  age?: number | null;
   intent?: string;
   profile_icon?: string;
 }
@@ -36,11 +37,14 @@ export interface ChefUser {
   id: string;
   username: string;
   email: string;
+  display_name?: string;
   chef_alias: string;
   age: number | null;
   intent: string;
   email_verified: boolean;
   is_training_mode: boolean;
+  mode?: string;
+  onboarding_completed?: boolean;
   member_number: number | null;
   academy_score: number;
   kitchen_score: number;
@@ -56,11 +60,14 @@ export interface AuthTokens {
 }
 
 export interface UpdateProfilePayload {
+  display_name?: string;
   chef_alias?: string;
-  age?: number;
+  age?: number | null;
   intent?: string;
   profile_icon?: string;
   profile_picture?: File;
+  mode?: string;
+  onboarding_completed?: boolean;
 }
 
 /**

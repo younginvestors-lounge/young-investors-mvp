@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 
-// The public front door: anyone landing on younginvestors.co.za gets the
-// "Join The Syndicate" splash (install / enter on web). Installed PWA users
-// open straight to the app via the manifest start_url (/login), not here.
+// The public front door. Auth/onboarding redirects are handled client-side by
+// /login because this server route cannot see the Supabase browser session.
 export default function RootPage() {
-  redirect("/join");
+  redirect("/login");
 }

@@ -5,8 +5,8 @@
 -- re-running is safe. It creates the tables, row-level security, the chef-number
 -- sequence, and the profile-pictures storage bucket.
 --
--- Chef numbering: seats 0 and 1 are RESERVED for the AI characters Gordon (0) and
--- Sicilia (1) — they have no rows here. Real testers are numbered from 2 upward by
+-- Chef numbering: seats 001 and 002 are RESERVED for the AI characters Gordon and
+-- Sicilia — they have no rows here. Real testers are numbered from 003 upward by
 -- the `chef_number_seq` sequence, assigned race-safely on insert. No signup cap is
 -- enforced, so well over 30 (target capacity ~101) chefs can play.
 --
@@ -17,8 +17,8 @@
 -- ── Extensions ──────────────────────────────────────────────────────────────
 create extension if not exists "pgcrypto"; -- gen_random_uuid()
 
--- ── Chef-number sequence (testers start at 2; 0 = Gordon, 1 = Sicilia) ───────
-create sequence if not exists public.chef_number_seq start with 2 minvalue 2;
+-- ── Chef-number sequence (testers start at 003; 001 = Gordon, 002 = Sicilia) ──
+create sequence if not exists public.chef_number_seq start with 3 minvalue 3;
 grant usage, select on sequence public.chef_number_seq to anon, authenticated;
 
 -- ============================================================================
@@ -26,6 +26,8 @@ grant usage, select on sequence public.chef_number_seq to anon, authenticated;
 -- ============================================================================
 create table if not exists public.profiles (
   id                        uuid primary key references auth.users(id) on delete cascade,
+  email                     text,
+  display_name              text,
   chef_alias                text,
   age                       integer,
   intent                    text,
@@ -43,9 +45,50 @@ create table if not exists public.profiles (
   credential_status         text default 'not_started',
   attempts_used             integer default 0,
   current_kitchen           text default 'Rhodes Alpha Kitchen',
+  onboarding_completed      boolean default false,
   created_at                timestamptz default now(),
   updated_at                timestamptz default now()
 );
+
+-- Existing projects can re-run this file after auth recovery.
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists display_name text;
+alter table public.profiles add column if not exists onboarding_completed boolean default false;
+update public.profiles set onboarding_completed = false where onboarding_completed is null;
+
+-- Chef alias is a public display name, not a unique login identifier.
+drop index if exists public.profiles_chef_alias_unique;
+
+-- Existing projects that previously started testers at 002 are migrated forward
+-- so 001/002 remain reserved for Gordon/Sicilia.
+do $$
+declare
+  profile_to_move record;
+  next_number integer;
+begin
+  for profile_to_move in
+    select id
+    from public.profiles
+    where member_number is not null and member_number < 3
+    order by member_number
+  loop
+    select greatest(coalesce(max(member_number), 2) + 1, 3)
+      into next_number
+      from public.profiles;
+
+    update public.profiles
+      set member_number = next_number,
+          updated_at = now()
+      where id = profile_to_move.id;
+  end loop;
+
+  perform setval(
+    'public.chef_number_seq',
+    greatest((select coalesce(max(member_number), 2) from public.profiles), 2),
+    true
+  );
+end
+$$;
 
 -- Assign the next chef number on insert. Forcing it (rather than trusting the
 -- client) means a tester can never pick their own seat or collide with 0/1.
@@ -335,7 +378,7 @@ declare
   v_kid uuid;
 begin
   if v_uid is null then return; end if;
-  select kitchen_id into v_kid from public.kitchen_members where user_id = v_uid order by joined_at limit 1;
+  select km.kitchen_id into v_kid from public.kitchen_members km where km.user_id = v_uid order by km.joined_at limit 1;
   if v_kid is null then return; end if;
 
   return query
@@ -376,6 +419,6 @@ $$;
 grant execute on function public.kitchen_votes_for(text) to authenticated;
 
 -- ============================================================================
--- Done. Reminder: testers are numbered from 2. Gordon (0) and Sicilia (1) are
+-- Done. Reminder: testers are numbered from 003. Gordon (001) and Sicilia (002) are
 -- reserved AI seats represented in the frontend, not stored here.
 -- ============================================================================

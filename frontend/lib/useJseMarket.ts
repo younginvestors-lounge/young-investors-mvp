@@ -11,14 +11,13 @@
 
 import { useEffect, useState } from "react";
 import { JSE_STOCKS, type JseStock } from "./jseMarket";
-import { fetchJseData, jseQuoteEndpointConfigured, simulatedJseData, type JseDataMode } from "./jseDataAdapter";
+import { simulatedJseData, type JseDataMode } from "./jseDataAdapter";
 
 interface Live extends JseStock {
   open: number; // session-open price, so `change` is measured from it
 }
 
 const TICK_MS = 3500;
-const QUOTE_REFRESH_MS = 60_000;
 
 function seed(): Live[] {
   // open price implied by the snapshot's starting day-change (deterministic).
@@ -43,19 +42,15 @@ export function useJseMarket(): { stocks: JseStock[]; updatedAt: number; mode: J
   useEffect(() => {
     let cancelled = false;
 
-    async function refreshQuotes() {
-      const result = await fetchJseData();
+    function refreshSimulationSource() {
+      const result = simulatedJseData();
       if (cancelled) return;
       setMode(result.mode);
       setConfidence(result.confidence);
       setUpdatedAt(result.updatedAt);
-      if (result.mode === "public") {
-        setStocks(result.stocks.map((s) => ({ ...s, open: s.price / (1 + s.change / 100) })));
-      }
     }
 
-    refreshQuotes();
-    const quoteTimer = jseQuoteEndpointConfigured() ? setInterval(refreshQuotes, QUOTE_REFRESH_MS) : null;
+    refreshSimulationSource();
     const driftTimer = setInterval(() => {
       setStocks((prev) => prev.map(drift));
       setUpdatedAt(Date.now());
@@ -63,7 +58,6 @@ export function useJseMarket(): { stocks: JseStock[]; updatedAt: number; mode: J
 
     return () => {
       cancelled = true;
-      if (quoteTimer) clearInterval(quoteTimer);
       clearInterval(driftTimer);
     };
   }, []);

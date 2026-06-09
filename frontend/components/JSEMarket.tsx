@@ -255,8 +255,8 @@ export function JSEMarket() {
         />
         <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.55rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)" }}>{list.length}</span>
       </div>
-      <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "0.08em", color: mode === "public" ? "#167a3a" : "var(--yi-muted)", margin: 0 }}>
-        Data: {mode === "public" ? "public quote feed" : mode === "fallback" ? "fallback simulation" : "simulation"} · {confidence}
+      <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
+        Data: {mode} · {confidence}
       </p>
 
       {shelfStock && (

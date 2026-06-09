@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useAppSettings } from "@/lib/appSettings";
 import { getProfileIcon, PROFILE_ICONS } from "@/lib/profileIcons";
-import { RESERVED_CHEFS } from "@/lib/profileStore";
+import { FIRST_TESTER_NUMBER, RESERVED_CHEFS } from "@/lib/profileStore";
 
 const CREDENTIAL_LABEL: Record<string, string> = {
   not_started: "Not started",
@@ -27,7 +27,7 @@ export default function ProfilePage() {
   const { theme, toggleTheme, pattern, togglePattern, musicOn, musicAvailable, toggleMusic } = useAppSettings();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace("/signin");
+    if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isLoading, isAuthenticated, router]);
 
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function ProfilePage() {
               Chef {user.chef_alias}
             </h1>
             <p style={{ ...mono, fontSize: "0.56rem", color: "var(--yi-muted)", margin: "8px 0 0" }}>
-              {user.member_number != null ? `Chef No. ${String(user.member_number).padStart(4, "0")} · ` : ""}
+              {user.member_number != null ? `Chef No. ${String(user.member_number).padStart(3, "0")} · ` : ""}
               {user.rank}
             </p>
             <p style={{ ...mono, fontSize: "0.52rem", color: "var(--yi-muted)", margin: "4px 0 0" }}>
@@ -256,9 +256,9 @@ export default function ProfilePage() {
 
         {/* Reserved seats note — the brand metaphor */}
         <p style={{ ...mono, fontSize: "0.5rem", color: "var(--yi-muted)", margin: "22px 0 0", lineHeight: 1.7 }}>
-          Chef No. {String(RESERVED_CHEFS.gordon.number).padStart(4, "0")} is {RESERVED_CHEFS.gordon.name}.
-          Chef No. {String(RESERVED_CHEFS.sicilia.number).padStart(4, "0")} is {RESERVED_CHEFS.sicilia.name}.
-          Founding Chefs are numbered from {String(2).padStart(4, "0")}.
+          Chef No. {String(RESERVED_CHEFS.gordon.number).padStart(3, "0")} is {RESERVED_CHEFS.gordon.name}.
+          Chef No. {String(RESERVED_CHEFS.sicilia.number).padStart(3, "0")} is {RESERVED_CHEFS.sicilia.name}.
+          Founding Chefs are numbered from {String(FIRST_TESTER_NUMBER).padStart(3, "0")}.
         </p>
 
         <p style={{ ...mono, fontSize: "0.5rem", color: "var(--yi-muted)", margin: "10px 0 0", lineHeight: 1.7 }}>

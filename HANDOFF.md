@@ -1,5 +1,83 @@
 # Young Investors Frontend Handoff
 
+## 2026-06-08 - Auth Recovery Mode
+
+**Status:** Supabase Auth is now separated from Young Investors onboarding.
+`/login` is the single auth front door; `/signin` remains only as a compatibility
+redirect to `/login`.
+
+### What changed
+- `/` redirects to `/login`; `/login` handles the browser-session check and sends
+  complete users into the app and incomplete users to `/onboarding`.
+- `/login` now has two clear lanes: New with us, and Already cooking with us.
+- Email signup collects email/password, display name, and Chef alias. Email is
+  the login credential; Chef alias is the public YI username.
+- `/onboarding` no longer duplicates account creation. It only completes profile
+  data: display name, Chef alias, age, intent, icon, and final confirmation.
+- Onboarding writes `onboarding_completed=true` and routes to `/academy`.
+- AppShell blocks incomplete profiles from the product and sends them back to
+  `/onboarding`.
+- Password reset and email verification routes point back to `/login` and
+  `/onboarding`, not the old `/signin`/Kitchen bypass.
+- Under-18 users are allowed only into `training_kitchen` mode. No banking,
+  broker, payment, identity-verification, or live-finance flow exists.
+
+### Data/schema
+- `profiles` now supports `email`, `display_name`, `chef_alias`, `age`, `intent`,
+  `profile_icon`, `profile_picture_url`, `mode`, `onboarding_completed`, scores,
+  rank, credential status, and timestamps.
+- Own-row RLS remains the profile access model.
+- `chef_alias` is a public display name and is intentionally not unique.
+- `profile-pictures` remains the existing tester bucket; avatar upload is still
+  available from `/profile` once storage is configured.
+
+### Recommendations
+1. Keep email confirmation ON for public testing. Turn it OFF only for controlled,
+   in-person frictionless tests.
+2. Run `frontend/supabase/schema.sql` in Supabase before sending testers through
+   the recovered flow.
+3. Treat `onboarding_completed` as the routing truth. Do not infer completion
+   from `age`, alias, or a Supabase session alone.
+4. Keep Google OAuth and email/password behind Supabase Auth only. Do not revive
+   parallel Django auth for the tester frontend.
+5. Keep the unique, system-assigned Chef code as the identity anchor; aliases can
+   repeat without blocking signup.
+6. Keep under-18 users in `training_kitchen` and do not collect banking, broker,
+   payment, or sensitive identity data.
+7. Productionize avatar privacy later by moving from public-read storage to
+   private storage with signed URLs.
+
+### Verification target
+- `/login` loads on mobile and desktop with large controls and separated paths.
+- `npm.cmd run verify:supabase` passes once local/CI public Supabase env values
+  are configured.
+- New email signup either routes to `/verify-email` or straight to `/onboarding`,
+  depending on Supabase email-confirmation settings.
+- Completed onboarding routes to `/academy`.
+- Returning completed users enter the app.
+- Returning incomplete users are forced back to `/onboarding`.
+- `/reset-password` sends a generic reset flow.
+
+### Current live-config status
+- A read-only verifier now exists at `frontend/scripts/verify-supabase-auth.mjs`
+  and is exposed as `npm.cmd run verify:supabase`.
+- The verifier checks Supabase env presence, Auth settings reachability, Google
+  OAuth status, email confirmation policy, recovered `profiles` columns, and the
+  profile-picture bucket without creating users or printing secrets.
+- Local `.env.local` is now configured with the Supabase project URL and publishable
+  key supplied by the CEO. `npm.cmd run verify:supabase` passes the hard checks:
+  env, auth settings, email signup, Google OAuth, and recovered `profiles` columns.
+- Supabase email auto-confirm is currently ON. This is acceptable for controlled
+  testing; turn confirmation ON before a broader public test.
+- The read-only verifier cannot prove the storage bucket anonymously, but an
+  authenticated disposable test account successfully uploaded a profile image and
+  updated `profiles.profile_picture_url`.
+- A browser-level local fallback verifier also exists at
+  `frontend/scripts/verify-local-auth.mjs` and is exposed as
+  `npm.cmd run verify:auth-local`. It signs up a local demo user, completes
+  onboarding, confirms profile persistence, signs back in, and checks that local
+  password reset copy is honest.
+
 ---
 
 ## 2026-06-03 — Vercel + Supabase Tester Stack (frontend-only)
@@ -24,7 +102,7 @@ bank, FICA, payments, live data, or advice.
 - **No signup cap** — comfortably supports >30, target ~**101** testers.
 - `member_number` is assigned by a Postgres **sequence (`chef_number_seq`, starts at
   2)** via a `BEFORE INSERT` trigger → unique & race-safe even on simultaneous signups.
-- **Chef No. 0 = Gordon, No. 1 = Sicilia** (AI characters; no DB rows). Surfaced in
+- **Chef No. 001 = Gordon, No. 002 = Sicilia** (AI characters; no DB rows). Surfaced in
   the Chef Profile and the Academy "Founding 100" reward indicator.
 
 ### What persists (Supabase, or localStorage in demo mode)
@@ -76,7 +154,10 @@ governance server-side.
 
 ---
 
-## 2026-06-03 — Local Auth Integration (frontend ↔ Django) — VERIFIED
+## 2026-06-03 - Local Auth Integration (frontend/Django) - SUPERSEDED BY 2026-06-08 AUTH RECOVERY
+
+> Historical note only: the active tester frontend now uses `/login` as the
+> single Supabase Auth entrypoint, and `/signin` redirects to `/login`.
 
 **Status:** Real authentication is wired and verified locally end-to-end. No Azure
 deployment performed. Still `MOCK_MVP_PAPER_TRADING_ONLY` — no real money, broker,
@@ -111,18 +192,17 @@ bank, FICA, or live trading.
 - `lib/auth-context.tsx` — `AuthProvider` + `useAuth()` (single shared session;
   wired in `app/layout.tsx`). Only drops the session on a real 401, not network blips.
 - `lib/profileIcons.tsx` — shared icon catalog (keys match backend choices).
-- Pages: `/signin` (real email+password form), `/verify-email`, `/reset-password`
-  (dual mode), and a rebuilt `/onboarding` (alias → age → intent → icon → email/
-  password → signup → verify-email).
+- Historical pages in this superseded Django-auth path: `/signin`, `/verify-email`,
+  `/reset-password`, and the old account-creating `/onboarding`.
 - `components/TopBar.tsx` — shows the chef's icon, alias, and **Chef No. NNNN**;
   logout uses the auth context.
-- `components/AppShell.tsx` — auth-guarded; unauthenticated visitors are sent to
-  `/signin`; chef alias comes from the live session.
+- Historical `components/AppShell.tsx` guard sent unauthenticated visitors to
+  `/signin`; current Supabase Auth sends them to `/login`.
 
 ### Verified flow
-`/login` (splash) → `/onboarding` (creates real account) → `/verify-email`
-(open local outbox link in dev) → `/signin` → `/kitchen` (guarded, shows Chef No.).
-Returning authenticated users skip the splash straight to `/kitchen`.
+Historical Django-auth flow: `/login` (splash) to account-creating `/onboarding`
+to `/verify-email` to `/signin` to `/kitchen`. Current Supabase flow starts at
+`/login`, creates auth first, completes `/onboarding`, then routes to `/academy`.
 
 ### How to run locally
 1. Backend: `pip install -r requirements.txt` → `python manage.py migrate` →

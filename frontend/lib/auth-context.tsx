@@ -157,10 +157,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (payload: SignupPayload): Promise<SignupResult> => {
     const seed = {
       email: payload.email,
+      display_name: payload.display_name?.trim() || payload.chef_alias || "Chef",
       chef_alias: payload.chef_alias,
       age: payload.age ?? null,
       intent: payload.intent ?? "",
       profile_icon: payload.profile_icon ?? "chef-default",
+      onboarding_completed: false,
     };
 
     if (!isSupabaseConfigured()) {
@@ -177,12 +179,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: payload.password,
       options: {
         data: {
+          display_name: seed.display_name,
           chef_alias: seed.chef_alias,
           age: seed.age,
           intent: seed.intent,
           profile_icon: seed.profile_icon,
+          onboarding_completed: false,
         },
-        emailRedirectTo: SITE_URL ? `${SITE_URL}/kitchen` : undefined,
+        emailRedirectTo: SITE_URL ? `${SITE_URL}/onboarding` : undefined,
       },
     });
     if (error) throw toApiError(error);
@@ -257,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       type: "signup",
       email: cleanEmail,
       options: {
-        emailRedirectTo: SITE_URL ? `${SITE_URL}/kitchen` : undefined,
+        emailRedirectTo: SITE_URL ? `${SITE_URL}/onboarding` : undefined,
       },
     });
     if (error) throw toApiError(error);
@@ -282,10 +286,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await saveProfile(
         user,
         {
+          display_name: payload.display_name,
           chef_alias: payload.chef_alias,
           age: payload.age,
           intent: payload.intent,
           profile_icon: payload.profile_icon,
+          mode: payload.mode,
+          onboarding_completed: payload.onboarding_completed,
         },
         payload.profile_picture ?? null
       );

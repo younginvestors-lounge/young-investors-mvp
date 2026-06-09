@@ -51,6 +51,24 @@ user's experience easy. When a screen feels hard, it's usually missing one of th
 
 ## Part B — Recommendations (What / Why / Where / Effort / Priority)
 
+### 0. Auth recovery - account trust and onboarding
+- **Keep `/login` as the only auth front door.** *Why:* split login/signup pages created
+  user confusion and routing bugs. *Where:* `/signin` should remain a compatibility
+  redirect only; all new and returning paths start at `/login`. *Effort:* S. *Priority:* P0.
+- **Route by `onboarding_completed`, not age or session alone.** *Why:* Supabase Auth
+  proves identity; YI onboarding proves product readiness. *Where:* `profileStore`,
+  `auth-context`, `AppShell`, `/login`, `/onboarding`. *Effort:* S. *Priority:* P0.
+- **Keep email confirmation ON for public tests.** *Why:* cleaner account ownership and
+  fewer fake profiles; turn it OFF only for controlled in-person testing. *Where:*
+  Supabase Auth provider settings. *Effort:* S. *Priority:* P0.
+- **Use Chef code, not alias, as the unique identity anchor.** *Why:* aliases are culture
+  and expression; Chef No. 003+ is the stable account identity. *Where:* profile, TopBar,
+  Academy reward copy, Supabase sequence. *Effort:* S. *Priority:* P0.
+- **Move avatar privacy to signed URLs before production.** *Why:* the tester bucket is
+  public-read for speed; production should keep profile images private by default.
+  *Where:* Supabase Storage policies and `profileStore` avatar mapper. *Effort:* M.
+  *Priority:* P1.
+
 ### 1. Inviting — the first session & the feel
 - **Early win before the gate.** *Why:* dopamine before friction → activation.
   *Where:* let a new chef finish one Glossary card + one micro-question on `/gordon-intro`
@@ -134,5 +152,5 @@ touch the mock-only / no-advice guardrails.
 - `◆` diamond bullets in `AcademyView` reward lines → swap for a lucide icon (doctrine).
 - "Submit Practice Attempt" has **no confirm step** yet (the recovery-from-error ask).
 - Lesson modal still opens as a bottom-sheet → centre on desktop / open at content.
-- Real JSE feed: `jseDataAdapter` is ready but `NEXT_PUBLIC_JSE_QUOTES_URL` is unset → runs simulated.
+- Real JSE feed: intentionally deferred. The MVP JSE aisle is simulated-only; any verified/live market-data adapter needs a separate architecture and security review.
 - Scroll-reveal motion (`useReveal`) not built yet.

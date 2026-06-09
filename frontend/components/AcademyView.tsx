@@ -352,7 +352,7 @@ function FollowTheMoneyCard() {
         </p>
         {foundingHundred && (
           <p style={{ ...mono, display: "flex", alignItems: "center", gap: 6, fontSize: "0.54rem", color: "var(--yi-ink)", margin: 0 }}>
-            <BadgeCheck size={12} strokeWidth={1.8} aria-hidden /> Founding 100 · Chef No. {String(user.member_number).padStart(4, "0")} · Launch reward indicator — subject to official Young Investors reward terms
+            <BadgeCheck size={12} strokeWidth={1.8} aria-hidden /> Founding 100 · Chef No. {String(user.member_number).padStart(3, "0")} · Launch reward indicator — subject to official Young Investors reward terms
           </p>
         )}
         {mastery && (

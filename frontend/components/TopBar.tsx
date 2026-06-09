@@ -10,13 +10,12 @@ import { tap } from "@/lib/haptics";
 import { getProfileIcon } from "@/lib/profileIcons";
 import { ExplainSheet, type ExplainContent } from "@/components/ExplainSheet";
 import { GlossaryBook } from "@/components/GlossaryBook";
-import { calculateConsensus, formatPercent } from "@/lib/domain";
+import { calculateConsensus } from "@/lib/domain";
 import type {
   AcademyClearance,
   AcademyModule,
   DashboardTab,
   ExecutionMode,
-  PortfolioSnapshot,
   TradeProposal,
 } from "@/lib/types";
 
@@ -57,10 +56,10 @@ const METRIC_INFO: Record<string, { title: string; lines: string[]; slang: strin
   Vault: {
     title: "Vault performance",
     lines: [
-      "Your practice portfolio's gain or loss right now.",
-      "Green is up, red is down. It's pretend money — but the lessons are real.",
+      "Your practice Vault opens after Academy clearance.",
+      "It starts as practice cash. Performance only appears after a Kitchen vote creates a mock holding.",
     ],
-    slang: "Your bag's score. Paper money, real reps.",
+    slang: "Open the Vault first. No fake gains before a recipe cooks.",
   },
 };
 
@@ -69,7 +68,6 @@ interface TopBarProps {
   executionMode: ExecutionMode;
   clearance: AcademyClearance;
   modules: AcademyModule[];
-  portfolio: PortfolioSnapshot;
   proposals: TradeProposal[];
   chefName: string;
 }
@@ -78,7 +76,6 @@ export function TopBar({
   activeTab,
   clearance,
   modules,
-  portfolio,
   proposals,
   chefName,
 }: TopBarProps) {
@@ -111,11 +108,6 @@ export function TopBar({
   const avgConsensus   = consensusReads.length === 0 ? 0
     : Math.round(consensusReads.reduce((s, r) => s + r.yesPercent, 0) / consensusReads.length);
 
-  const riskScore = portfolio.gordonMarketRead.riskScore;
-  const roi       = portfolio.roiPercent;
-
-  const riskColor = riskScore >= 70 ? "#b42318" : riskScore >= 50 ? "#b46918" : "#167a3a";
-  const roiColor  = roi > 0 ? "#167a3a" : roi < 0 ? "#b42318" : "#888";
   const acColor   = clearance.complete ? "#167a3a" : "#b42318";
   const consColor = avgConsensus >= 60 ? "#167a3a" : "#b46918";
 
@@ -127,11 +119,11 @@ export function TopBar({
     { label: "Heat",      value: "—",              color: "var(--yi-muted)" },
     {
       label: "Vault",
-      value: clearance.complete ? formatPercent(roi) : "Locked",
-      color: clearance.complete ? roiColor : "var(--yi-muted)",
+      value: clearance.complete ? "Open" : "Locked",
+      color: clearance.complete ? "#167a3a" : "var(--yi-muted)",
     },
   ];
-  void avgConsensus; void consColor; void riskColor; // retained for when real data lands
+  void avgConsensus; void consColor; // retained for when real data lands
 
   const { theme, toggleTheme, pattern, togglePattern, musicOn, musicAvailable, toggleMusic } = useAppSettings();
 
@@ -157,7 +149,7 @@ export function TopBar({
   return (
     <>
       {/* ── Top bar ── */}
-      <header style={{
+      <header className="topbar-shell" style={{
         position: "fixed",
         top: 0, left: 0, right: 0,
         zIndex: 30,
@@ -203,14 +195,14 @@ export function TopBar({
                 letterSpacing: "0.12em",
                 color: "var(--yi-muted)",
               }}>
-                Chef No. {String(memberNumber).padStart(4, "0")}
+                Chef No. {String(memberNumber).padStart(3, "0")}
               </span>
             )}
           </span>
         </Link>
 
         {/* Centre — current tab */}
-        <span style={{
+        <span className="topbar-tab-label" style={{
           fontFamily: "var(--font-mono), monospace",
           fontSize: "0.62rem",
           textTransform: "uppercase",
@@ -221,7 +213,7 @@ export function TopBar({
         </span>
 
         {/* Right — quick toggles + settings + logout */}
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span className="topbar-actions" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
           <button
             type="button"
             onClick={() => { tap(); setGlossaryOpen(true); }}
@@ -233,6 +225,7 @@ export function TopBar({
           </button>
           <button
             type="button"
+            className="topbar-optional-toggle"
             onClick={() => { tap(); toggleMusic(); }}
             disabled={!musicAvailable}
             aria-pressed={musicOn}
@@ -244,6 +237,7 @@ export function TopBar({
           </button>
           <button
             type="button"
+            className="topbar-optional-toggle"
             onClick={() => { tap(); toggleTheme(); }}
             aria-pressed={theme === "dark"}
             aria-label="Night mode"
@@ -254,6 +248,7 @@ export function TopBar({
           </button>
           <button
             type="button"
+            className="topbar-optional-toggle"
             onClick={() => { tap(); togglePattern(); }}
             aria-pressed={pattern}
             aria-label="Background pattern"

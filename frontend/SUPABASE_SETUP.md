@@ -1,101 +1,144 @@
-# Supabase Setup — Young Investors Tester Build
+# Supabase Setup - Young Investors Tester Build
 
-This wires the Next.js frontend to a free Supabase project for the public
-20–101 chef test: **auth, profiles, Academy scores/attempts, profile images,
-Kitchen votes, predictions, and feedback.**
+This wires the Next.js frontend to Supabase for the public tester stack:
+auth, profiles, onboarding status, Academy attempts, profile images, Kitchen
+votes, predictions, and feedback.
 
-> **Stack for now:** Vercel (frontend) + Supabase (auth/db/storage).
-> The Django backend stays in the repo for future production — **do not deploy it now.**
->
-> `MOCK_MVP_PAPER_TRADING_ONLY` — no real money, brokers, banks, FICA, or payments.
+`MOCK_MVP_PAPER_TRADING_ONLY` - no real money, broker APIs, bank APIs, FICA,
+payments, custody, live order routing, or investment advice.
 
----
+## 1. Create a Supabase Project
 
-## 1. Create a Supabase project
-1. Go to <https://supabase.com> → **New project**.
-2. Name it (e.g. `young-investors`), choose a region near South Africa
-   (e.g. `eu-west` / `eu-central`), set a strong database password.
-3. Wait for it to finish provisioning.
+1. Go to <https://supabase.com> and create a project.
+2. Choose a region close to South Africa where practical.
+3. Set a strong database password and wait for provisioning.
 
-## 2. Copy your keys
-**Project → Settings → API**, copy:
-- **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-- **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+## 2. Copy Browser-Safe Keys
 
-> ⚠️ **Never** copy the `service_role` key into the frontend or this repo.
-> The app uses the **anon** key only. RLS (below) is what keeps data safe.
+In Supabase, open **Project Settings -> API** and copy:
 
-## 3. Run the schema
-1. **SQL Editor → New query**.
+- `NEXT_PUBLIC_SUPABASE_URL` from the Project URL.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` from the anon public key.
+
+Never copy the `service_role` key into the frontend, Vercel, screenshots, logs,
+docs, or this repo.
+
+## 3. Run the Schema
+
+1. Open **SQL Editor -> New query**.
 2. Paste the full contents of [`supabase/schema.sql`](./supabase/schema.sql).
-3. **Run**. It is idempotent (safe to re-run).
+3. Run it.
 
-This creates the tables (`profiles`, `academy_attempts`, `tester_feedback`,
-`kitchen_votes`, `prediction_logs`), Row-Level Security policies, the
-**chef-number sequence** (testers numbered from **2**; 0 = Gordon, 1 = Sicilia),
-and the **`profile-pictures`** storage bucket.
+The schema is idempotent. It creates/updates:
 
-## 4. Confirm the storage bucket
-**Storage** should now list a public **`profile-pictures`** bucket. The schema
-also added the upload/read policies (each tester can only write to their own
-`<user-id>/…` folder; public read is on for the demo).
+- `profiles` with `email`, `display_name`, `chef_alias`, `age`, `intent`,
+  `profile_icon`, `profile_picture_url`, `mode`, `onboarding_completed`,
+  scores, rank, credential status, timestamps, and the chef-number sequence.
+- Own-row RLS policies for profile select/insert/update.
+- Academy, Kitchen, prediction, feedback tables and policies.
+- `profile-pictures` storage bucket and user-scoped upload policies.
+- `chef_alias` as a non-unique public display name. The unique identity anchor is
+  the system-assigned `member_number`.
 
-## 5. Turn OFF email confirmation (recommended for the test)
-So 20–101 testers get in instantly with no inbox friction:
+## 4. Configure Auth
 
-**Authentication → Providers → Email** → turn **"Confirm email" OFF** → Save.
+### Email
 
-- OFF → signup returns a session immediately → straight to `/kitchen`.
-- ON  → signup sends a confirmation link; the app routes to a "check your email"
-  screen and finishes sign-in when the link is clicked. (Code handles both.)
+**Recommended for public testing:** keep email confirmation ON.
 
-## 6. Set auth redirect URLs
-**Authentication → URL Configuration**:
-- **Site URL:** `https://younginvestors.co.za`
-- **Redirect URLs** (add all):
-  - `http://localhost:3000`
-  - `http://localhost:3001`
-  - `https://younginvestors.co.za`
-  - `https://www.younginvestors.co.za`
+- ON: signup sends a confirmation email, then returns the user to onboarding.
+- OFF: signup creates a session immediately, then routes to onboarding.
 
-## 7. Add environment variables
-**Locally** — copy `.env.local.example` → `.env.local` and fill in:
-```
+The app supports both, but public testing is cleaner with confirmation enabled.
+
+### Google OAuth
+
+In **Authentication -> Providers -> Google**:
+
+1. Enable Google.
+2. Add the Google client ID and secret from Google Cloud Console.
+3. In Google Cloud, allow the callback URL Supabase shows for the provider.
+
+Google sign-in and Google sign-up are the same Supabase OAuth operation. The UI
+shows separate "new" and "returning" lanes, but both land on `/onboarding` so
+new profiles finish setup and returning profiles are routed onward.
+
+### URL Configuration
+
+In **Authentication -> URL Configuration**:
+
+- Site URL: `https://younginvestors.co.za`
+- Redirect URLs:
+  - `http://localhost:3000/login`
+  - `http://localhost:3000/onboarding`
+  - `http://localhost:3000/reset-password`
+  - `https://younginvestors.co.za/login`
+  - `https://younginvestors.co.za/onboarding`
+  - `https://younginvestors.co.za/reset-password`
+  - `https://www.younginvestors.co.za/login`
+  - `https://www.younginvestors.co.za/onboarding`
+  - `https://www.younginvestors.co.za/reset-password`
+
+## 5. Environment Variables
+
+Local `.env.local`:
+
+```powershell
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
-**In Vercel** — set the same three (with `NEXT_PUBLIC_SITE_URL=https://younginvestors.co.za`).
-See [`DEPLOY_VERCEL_SUPABASE.md`](./DEPLOY_VERCEL_SUPABASE.md).
 
-## 8. Run + smoke test
+Vercel production:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon public key>
+NEXT_PUBLIC_SITE_URL=https://younginvestors.co.za
+```
+
+Do not set `NEXT_PUBLIC_API_BASE_URL` for this tester stack. Django remains in
+the repo for the future production backend and is not deployed now.
+
+## 6. Smoke Test
+
+Run:
+
 ```powershell
 cd frontend
 npm.cmd install
+npm.cmd run verify:supabase
 npm.cmd run dev
 ```
-Then verify:
-1. **Signup** — `/onboarding` creates an account → lands on `/kitchen`.
-2. **Profile** — tap your name/icon (top-left) → `/profile`; edit alias/icon; upload a photo (≤5MB).
-3. **Academy** — open Academy → **Submit Practice Attempt** (max 3); score/attempts persist.
-4. **Kitchen** — cast a vote; a row appears in `kitchen_votes`.
-5. **Reload** — you stay signed in; scores are still there.
-6. In Supabase **Table Editor**, confirm rows in `profiles` (with a `member_number` ≥ 2) and `academy_attempts`.
 
----
+Verify:
 
-## Capacity & chef numbers
-- No signup cap is enforced — **well over 30** testers can play; design capacity is **~101**.
-- `member_number` is assigned by the `chef_number_seq` sequence (starts at **2**),
-  race-safely on insert, so numbers are unique even with simultaneous signups.
-- **Chef No. 0 = Gordon, No. 1 = Sicilia** (AI characters; no DB rows).
+1. `npm.cmd run verify:supabase` passes against the live Supabase project.
+2. `/` redirects to `/login`.
+3. `/login` shows two clear lanes:
+   - New with us: Google signup or email signup.
+   - Already cooking with us: Google sign-in or email sign-in.
+4. Email signup collects email, password, display name, and Chef alias.
+5. Confirmed or instant-session users land on `/onboarding`.
+6. Onboarding collects display name, Chef alias, age, intent, icon, and final
+   confirmation, then sets `onboarding_completed=true` and routes to `/academy`.
+7. Returning users with `onboarding_completed=true` land in the app.
+8. Returning users without completed onboarding are sent back to `/onboarding`.
+9. `/reset-password` sends a generic reset email and never exposes whether the
+   email exists.
+10. `/profile` can update alias/icon and upload a profile image when storage is
+   configured.
+11. Supabase Table Editor shows `profiles` rows with `member_number >= 3` and
+    RLS remains enabled.
 
-## Privacy tradeoff (avatars)
-The `profile-pictures` bucket is **public-read** for demo simplicity (anyone with the
-URL can view an avatar). For production, switch it to private + signed URLs.
+`verify:supabase` is read-only. It checks env presence, Supabase Auth settings,
+Google OAuth status, email confirmation policy, recovered `profiles` columns,
+and the profile-picture bucket without creating users or printing secrets.
 
-## What is NOT here (future Django/Azure)
-Beat Gordon content, Recipe Lens, Lounge leaderboard, Vault holdings, Young
-Investor Times, and Gordon/Sicilia scripts stay as **local mock data** — they
-don't need a database for the test. Server-side governance moves to Django +
-Azure PostgreSQL after the tester proof. See [`DEPLOY_VERCEL_SUPABASE.md`](./DEPLOY_VERCEL_SUPABASE.md).
+## Notes
+
+- Chef No. 001 is Gordon and Chef No. 002 is Sicilia. Real testers start at Chef No. 003.
+- The `profile-pictures` bucket is public-read for the tester build. For
+  production, switch to private storage with signed URLs.
+- Under-18 users are kept in `training_kitchen` mode. The app does not collect
+  banking, broker, payment, or identity-verification data.

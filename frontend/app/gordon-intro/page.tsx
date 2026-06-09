@@ -71,7 +71,7 @@ export default function BriefingPage() {
 
   // Briefing needs a signed-in chef. Send guests to sign in.
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace("/signin");
+    if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isLoading, isAuthenticated, router]);
 
   const name = user?.chef_alias || "Chef";

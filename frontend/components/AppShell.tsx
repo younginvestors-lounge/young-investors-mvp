@@ -14,6 +14,7 @@ import { TopBar } from "@/components/TopBar";
 import { VaultLocked, VaultStart } from "@/components/VaultGate";
 import { getDashboardSnapshot } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { profileIsOnboarded } from "@/lib/profileStore";
 import {
   EXECUTION_MODE,
   type AcademyClearance,
@@ -167,12 +168,16 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
     setClearance(next.clearance);
   }, [chefId, seed.academyModules, seed.academyClearance]);
 
-  // Guard the app shell: an unauthenticated visitor is sent to sign in.
+  // Guard the app shell: Auth creates the account; onboarding clears the profile.
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/signin");
+      router.replace("/login");
+      return;
     }
-  }, [isLoading, isAuthenticated, router]);
+    if (!isLoading && isAuthenticated && !profileIsOnboarded(user)) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, user, router]);
 
   function handleVote(proposalId: string, vote: "YES" | "NO") {
     setProposals((prev) =>
@@ -200,7 +205,7 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
 
   // While auth resolves (or while redirecting an unauthenticated visitor),
   // hold a calm white screen instead of flashing the dashboard.
-  if (isLoading || !isAuthenticated) {
+  if (isLoading || !isAuthenticated || !profileIsOnboarded(user)) {
     return (
       <div style={{ minHeight: "100svh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.18em", color: "#bbb" }}>
@@ -217,7 +222,6 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
         executionMode={EXECUTION_MODE}
         clearance={clearance}
         modules={modules}
-        portfolio={seed.portfolio}
         proposals={proposals}
         chefName={chefName}
       />

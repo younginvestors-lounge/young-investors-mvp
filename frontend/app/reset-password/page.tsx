@@ -2,8 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { apiClient, ApiError } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 const SITE_URL =
@@ -12,8 +11,6 @@ const SITE_URL =
 
 function ResetPasswordInner() {
   const router = useRouter();
-  const params = useSearchParams();
-  const token = params.get("token");
   const supaMode = isSupabaseConfigured();
 
   // Request-link mode
@@ -27,7 +24,7 @@ function ResetPasswordInner() {
 
   // Supabase delivers recovery via a session (not a ?token=), so detect it.
   const [hasRecovery, setHasRecovery] = useState(false);
-  const newPwMode = supaMode ? hasRecovery : !!token;
+  const newPwMode = supaMode ? hasRecovery : false;
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -62,11 +59,11 @@ function ResetPasswordInner() {
           redirectTo: SITE_URL ? `${SITE_URL}/reset-password` : undefined,
         });
       } else {
-        await apiClient.passwordResetRequest(email.trim());
+        // Local demo profiles are browser-only. Do not call legacy Django auth.
       }
       setRequested(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSubmitting(false);
     }
@@ -86,10 +83,10 @@ function ResetPasswordInner() {
         const { error: upErr } = await supabase.auth.updateUser({ password });
         if (upErr) throw new Error(upErr.message);
       } else {
-        await apiClient.passwordResetConfirm(token as string, password, confirm);
+        throw new Error("Password reset requires Supabase Auth.");
       }
       setDone(true);
-      setTimeout(() => router.replace("/signin"), 1800);
+      setTimeout(() => router.replace("/login"), 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reset failed.");
     } finally {
@@ -116,7 +113,7 @@ function ResetPasswordInner() {
             <>
               <h1 style={heading}>Done.</h1>
               <p style={body}>Your password is set. Taking you to sign in…</p>
-              <Link href="/signin" style={primaryButton}>Sign in →</Link>
+              <Link href="/login" style={primaryButton}>Sign in</Link>
             </>
           ) : (
             <>
@@ -139,9 +136,11 @@ function ResetPasswordInner() {
             <h1 style={heading}>Check your email.</h1>
             <p style={body}>If that email is registered, a reset link is on its way.</p>
             {!supaMode && (
-              <p style={{ ...body, color: "#888", fontSize: "0.78rem" }}>Running locally? The link is saved in the Django local email outbox.</p>
+              <p style={{ ...body, color: "#888", fontSize: "0.78rem" }}>
+                Local demo mode stores a browser-only profile and does not send reset email.
+              </p>
             )}
-            <Link href="/signin" style={primaryButton}>Back to sign in</Link>
+            <Link href="/login" style={primaryButton}>Back to sign in</Link>
           </>
         ) : (
           /* MODE 2: request a reset link */
@@ -156,7 +155,7 @@ function ResetPasswordInner() {
                 {submitting ? "Sending…" : "Send reset link →"}
               </button>
             </form>
-            <Link href="/signin" style={{ ...label, marginTop: 20, display: "inline-block", textDecoration: "underline", color: "#111" }}>Back to sign in</Link>
+            <Link href="/login" style={{ ...label, marginTop: 20, display: "inline-block", textDecoration: "underline", color: "#111" }}>Back to sign in</Link>
           </>
         )}
       </div>
