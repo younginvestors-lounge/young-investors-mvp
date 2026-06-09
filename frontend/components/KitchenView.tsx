@@ -32,11 +32,11 @@ const BLANK_DRAFT: ProposalDraft = {
 };
 
 const BASE_MEMBERS: Omit<KitchenMember, "name">[] = [
-  { id: "jen",    vote: "FOR",     isUser: false },
-  { id: "sizwe",  vote: "FOR",     isUser: false },
-  { id: "siya",   vote: "AGAINST", isUser: false },
-  { id: "tshidi", vote: null,      isUser: false },
-  { id: "user",   vote: null,      isUser: true  },
+  { id: "jen",    vote: "FOR",     isUser: false, profileIcon: "🧑‍🍳", clearanceLevel: "Master Chef",     recipesProposed: 7 },
+  { id: "sizwe",  vote: "FOR",     isUser: false, profileIcon: "👨‍💼", clearanceLevel: "Controlled Cook",  recipesProposed: 4 },
+  { id: "siya",   vote: "AGAINST", isUser: false, profileIcon: "👩‍🎓", clearanceLevel: "Simmering Base",   recipesProposed: 2 },
+  { id: "tshidi", vote: null,      isUser: false, profileIcon: "🧑‍💻", clearanceLevel: "Leaking Pot",      recipesProposed: 1 },
+  { id: "user",   vote: null,      isUser: true,  profileIcon: "⭐",  clearanceLevel: "Controlled Cook",  recipesProposed: 3 },
 ];
 
 const PEER_NAMES: Record<string, string> = {
@@ -381,6 +381,114 @@ function ProposeScreen({
   );
 }
 
+/* ── Chef profile bottom sheet ── */
+function ChefProfileSheet({
+  member,
+  onClose,
+}: {
+  member: KitchenMember;
+  onClose: () => void;
+}) {
+  const voteColor = member.vote === "FOR" ? "#167a3a" : member.vote === "AGAINST" ? "#b42318" : "var(--yi-muted)";
+  const voteLabel = member.vote === "FOR" ? "Voted For" : member.vote === "AGAINST" ? "Voted Against" : "Pending";
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 120,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex", alignItems: "flex-end",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          margin: "0 auto",
+          background: "var(--yi-white)",
+          border: "1px solid var(--yi-frame)",
+          borderBottom: "none",
+          padding: "24px 20px 32px",
+          display: "grid",
+          gap: 16,
+          animation: "modal-in 200ms ease",
+        }}
+      >
+        <style>{`@keyframes modal-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
+
+        {/* Avatar + name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{
+            width: 64, height: 64,
+            border: "1px solid var(--yi-frame)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "2rem", flexShrink: 0, background: "var(--yi-soft)",
+          }}>
+            {member.profileIcon ?? "👤"}
+          </div>
+          <div>
+            <p style={{
+              fontFamily: "var(--font-bodoni), Georgia, serif",
+              fontSize: "1.35rem", fontWeight: 600, margin: 0, lineHeight: 1.1,
+            }}>
+              {member.isUser ? `You (${member.name})` : member.name}
+            </p>
+            <p style={{
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.12em",
+              color: "var(--yi-muted)", margin: "4px 0 0",
+            }}>
+              {member.clearanceLevel ?? "Young Investor"} · Chef
+            </p>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "var(--yi-frame)" }}>
+          {[
+            { label: "Recipes", value: String(member.recipesProposed ?? 0) },
+            { label: "Vote", value: voteLabel },
+            { label: "Status", value: member.isUser ? "You" : "Member" },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: "var(--yi-white)", padding: "12px 10px", textAlign: "center" }}>
+              <p style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "1rem", fontWeight: 700, margin: "0 0 3px",
+                color: label === "Vote" ? voteColor : "var(--yi-ink)",
+              }}>
+                {value}
+              </p>
+              <p style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.1em",
+                color: "var(--yi-muted)", margin: 0,
+              }}>
+                {label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            background: "transparent", border: "1px solid var(--yi-frame)",
+            fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem",
+            textTransform: "uppercase", letterSpacing: "0.1em",
+            padding: "10px 16px", cursor: "pointer", color: "var(--yi-ink)",
+            justifySelf: "start",
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Active proposal + vote screen ── */
 function VoteScreen({
   proposal,
@@ -594,6 +702,7 @@ export function KitchenView({ clearance }: KitchenViewProps) {
   const [members, setMembers] = useState<KitchenMember[]>([]);
   // activeProposal: null = no open proposal, DEMO_PROPOSAL = local/fallback, or a real DB proposal
   const [activeProposal, setActiveProposal] = useState<ProposalData | null>(null);
+  const [selectedMember, setSelectedMember] = useState<KitchenMember | null>(null);
 
   // Load the chef's real Kitchen (Supabase RPC or local demo).
   useEffect(() => {
@@ -818,6 +927,44 @@ export function KitchenView({ clearance }: KitchenViewProps) {
         </p>
       </div>
 
+      {/* Chefs at the table */}
+      <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
+        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 12px" }}>
+          Chefs at the table · {members.length} seated
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 10 }}>
+          {members.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setSelectedMember(m)}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center",
+                gap: 5, padding: "10px 4px",
+                background: "transparent", border: "1px solid var(--yi-hairline)",
+                cursor: "pointer",
+                position: "relative",
+              }}
+            >
+              <span style={{ fontSize: "1.55rem", lineHeight: 1 }}>{m.profileIcon ?? "👤"}</span>
+              <span style={{
+                fontFamily: "var(--font-archivo), system-ui, sans-serif",
+                fontSize: "0.72rem", fontWeight: m.isUser ? 700 : 400,
+                color: "var(--yi-ink)", whiteSpace: "nowrap", maxWidth: "100%",
+                overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {m.isUser ? "You" : m.name}
+              </span>
+              <span style={{
+                display: "inline-block", width: 7, height: 7,
+                background: m.vote === "FOR" ? "#167a3a" : m.vote === "AGAINST" ? "#b42318" : "var(--yi-hairline)",
+                border: "1px solid var(--yi-frame)",
+              }} />
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Active recipe summary */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -873,6 +1020,10 @@ export function KitchenView({ clearance }: KitchenViewProps) {
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
         Kitchen votes are mock governance signals in this demo · No live execution
       </p>
+
+      {selectedMember && (
+        <ChefProfileSheet member={selectedMember} onClose={() => setSelectedMember(null)} />
+      )}
     </section>
   );
 }

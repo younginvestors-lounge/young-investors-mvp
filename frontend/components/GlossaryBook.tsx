@@ -4,6 +4,36 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Search, X } from "lucide-react";
 import { GLOSSARY_LIST, READER_LEVELS, type GlossaryLevels } from "@/lib/gordonGlossary";
 import { tap } from "@/lib/haptics";
+import type { GlossaryEntry } from "@/lib/gordonGlossary";
+
+/* ── Fuzzy trigram search ── */
+function trigrams(s: string): Set<string> {
+  const out = new Set<string>();
+  const padded = ` ${s} `;
+  for (let i = 0; i < padded.length - 2; i++) out.add(padded.slice(i, i + 3));
+  return out;
+}
+
+function trigramSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const ta = trigrams(a);
+  const tb = trigrams(b);
+  let overlap = 0;
+  for (const g of ta) if (tb.has(g)) overlap++;
+  return (2 * overlap) / (ta.size + tb.size);
+}
+
+function fuzzyScore(needle: string, entry: GlossaryEntry): number {
+  const fields = [entry.term, entry.kitchen, entry.cooking, entry.slang, entry.origin ?? ""];
+  // Exact substring match wins outright
+  if (fields.some((f) => f.toLowerCase().includes(needle))) return 1.0;
+  // Short needle (1-2 chars): prefix-only to avoid noise
+  if (needle.length <= 2) {
+    return fields.some((f) => f.toLowerCase().startsWith(needle)) ? 0.6 : 0;
+  }
+  // Trigram similarity across all fields
+  return Math.max(...fields.map((f) => trigramSimilarity(needle, f.toLowerCase())));
+}
 
 interface GlossaryBookProps {
   open: boolean;
@@ -45,17 +75,12 @@ export function GlossaryBook({ open, onClose }: GlossaryBookProps) {
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return GLOSSARY_LIST;
-    return GLOSSARY_LIST.filter((entry) => {
-      const haystack = [
-        entry.term,
-        entry.kitchen,
-        entry.cooking,
-        entry.slang,
-        entry.origin ?? "",
-        entry.related.join(" "),
-      ].join(" ").toLowerCase();
-      return haystack.includes(needle);
-    });
+    const scored = GLOSSARY_LIST.map((entry) => ({
+      entry,
+      score: fuzzyScore(needle, entry),
+    })).filter((r) => r.score > 0.12);
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map((r) => r.entry);
   }, [query]);
 
   if (!open) return null;

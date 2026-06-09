@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { BookOpen, Grid2x2, LogOut, Moon, Settings, Sun, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Bell, BookOpen, Grid2x2, LogOut, Moon, Settings, Sun, Volume2, VolumeX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useAppSettings } from "@/lib/appSettings";
@@ -11,6 +11,7 @@ import { getProfileIcon } from "@/lib/profileIcons";
 import { ExplainSheet, type ExplainContent } from "@/components/ExplainSheet";
 import { GlossaryBook } from "@/components/GlossaryBook";
 import { calculateConsensus } from "@/lib/domain";
+import { getNotifications, markAllNotificationsRead, markNotificationRead, type AppNotification } from "@/lib/profileStore";
 import type {
   AcademyClearance,
   AcademyModule,
@@ -87,6 +88,19 @@ export function TopBar({
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const notifRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    function poll() {
+      getNotifications(20).then((ns) => setNotifications(ns)).catch(() => {});
+    }
+    poll();
+    notifRef.current = setInterval(poll, 30_000);
+    return () => { if (notifRef.current) clearInterval(notifRef.current); };
+  }, [user]);
 
   function openMetric(label: string, value: string, color: string) {
     const info = METRIC_INFO[label];
@@ -222,6 +236,25 @@ export function TopBar({
             style={qt(glossaryOpen)}
           >
             <BookOpen size={13} strokeWidth={1.8} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => { tap(); setNotifOpen(true); }}
+            aria-label="Notifications"
+            title="Notifications"
+            style={{ ...qt(notifOpen), position: "relative" }}
+          >
+            <Bell size={13} strokeWidth={1.8} aria-hidden />
+            {notifications.filter((n) => !n.isRead).length > 0 && (
+              <span style={{
+                position: "absolute", top: 2, right: 2,
+                width: 7, height: 7,
+                background: "#b42318",
+                borderRadius: "50%",
+                border: "1px solid var(--yi-nav-bg)",
+                pointerEvents: "none",
+              }} />
+            )}
           </button>
           <button
             type="button"
@@ -425,6 +458,143 @@ export function TopBar({
           </div>
         </div>
       )}
+
+      {notifOpen && (
+        <NotificationCentre
+          notifications={notifications}
+          onClose={() => setNotifOpen(false)}
+          onMarkRead={(id) => {
+            markNotificationRead(id).catch(() => {});
+            setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+          }}
+          onMarkAllRead={() => {
+            markAllNotificationsRead().catch(() => {});
+            setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/* ── Notification centre ── */
+function NotificationCentre({
+  notifications,
+  onClose,
+  onMarkRead,
+  onMarkAllRead,
+}: {
+  notifications: AppNotification[];
+  onClose: () => void;
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
+}) {
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  function relativeTime(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 350,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex", alignItems: "flex-start", justifyContent: "flex-end",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(100vw, 360px)",
+          height: "100svh",
+          background: "var(--yi-white)",
+          borderLeft: "1px solid var(--yi-frame)",
+          display: "flex", flexDirection: "column",
+          animation: "slide-right 220ms ease",
+        }}
+      >
+        <style>{`@keyframes slide-right{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderBottom: "1px solid var(--yi-hairline)", flexShrink: 0 }}>
+          <div>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
+              Notification Centre
+            </p>
+            <h2 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.1rem", fontWeight: 600, margin: "4px 0 0", lineHeight: 1.1 }}>
+              Updates
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "1px solid var(--yi-frame)", padding: "6px 12px", fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer", color: "var(--yi-ink)" }}>
+            Close
+          </button>
+        </div>
+
+        {/* Mark all */}
+        {unreadCount > 0 && (
+          <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--yi-hairline)", flexShrink: 0 }}>
+            <button type="button" onClick={onMarkAllRead} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#167a3a", cursor: "pointer", padding: 0 }}>
+              Mark all {unreadCount} as read
+            </button>
+          </div>
+        )}
+
+        {/* List */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {notifications.length === 0 ? (
+            <div style={{ padding: "32px 18px", textAlign: "center" }}>
+              <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)" }}>
+                Nothing yet · the Kitchen is quiet
+              </p>
+            </div>
+          ) : (
+            notifications.map((n) => (
+              <div
+                key={n.id}
+                onClick={() => { if (!n.isRead) onMarkRead(n.id); }}
+                style={{
+                  padding: "14px 18px",
+                  borderBottom: "1px solid var(--yi-hairline)",
+                  background: n.isRead ? "transparent" : "var(--yi-soft)",
+                  cursor: n.isRead ? "default" : "pointer",
+                  display: "grid", gap: 4,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", fontWeight: n.isRead ? 400 : 600, color: "var(--yi-ink)", margin: 0, lineHeight: 1.3 }}>
+                    {n.title}
+                  </p>
+                  {!n.isRead && (
+                    <span style={{ width: 7, height: 7, background: "#b42318", borderRadius: "50%", flexShrink: 0, marginTop: 5 }} />
+                  )}
+                </div>
+                {n.body && (
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.78rem", color: "var(--yi-copy)", margin: 0, lineHeight: 1.5 }}>
+                    {n.body}
+                  </p>
+                )}
+                <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
+                  {relativeTime(n.createdAt)}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div style={{ padding: "12px 18px", borderTop: "1px solid var(--yi-hairline)", flexShrink: 0 }}>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
+            Kitchen updates only · no marketing · mock demo
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

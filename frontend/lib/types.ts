@@ -141,6 +141,9 @@ export interface KitchenMember {
   name: string;
   vote: ChefVote;
   isUser: boolean;
+  profileIcon?: string;
+  clearanceLevel?: string;
+  recipesProposed?: number;
 }
 
 export interface DashboardSnapshot {

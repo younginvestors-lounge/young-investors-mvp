@@ -307,7 +307,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
   const [answered, setAnswered] = useState(false);
   const [correct, setCorrect] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const [full, setFull] = useState(false);
+  const [full, setFull] = useState(true);
   const [desktop, setDesktop] = useState(false);
   const [reflection, setReflection] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -474,7 +474,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
         </div>
 
         {/* Content */}
-        <div ref={contentRef} style={{ flex: 1, overflowY: "auto", padding: "20px", display: "grid", gap: 18 }}>
+        <div ref={contentRef} style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "grid", gap: 14, alignContent: "start" }}>
 
           {phase === "glossary" && (
             <>

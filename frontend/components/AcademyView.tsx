@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { BadgeCheck, BookOpenCheck, CheckCircle, LockKeyhole, PlayCircle } from "lucide-react";
+import { BadgeCheck, BookOpenCheck, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrutalistButton } from "@/components/BrutalistButton";
 import { BrutalistCard } from "@/components/BrutalistCard";
@@ -108,52 +108,10 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
 
       <GordonChefScorecard modules={modules} />
 
-      <div className="stack">
-        {modules.map((module) => {
-          const status = module.passed ? "PASSED" : module.locked ? "LOCKED" : "OPEN";
-          const isCritical = module.requiredForKitchen && !module.passed;
-          const canStart = !module.locked && !module.passed;
-
-          return (
-            <BrutalistCard key={module.id} critical={isCritical}>
-              <div className="module-row">
-                <div style={{ display: "grid", gap: 4, flex: 1 }}>
-                  <p className="eyebrow">
-                    {module.requiredForKitchen ? "Core lesson — required for Kitchen" : "Extra seasoning"}
-                  </p>
-                  <h3 className="section-title">{module.title}</h3>
-                </div>
-                <span className={clsx("badge", module.passed ? "badge-positive" : isCritical ? "badge-critical" : "")}>
-                  {module.passed && <CheckCircle className="icon-inline" aria-hidden="true" />}
-                  {module.locked && <LockKeyhole className="icon-inline" aria-hidden="true" />}
-                  {status}
-                </span>
-              </div>
-              <p className="copy">{module.description}</p>
-              <div className="status-line" style={{ marginTop: 8 }}>
-                <span className="meta">{module.estimatedMinutes} min</span>
-                <span className="meta">{module.id}</span>
-                {canStart && (
-                  <BrutalistButton
-                    icon={<PlayCircle className="icon-inline" aria-hidden="true" />}
-                    onClick={() => openAcademyLesson({ id: module.id, title: module.title })}
-                  >
-                    Start lesson
-                  </BrutalistButton>
-                )}
-                {module.passed && (
-                  <span className="meta metric-positive">
-                    <CheckCircle className="icon-inline" aria-hidden="true" /> Lesson complete
-                  </span>
-                )}
-                {module.locked && (
-                  <span className="meta">Complete prior lessons to unlock</span>
-                )}
-              </div>
-            </BrutalistCard>
-          );
-        })}
-      </div>
+      <ModuleAccordion
+        modules={modules}
+        onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
+      />
 
       {openLesson && (
         <AcademyLessonModal
@@ -166,6 +124,183 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
         />
       )}
     </section>
+  );
+}
+
+/* ── Module accordion — compact tap-to-expand rows ── */
+function ModuleAccordion({
+  modules,
+  onOpen,
+}: {
+  modules: AcademyModule[];
+  onOpen: (mod: AcademyModule) => void;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  function toggle(id: string) {
+    setExpanded((prev) => (prev === id ? null : id));
+  }
+
+  return (
+    <div style={{ border: "1px solid var(--yi-frame)" }}>
+      {modules.map((module, idx) => {
+        const isOpen = expanded === module.id;
+        const isCritical = module.requiredForKitchen && !module.passed;
+        const canStart = !module.locked && !module.passed;
+        const leftBorderColor = module.passed
+          ? "#167a3a"
+          : isCritical
+          ? "#b42318"
+          : "transparent";
+
+        return (
+          <div key={module.id}>
+            {idx > 0 && <div style={{ height: 1, background: "var(--yi-frame)" }} />}
+
+            {/* Collapsed header row */}
+            <button
+              type="button"
+              onClick={() => toggle(module.id)}
+              aria-expanded={isOpen}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "13px 14px",
+                background: "var(--yi-card-bg)",
+                border: "none",
+                borderLeft: `3px solid ${leftBorderColor}`,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              {/* State icon */}
+              <span style={{ flexShrink: 0, display: "flex", color: module.passed ? "#167a3a" : isCritical ? "#b42318" : "var(--yi-muted)" }}>
+                {module.passed ? (
+                  <CheckCircle size={16} aria-hidden="true" />
+                ) : module.locked ? (
+                  <LockKeyhole size={16} aria-hidden="true" />
+                ) : (
+                  <PlayCircle size={16} aria-hidden="true" />
+                )}
+              </span>
+
+              {/* Title + tag */}
+              <span style={{ flex: 1, display: "grid", gap: 1 }}>
+                <span style={{
+                  fontFamily: "var(--font-archivo), system-ui, sans-serif",
+                  fontSize: "0.88rem",
+                  fontWeight: 600,
+                  color: "var(--yi-ink)",
+                  lineHeight: 1.25,
+                }}>
+                  {module.title}
+                </span>
+                <span style={{
+                  fontFamily: "var(--font-mono), monospace",
+                  fontSize: "0.55rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: "var(--yi-muted)",
+                }}>
+                  {module.requiredForKitchen ? "Core · required" : "Extra seasoning"} · {module.estimatedMinutes} min
+                </span>
+              </span>
+
+              {/* Status badge */}
+              <span style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.55rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                padding: "3px 7px",
+                border: `1px solid ${module.passed ? "#167a3a" : isCritical ? "#b42318" : "var(--yi-frame)"}`,
+                color: module.passed ? "#167a3a" : isCritical ? "#b42318" : "var(--yi-muted)",
+                flexShrink: 0,
+              }}>
+                {module.passed ? "Passed" : module.locked ? "Locked" : "Open"}
+              </span>
+
+              {/* Chevron */}
+              <span style={{ flexShrink: 0, color: "var(--yi-muted)", display: "flex" }}>
+                {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </span>
+            </button>
+
+            {/* Expanded panel */}
+            {isOpen && (
+              <div style={{
+                padding: "0 14px 14px 43px",
+                background: "var(--yi-card-bg)",
+                borderLeft: `3px solid ${leftBorderColor}`,
+              }}>
+                <p style={{
+                  fontFamily: "var(--font-archivo), system-ui, sans-serif",
+                  fontSize: "0.82rem",
+                  color: "var(--yi-copy)",
+                  lineHeight: 1.55,
+                  margin: "0 0 12px",
+                }}>
+                  {module.description}
+                </p>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  {canStart && (
+                    <button
+                      type="button"
+                      onClick={() => onOpen(module)}
+                      style={{
+                        minHeight: 36,
+                        padding: "0 16px",
+                        background: "var(--yi-black)",
+                        color: "var(--yi-white)",
+                        border: "none",
+                        fontFamily: "var(--font-mono), monospace",
+                        fontSize: "0.65rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <PlayCircle size={13} aria-hidden="true" />
+                      Start lesson
+                    </button>
+                  )}
+                  {module.passed && (
+                    <span style={{
+                      fontFamily: "var(--font-mono), monospace",
+                      fontSize: "0.6rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: "#167a3a",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}>
+                      <CheckCircle size={12} aria-hidden="true" /> Complete
+                    </span>
+                  )}
+                  {module.locked && (
+                    <span style={{
+                      fontFamily: "var(--font-mono), monospace",
+                      fontSize: "0.6rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: "var(--yi-muted)",
+                    }}>
+                      Complete prior lessons first
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
