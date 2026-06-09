@@ -5,6 +5,7 @@ import { CircleCheck } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
+import { KitchenChatPanel } from "@/components/KitchenChatPanel";
 import { getActiveProposal, getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, submitProposal, type KitchenState, type ProposalData } from "@/lib/profileStore";
 import { calculateConsensus } from "@/lib/domain";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
@@ -689,10 +690,11 @@ function VoteScreen({
 
 interface KitchenViewProps {
   clearance: AcademyClearance;
+  onTabChange?: (tab: import("@/lib/types").DashboardTab) => void;
 }
 
 /* ── Main KitchenView ── */
-export function KitchenView({ clearance }: KitchenViewProps) {
+export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
   const { user, recordKitchenVote } = useAuth();
   const [model, setModel] = useState<GovernanceModel>("slow-cook");
   const [phase, setPhase] = useState<KitchenPhase>("browse");
@@ -703,6 +705,7 @@ export function KitchenView({ clearance }: KitchenViewProps) {
   // activeProposal: null = no open proposal, DEMO_PROPOSAL = local/fallback, or a real DB proposal
   const [activeProposal, setActiveProposal] = useState<ProposalData | null>(null);
   const [selectedMember, setSelectedMember] = useState<KitchenMember | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Load the chef's real Kitchen (Supabase RPC or local demo).
   useEffect(() => {
@@ -1015,14 +1018,39 @@ export function KitchenView({ clearance }: KitchenViewProps) {
         >
           + Propose a Recipe
         </button>
+        <button
+          type="button"
+          onClick={() => setChatOpen(true)}
+          style={{ minHeight: 48, padding: "0 22px", background: "transparent", color: "var(--yi-ink)", border: "1px solid var(--yi-frame)", fontFamily: "var(--font-mono), monospace", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer" }}
+        >
+          Kitchen Chat
+        </button>
       </div>
 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
         Kitchen votes are mock governance signals in this demo · No live execution
       </p>
 
+      {onTabChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onTabChange("lounge")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Earn your seat in The Lounge →
+          </button>
+          <button type="button" onClick={() => onTabChange("vault")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Build your Vault →
+          </button>
+        </div>
+      )}
+
       {selectedMember && (
         <ChefProfileSheet member={selectedMember} onClose={() => setSelectedMember(null)} />
+      )}
+
+      {chatOpen && (
+        <KitchenChatPanel
+          kitchenName={kitchen?.name ?? "The Kitchen"}
+          onClose={() => setChatOpen(false)}
+        />
       )}
     </section>
   );

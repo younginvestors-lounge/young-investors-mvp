@@ -24,9 +24,10 @@ interface AcademyViewProps {
   clearance: AcademyClearance;
   onModuleStart: (moduleId: string) => void;
   onLessonOpenChange?: (open: boolean) => void;
+  onTabChange?: (tab: import("@/lib/types").DashboardTab) => void;
 }
 
-export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenChange }: AcademyViewProps) {
+export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenChange, onTabChange }: AcademyViewProps) {
   const passedCount = modules.filter((m) => m.passed).length;
   const totalCount = modules.length;
 
@@ -107,6 +108,21 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
       <FollowTheMoneyCard />
 
       <GordonChefScorecard modules={modules} />
+
+      {clearance.complete && onTabChange && (
+        <div style={{ border: "1px solid #167a3a", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-ink)", margin: 0, fontWeight: 600 }}>
+            Academy cleared. The Kitchen is open.
+          </p>
+          <button
+            type="button"
+            onClick={() => onTabChange("kitchen")}
+            style={{ minHeight: 38, padding: "0 18px", background: "#167a3a", color: "#fff", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer", flexShrink: 0 }}
+          >
+            Enter the Kitchen →
+          </button>
+        </div>
+      )}
 
       <ModuleAccordion
         modules={modules}

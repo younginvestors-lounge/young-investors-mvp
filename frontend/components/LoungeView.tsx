@@ -13,6 +13,7 @@ import { formatPercent } from "@/lib/domain";
 
 interface LoungeViewProps {
   rankings: RankingRow[];
+  onTabChange?: (tab: import("@/lib/types").DashboardTab) => void;
 }
 
 const RANK_LADDER = [
@@ -194,7 +195,7 @@ function ReferFriendCard() {
   );
 }
 
-export function LoungeView({ rankings }: LoungeViewProps) {
+export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
   const [chefName, setChefName] = useState("Chef");
   const [userRank] = useState(0); // index in rank ladder (0 = Commis)
   const [lifestyleIdx, setLifestyleIdx] = useState(0);
@@ -478,6 +479,18 @@ export function LoungeView({ rankings }: LoungeViewProps) {
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.46rem,1.6vw,0.58rem)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
         Educational simulation · Mock performance only · Not financial advice
       </p>
+
+      {onTabChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onTabChange("kitchen")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Open the Kitchen →
+          </button>
+          <button type="button" onClick={() => onTabChange("academy")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Back to Academy →
+          </button>
+        </div>
+      )}
+
       <GlossaryBook open={cookbookOpen} onClose={() => setCookbookOpen(false)} />
     </section>
   );

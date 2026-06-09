@@ -235,13 +235,14 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
         />
 
         <Reveal key={activeTab}>
-          {activeTab === "kitchen" && <KitchenView clearance={clearance} />}
+          {activeTab === "kitchen" && <KitchenView clearance={clearance} onTabChange={setActiveTab} />}
           {activeTab === "academy" && (
             <AcademyView
               modules={modules}
               clearance={clearance}
               onModuleStart={handleModuleStart}
               onLessonOpenChange={setAcademyLessonOpen}
+              onTabChange={setActiveTab}
             />
           )}
           {activeTab === "vault" && (
@@ -257,7 +258,7 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
               news={seed.macroNews}
             />
           )}
-          {activeTab === "lounge" && <LoungeView rankings={seed.rankings} />}
+          {activeTab === "lounge" && <LoungeView rankings={seed.rankings} onTabChange={setActiveTab} />}
         </Reveal>
       </main>
 
