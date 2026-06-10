@@ -1,4 +1,4 @@
-const CACHE_NAME = "young-investors-pwa-v2";
+const CACHE_NAME = "young-investors-pwa-v3";
 const PRECACHE = ["/login", "/manifest.webmanifest", "/images/young-investors-logo.png", "/icons/yi-icon-192.png", "/icons/yi-icon-512.png", "/icons/yi-maskable-512.png"];
 
 self.addEventListener("install", (event) => {

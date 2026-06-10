@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Young Investors",
-    short_name: "Young Investors",
+    short_name: "We Cook",
     description: "Governance-first financial education and paper-trading simulation.",
     start_url: "/login",
     scope: "/",
