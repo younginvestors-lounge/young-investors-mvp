@@ -83,6 +83,105 @@ function SiciliaPanel({ name, gordonReturn, beatCount, lineIndex }: { name: stri
   );
 }
 
+// 60% Rule reference table — heuristic view for curious chefs
+const QUORUM_TABLE = [
+  { chefs: 2,  yesNeeded: 2,  pct: "100%", note: "Both chefs must commit — you cook together or not at all." },
+  { chefs: 3,  yesNeeded: 2,  pct: "67%",  note: "Two-thirds say yes. One dissent is heard, not decisive." },
+  { chefs: 4,  yesNeeded: 3,  pct: "75%",  note: "Strong majority. One 'no' alone can't stop the table." },
+  { chefs: 5,  yesNeeded: 3,  pct: "60%",  note: "The minimum threshold met exactly. Clean majority." },
+  { chefs: 6,  yesNeeded: 4,  pct: "67%",  note: "Two-thirds. A Kitchen of six needs real conviction." },
+  { chefs: 8,  yesNeeded: 5,  pct: "63%",  note: "Larger tables demand broader alignment." },
+  { chefs: 10, yesNeeded: 6,  pct: "60%",  note: "At ten, the threshold is cleanly sixty percent." },
+  { chefs: 14, yesNeeded: 9,  pct: "64%",  note: "Bigger table, more reasons to gather before the vote." },
+];
+
+function KitchenLawCard() {
+  const [open, setOpen] = useState(false);
+  const mono: React.CSSProperties = { fontFamily: "var(--font-mono), monospace", textTransform: "uppercase" as const, letterSpacing: "0.1em" };
+
+  return (
+    <div style={{ border: "1px solid var(--yi-frame)", background: "var(--yi-card-bg)" }}>
+      {/* Header — always visible */}
+      <button
+        type="button"
+        onClick={() => { tap(); setOpen((v) => !v); }}
+        style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+      >
+        <div>
+          <p style={{ ...mono, fontSize: "0.58rem", color: "var(--yi-muted)", margin: "0 0 4px" }}>Kitchen Governance · The Law</p>
+          <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1rem", fontWeight: 600, color: "var(--yi-ink)", margin: 0, lineHeight: 1.2 }}>
+            The 60% Rule — How Every Kitchen Decides
+          </p>
+        </div>
+        <span style={{ ...mono, fontSize: "0.62rem", color: "var(--yi-muted)", flexShrink: 0, marginLeft: 12 }}>{open ? "− Less" : "+ Learn"}</span>
+      </button>
+
+      {open && (
+        <div style={{ borderTop: "1px solid var(--yi-hairline)", padding: "16px 18px", display: "grid", gap: 16 }}>
+
+          {/* Gordon's voice */}
+          <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 12 }}>
+            <p style={{ ...mono, fontSize: "0.52rem", color: "#b42318", margin: "0 0 6px" }}>Gordon · The Rule</p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.65, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
+              &ldquo;A recipe passes when YES votes reach 60% of the kitchen&apos;s total members — not just voters, total members.
+              In a kitchen of five, that&apos;s three YES votes. In ten, it&apos;s six. The table size is your choice.
+              The threshold is fixed. Season your reason before you ask the table to cook it.&rdquo;
+            </p>
+          </div>
+
+          {/* Quorum reference table */}
+          <div>
+            <p style={{ ...mono, fontSize: "0.56rem", color: "var(--yi-muted)", margin: "0 0 10px" }}>
+              Kitchen size → YES votes needed (ceil 60% × members)
+            </p>
+            <div style={{ border: "1px solid var(--yi-frame)", overflow: "hidden" }}>
+              {/* Table header */}
+              <div style={{ display: "grid", gridTemplateColumns: "56px 80px 56px 1fr", background: "var(--yi-black)", padding: "8px 12px", gap: 8 }}>
+                {["Chefs", "YES Needed", "Rate", "Gordon's note"].map((h) => (
+                  <span key={h} style={{ ...mono, fontSize: "0.5rem", color: "#fff", letterSpacing: "0.12em" }}>{h}</span>
+                ))}
+              </div>
+              {QUORUM_TABLE.map((row, i) => (
+                <div key={row.chefs} style={{ display: "grid", gridTemplateColumns: "56px 80px 56px 1fr", padding: "9px 12px", gap: 8, borderTop: i === 0 ? "none" : "1px solid var(--yi-hairline)", background: i % 2 === 0 ? "transparent" : "var(--yi-soft)", alignItems: "center" }}>
+                  <span style={{ ...mono, fontSize: "0.72rem", fontWeight: 700, color: "var(--yi-ink)" }}>{row.chefs}</span>
+                  <span style={{ ...mono, fontSize: "0.72rem", fontWeight: 700, color: "#167a3a" }}>{row.yesNeeded} YES</span>
+                  <span style={{ ...mono, fontSize: "0.65rem", color: "var(--yi-muted)" }}>{row.pct}</span>
+                  <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.75rem", color: "var(--yi-copy)", lineHeight: 1.4 }}>{row.note}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Beat Gordon governance tie-in */}
+          <div style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px", background: "var(--yi-paper)" }}>
+            <p style={{ ...mono, fontSize: "0.54rem", color: "var(--yi-muted)", margin: "0 0 6px" }}>The Beat Gordon Connection</p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+              Gordon&apos;s benchmark can only be beaten by a Kitchen that actually cooks — meaning recipes
+              that pass the 60% Rule. A single chef guessing in isolation doesn&apos;t count.
+              The rule forces the table to agree, which means better reasoning, fewer emotion-driven recipes,
+              and a Vault that earns its performance honestly.
+            </p>
+          </div>
+
+          {/* Meritocracy note */}
+          <div style={{ borderLeft: "2px solid var(--yi-black)", paddingLeft: 12 }}>
+            <p style={{ ...mono, fontSize: "0.52rem", color: "var(--yi-muted)", margin: "0 0 5px" }}>Kitchen Formation · Your Choice</p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+              The Kitchen size is entirely yours. A Kitchen of two master chefs is excellent and should be
+              the goal. Higher Academy engagement sharpens your decisions toward wealth creation —
+              and frees up more time for the life you actually want to live.
+            </p>
+          </div>
+
+          <p style={{ ...mono, fontSize: "0.5rem", color: "var(--yi-muted)", margin: 0 }}>
+            Mock governance · Educational only · Kitchen votes are simulation signals only
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RankCard({ row, gordonReturn }: { row: RankingRow; gordonReturn: number }) {
   const isGordon = row.isGordon;
   const beat = row.beatGordon;
@@ -297,6 +396,9 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
           </span>
         </div>
       </div>
+
+      {/* Kitchen Law — the 60% Rule governance table */}
+      <KitchenLawCard />
 
       {/* Beat Gordon leaderboard — no Kitchens have formed yet (this is the real thing) */}
       <div>

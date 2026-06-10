@@ -74,7 +74,10 @@ export default function BriefingPage() {
     if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isLoading, isAuthenticated, router]);
 
-  const name = user?.chef_alias || "Chef";
+  // Strip any leading "Chef " the user may have typed in their alias, then add
+  // our standard "Chef " prefix so greetings never say "Chef Chef [name]".
+  const rawAlias = (user?.chef_alias || "").trim();
+  const name = rawAlias.replace(/^chef\s+/i, "") || "Young Investor";
   const intent = INTENT_LABEL[user?.intent ?? ""] ?? "get cooking";
 
   const gordonSpeech = useMemo(
@@ -131,6 +134,24 @@ export default function BriefingPage() {
         </div>
 
         <div style={{ flex: 1, padding: "clamp(28px,6vw,48px) 24px 32px", maxWidth: 560, width: "100%" }}>
+
+          {/* ── First 100 Beta badge (Gordon screen only) ── */}
+          {isGordon && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+              <span style={{ ...mono(0.58, "#fff"), background: "#111", padding: "5px 10px", letterSpacing: "0.14em" }}>
+                BETA · FIRST 100
+              </span>
+              {user?.member_number != null && (
+                <span style={{ ...mono(0.62, "#111"), border: "1px solid #111", padding: "5px 10px", letterSpacing: "0.1em" }}>
+                  Chef #{String(user.member_number).padStart(3, "0")}
+                </span>
+              )}
+              <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.8rem", color: "#888", lineHeight: 1.3 }}>
+                You are one of the first 100 chefs.<br />Your number is permanent.
+              </span>
+            </div>
+          )}
+
           <p style={{ ...mono(0.62, "#888"), margin: "0 0 8px" }}>{isGordon ? "Meet Gordon" : "Meet Sicilia"}</p>
           <h1 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.4rem,10vw,4rem)", fontWeight: 700, lineHeight: 0.92, letterSpacing: "-0.02em", margin: "0 0 24px" }}>
             {isGordon ? "Gordon." : "Sicilia."}

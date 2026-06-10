@@ -199,7 +199,7 @@ export function TopBar({
               overflow: "hidden",
               textOverflow: "ellipsis",
             }}>
-              {chefName ? `Chef ${chefName}` : "Young Investors"}
+              {chefName || "Young Investors"}
             </span>
             {memberNumber != null && (
               <span style={{

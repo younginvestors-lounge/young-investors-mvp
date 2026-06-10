@@ -109,6 +109,44 @@ create trigger trg_assign_chef_number
   before insert on public.profiles
   for each row execute function public.assign_chef_number();
 
+-- ============================================================================
+-- FIRST 100 BETA: Reassign member numbers by creation order
+-- ----------------------------------------------------------------------------
+-- Run this block ONCE after your first batch of testers have signed up.
+-- It assigns permanent numbers (003, 004, 005...) in the order each chef
+-- created their account. Gordon = 001, Sicilia = 002 remain reserved and have
+-- no rows here. Idempotent: chefs who already have the correct number are
+-- untouched (the WHERE clause checks for drift).
+--
+-- TO RUN: paste the block below into Supabase SQL Editor and execute.
+-- ============================================================================
+-- do $$
+-- declare
+--   r record;
+--   new_num integer := 2;  -- start at 2 so first real chef gets 3
+-- begin
+--   for r in
+--     select id
+--     from public.profiles
+--     order by created_at asc
+--   loop
+--     new_num := new_num + 1;
+--     update public.profiles
+--       set member_number = new_num,
+--           updated_at    = now()
+--       where id = r.id
+--         and (member_number is distinct from new_num);
+--   end loop;
+--   -- Advance the sequence past the highest assigned number so new signups continue correctly.
+--   perform setval(
+--     'public.chef_number_seq',
+--     greatest(new_num, (select coalesce(max(member_number), 2) from public.profiles)),
+--     true
+--   );
+-- end
+-- $$;
+-- ============================================================================
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;

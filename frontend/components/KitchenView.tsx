@@ -8,7 +8,7 @@ import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
 import { KitchenChatPanel } from "@/components/KitchenChatPanel";
 import { RevealBox } from "@/components/RevealBox";
 import { getActiveProposal, getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, submitProposal, type KitchenState, type ProposalData } from "@/lib/profileStore";
-import { calculateConsensus } from "@/lib/domain";
+import { calculateConsensus, dynamicQuorum } from "@/lib/domain";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
 import { readShelfReceipts, removeShelfReceipt, SHELF_EVENT, type ShelfReceipt } from "@/lib/shelfStore";
 import type { AcademyClearance, ChefVote, KitchenMember, VoteTally } from "@/lib/types";
@@ -56,8 +56,8 @@ function membersToVoteTally(members: KitchenMember[]): VoteTally {
     yes:           members.filter((m) => m.vote === "FOR").length,
     no:            members.filter((m) => m.vote === "AGAINST").length,
     abstain:       members.filter((m) => m.vote === "ABSTAIN").length,
-    // Quorum remains display metadata only. Approval is the 60% Rule.
-    quorumRequired: Math.max(1, members.length),
+    // YES votes needed = ceil(60% × kitchen size). Scales with the table.
+    quorumRequired: dynamicQuorum(members.length),
     totalMembers:  members.length,
   };
 }
@@ -629,11 +629,16 @@ function VoteScreen({
           <div style={{ height: "100%", width: `${barWidth}%`, background: passes ? "#167a3a" : barWidth > 0 ? "#b46918" : "transparent", transition: "width 260ms ease, background 260ms ease" }} />
           <div style={{ position: "absolute", top: -5, bottom: -5, left: "60%", width: 1, background: "#111" }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>60% threshold</span>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>
+            Need {dynamicQuorum(members.length)} of {members.length}
+          </span>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>60% rule</span>
         </div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: passes ? "#167a3a" : "#b46918", margin: "6px 0 0" }}>
-          {passes ? `60% threshold passed · ${Math.round(result.forRatio * 100)}% yes` : `${result.castCount}/${members.length} voted · ${Math.round(result.forRatio * 100)}% yes`}
+          {passes
+            ? `Kitchen is ready to cook · ${result.forCount} YES of ${dynamicQuorum(members.length)} needed`
+            : `${result.forCount} YES · need ${dynamicQuorum(members.length) - result.forCount} more to cook`}
         </p>
       </div>
 
@@ -1031,7 +1036,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           <div style={{ position: "absolute", top: -4, bottom: -4, left: "60%", width: 1, background: "#111" }} />
         </div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: passes ? "#167a3a" : "#b46918", margin: "0 0 14px" }}>
-          {result.forCount} for · {result.againstCount} against · {members.length - result.castCount} pending · {Math.round(result.forRatio * 100)}% yes / 60% needed
+          {result.forCount} for · {result.againstCount} against · need {dynamicQuorum(members.length)} of {members.length}
         </p>
 
         <button

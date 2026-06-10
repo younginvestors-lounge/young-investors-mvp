@@ -146,7 +146,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
         yes: 4,
         no: 4,
         abstain: 0,
-        quorumRequired: 7,
+        quorumRequired: 6, // ceil(0.6 × 10) = 6
         totalMembers: 10,
       },
       userVote: null,
@@ -167,7 +167,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
         yes: 9,
         no: 1,
         abstain: 2,
-        quorumRequired: 10,
+        quorumRequired: 9, // ceil(0.6 × 14) = 9
         totalMembers: 14,
       },
       userVote: null,
@@ -188,7 +188,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
         yes: 7,
         no: 2,
         abstain: 1,
-        quorumRequired: 8,
+        quorumRequired: 7, // ceil(0.6 × 11) = 7
         totalMembers: 11,
       },
       userVote: null,
