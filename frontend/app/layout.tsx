@@ -31,6 +31,9 @@ export const metadata: Metadata = {
   title: "Young Investors | We Cook",
   description:
     "Educational paper-trading simulation and wealth creation tool. No real money.",
+  verification: {
+    google: "be5dff13e08623d8",
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
