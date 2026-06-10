@@ -167,7 +167,7 @@ export default function LoginPage() {
 
       <header className="auth-header">
         <span className="auth-wordmark">Young Investors</span>
-        <span className="auth-tag">MOCK_MVP_PAPER_TRADING_ONLY</span>
+        <span className="auth-tag" style={{ fontFamily: "var(--font-space-mono, monospace)" }}>We Cook.</span>
       </header>
 
       <div className="auth-login-grid">
@@ -177,14 +177,6 @@ export default function LoginPage() {
             <span>{greeting.word}</span>
             <small>{greeting.lang}</small>
           </h1>
-          <p className="auth-copy">
-            Build your Kitchen, shape your Vault, and turn market thinking into a shared decision process.
-          </p>
-          <div className="auth-proof-grid" aria-label="Young Investors safeguards">
-            <span>Kitchen-first collaboration</span>
-            <span>60% rule before execution</span>
-            <span>Gordon risk review</span>
-          </div>
         </section>
 
         <section key={mode} className="auth-action-panel auth-step-panel" aria-live="polite">
