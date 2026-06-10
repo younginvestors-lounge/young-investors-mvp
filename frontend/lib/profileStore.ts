@@ -86,6 +86,7 @@ export interface AttemptResult {
 
 export interface KitchenVoteInput {
   kitchenName: string;
+  proposalId?: string;
   proposalTicker: string;
   vote: string;
   seasoningReason?: string;
@@ -586,13 +587,22 @@ export async function logKitchenVote(input: KitchenVoteInput, current: ChefProfi
       const sb = requireSupabase();
       const auth = await sbAuthUser();
       if (!auth) return current;
-      await sb.from("kitchen_votes").insert({
-        user_id: auth.id,
-        kitchen_name: input.kitchenName,
-        proposal_ticker: input.proposalTicker,
-        vote: input.vote,
-        seasoning_reason: input.seasoningReason ?? null,
-      });
+      const castViaRpc = input.proposalId
+        ? await sb.rpc("cast_kitchen_vote", {
+            p_proposal_id: input.proposalId,
+            p_vote: input.vote,
+            p_seasoning_reason: input.seasoningReason ?? null,
+          })
+        : { error: new Error("proposal id unavailable") };
+      if (castViaRpc.error) {
+        await sb.from("kitchen_votes").insert({
+          user_id: auth.id,
+          kitchen_name: input.kitchenName,
+          proposal_ticker: input.proposalTicker,
+          vote: input.vote,
+          seasoning_reason: input.seasoningReason ?? null,
+        });
+      }
       await sb.from("profiles").update({ kitchen_score, updated_at: new Date().toISOString() }).eq("id", auth.id);
     } else {
       writeLocalProfile({ ...current, kitchen_score });

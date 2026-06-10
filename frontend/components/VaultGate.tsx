@@ -38,7 +38,7 @@ export function VaultLocked({ passedCount, totalCount }: { passedCount: number; 
   return (
     <section style={{ display: "grid", gap: 18 }} aria-labelledby="vault-locked-heading">
       <div>
-        <p className="eyebrow">Learn before you earn</p>
+        <p className="eyebrow">Wealth Creation Tool</p>
         <h2 id="vault-locked-heading" className="view-title">The Vault</h2>
       </div>
 
@@ -66,7 +66,7 @@ export function VaultLocked({ passedCount, totalCount }: { passedCount: number; 
       </div>
 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
-        Head to the Academy · Learn before you earn · Educational simulation only
+        Build the Academy receipts · Educational simulation only
       </p>
     </section>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CandlestickChart, Newspaper, PackageOpen } from "lucide-react";
 import { JSEMarket } from "@/components/JSEMarket";
+import { RevealBox } from "@/components/RevealBox";
 import { useLiveTickers } from "@/lib/useLiveTickers";
 import { formatMoney, formatPercent } from "@/lib/domain";
 import type { MacroNewsCard, MarketTicker, TimesFeature } from "@/lib/types";
@@ -80,7 +81,8 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       </div>
 
       {/* The JSE — what's on the menu, with Gordon's heat check */}
-      <div style={{ display: aisle === "stocks" ? "grid" : "none", gap: 8 }}>
+      <div style={{ display: aisle === "stocks" ? "grid" : "none", gap: 12 }}>
+        <RevealBox symbol={<CandlestickChart size={15} strokeWidth={1.8} aria-hidden />} title="Stock Aisle" meta="Long-press to add to Shelf" defaultOpen>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <CandlestickChart size={16} strokeWidth={1.8} aria-hidden style={{ color: "var(--yi-ink)" }} />
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
@@ -88,10 +90,13 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
           </p>
         </div>
         <JSEMarket />
+        </RevealBox>
       </div>
 
       {/* Lead article */}
-      <div style={{ display: aisle === "articles" ? "block" : "none", border: "1px solid var(--yi-frame)", padding: "18px 16px", background: "var(--yi-card-bg)" }}>
+      <div style={{ display: aisle === "articles" ? "grid" : "none", gap: 12 }}>
+      <RevealBox symbol={<Newspaper size={15} strokeWidth={1.8} aria-hidden />} title="Young Investor Times" meta="Reasoning before recipes" defaultOpen>
+      <div style={{ border: "1px solid var(--yi-frame)", padding: "18px 16px", background: "var(--yi-card-bg)" }}>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.55rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
           {feature.kicker}
         </p>
@@ -105,9 +110,11 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
           {feature.byline}
         </p>
       </div>
+      </RevealBox>
 
       {/* Secondary articles */}
-      <div style={{ display: aisle === "articles" ? "grid" : "none", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
+      <RevealBox symbol={<Newspaper size={15} strokeWidth={1.8} aria-hidden />} title="Market Stories" meta={`${secondaryArticles.length + news.length} reads`}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
         {secondaryArticles.map((a) => (
           <div key={a.title} style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
             <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,1.8vw,0.6rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>{a.kicker}</p>
@@ -152,7 +159,7 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       </div>
 
       {/* Macro news */}
-      <div style={{ display: aisle === "articles" ? "grid" : "none", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))", gap: 12, marginTop: 12 }}>
         {news.map((item) => (
           <div key={item.id} style={{ border: `1px solid ${item.critical ? "#b42318" : "var(--yi-frame)"}`, padding: "14px 16px", background: "var(--yi-card-bg)" }}>
             <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,1.8vw,0.6rem)", textTransform: "uppercase", letterSpacing: "0.1em", color: item.critical ? "#b42318" : "var(--yi-muted)", margin: "0 0 6px" }}>{item.region}</p>
@@ -161,8 +168,11 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
           </div>
         ))}
       </div>
+      </RevealBox>
+      </div>
 
       {aisle === "future" && (
+        <RevealBox symbol={<PackageOpen size={15} strokeWidth={1.8} aria-hidden />} title="Future Markets" meta="Reserved education shelves" defaultOpen>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,220px),1fr))", gap: 12 }}>
           {[
             { title: "Capital Market Aisle", line: "Bonds, rates, and credit modules will live here once Gordon has the syllabus ready." },
@@ -182,6 +192,7 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
             </article>
           ))}
         </div>
+        </RevealBox>
       )}
 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.46rem,1.6vw,0.56rem)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>

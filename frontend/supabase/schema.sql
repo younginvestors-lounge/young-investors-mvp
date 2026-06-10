@@ -418,6 +418,93 @@ end;
 $$;
 grant execute on function public.kitchen_votes_for(text) to authenticated;
 
+-- Cast a vote and evaluate the active recipe using the 60% Rule.
+-- Quorum is not an execution gate in this MVP: approval is based on the
+-- percentage of decisive votes (FOR/AGAINST) crossing 60%.
+create or replace function public.cast_kitchen_vote(
+  p_proposal_id uuid,
+  p_vote text,
+  p_seasoning_reason text default null
+)
+returns table (
+  proposal_id uuid,
+  yes_votes integer,
+  no_votes integer,
+  decisive_votes integer,
+  yes_ratio numeric,
+  threshold_met boolean,
+  proposal_status text
+)
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+  v_proposal public.kitchen_proposals%rowtype;
+  v_vote text := upper(trim(coalesce(p_vote, '')));
+  v_yes integer := 0;
+  v_no integer := 0;
+  v_total integer := 0;
+  v_members integer := 0;
+  v_ratio numeric := 0;
+  v_status text;
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  if v_vote not in ('FOR', 'AGAINST', 'ABSTAIN') then raise exception 'Vote must be FOR, AGAINST, or ABSTAIN.'; end if;
+
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km
+  where km.user_id = v_uid
+  order by km.joined_at limit 1;
+
+  if v_kid is null then raise exception 'You must be in a Kitchen to vote.'; end if;
+
+  select * into v_proposal
+  from public.kitchen_proposals p
+  where p.id = p_proposal_id and p.kitchen_id = v_kid
+  for update;
+
+  if not found then raise exception 'Recipe not found for this Kitchen.'; end if;
+  if v_proposal.status <> 'voting' then raise exception 'This recipe is no longer open for voting.'; end if;
+
+  insert into public.kitchen_votes (user_id, kitchen_name, proposal_ticker, vote, seasoning_reason)
+  select v_uid, k.name, v_proposal.ticker, v_vote, p_seasoning_reason
+  from public.kitchens k
+  where k.id = v_kid;
+
+  select
+    count(*) filter (where latest.vote = 'FOR')::integer,
+    count(*) filter (where latest.vote = 'AGAINST')::integer
+  into v_yes, v_no
+  from (
+    select distinct on (kv.user_id) kv.user_id, kv.vote
+    from public.kitchen_votes kv
+    join public.kitchen_members km on km.user_id = kv.user_id and km.kitchen_id = v_kid
+    where kv.proposal_ticker = v_proposal.ticker
+    order by kv.user_id, kv.created_at desc
+  ) latest;
+
+  v_total := v_yes + v_no;
+  select count(*)::integer into v_members from public.kitchen_members where kitchen_id = v_kid;
+  if v_members > 0 then
+    v_ratio := round((v_yes::numeric / v_members::numeric), 4);
+  end if;
+
+  v_status := case
+    when v_members > 0 and v_ratio >= 0.60 then 'passed'
+    when v_members > 0 and v_total >= v_members and v_ratio < 0.60 then 'rejected'
+    else 'voting'
+  end;
+
+  update public.kitchen_proposals
+  set status = v_status
+  where id = v_proposal.id;
+
+  return query select v_proposal.id, v_yes, v_no, v_total, v_ratio, (v_ratio >= 0.60), v_status;
+end;
+$$;
+grant execute on function public.cast_kitchen_vote(uuid, text, text) to authenticated;
+
 -- ============================================================================
 -- 8. Kitchen proposals — shared recipe proposals, visible to all Kitchen members
 -- ----------------------------------------------------------------------------

@@ -2,12 +2,13 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { BadgeCheck, BookOpenCheck, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle } from "lucide-react";
+import { BadgeCheck, BookOpenCheck, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle, ReceiptText, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrutalistButton } from "@/components/BrutalistButton";
 import { BrutalistCard } from "@/components/BrutalistCard";
 import { AcademyLessonModal } from "@/components/AcademyLessonModal";
 import { GordonChefScorecard } from "@/components/GordonChefScorecard";
+import { RevealBox } from "@/components/RevealBox";
 import { useAuth } from "@/lib/auth-context";
 import { notifyTask } from "@/lib/taskToast";
 import {
@@ -59,7 +60,7 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
   return (
     <section className="stack" aria-labelledby="academy-heading">
       <div>
-        <p className="eyebrow">Learn before you earn</p>
+        <p className="eyebrow">Wealth Creation Tool</p>
         <h2 id="academy-heading" className="view-title">The Academy</h2>
         {chefName && (
           <p style={{
@@ -86,14 +87,14 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
             <LockKeyhole className="icon-inline" aria-hidden="true" />
           )}
           <span className={clsx("badge", clearance.complete ? "badge-positive" : "badge-critical")}>
-            {clearance.complete ? "Ready for The Kitchen" : "Kitchen access locked"}
+            {clearance.complete ? "Ready for The Kitchen" : "Skills in progress"}
           </span>
           <span className="badge">{passedCount}/{totalCount} lessons passed</span>
         </div>
         <p className="copy">
           {clearance.complete
-            ? "All required lessons are cleared. Your seat at the table is confirmed."
-            : "The Kitchen opens after the required lessons are passed. Recipes stay tied to risk literacy, table discipline, and paper-trading governance."}
+            ? "Your market literacy receipts are in place. The table can see your process."
+            : "Build the language, risk habits, and reasoning receipts that make every Kitchen vote sharper."}
         </p>
         {!clearance.complete && (
           <div className="progress-track" style={{ marginTop: 12 }} aria-hidden="true">
@@ -105,9 +106,23 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
         )}
       </BrutalistCard>
 
-      <FollowTheMoneyCard />
+      <RevealBox
+        symbol={<Trophy size={15} strokeWidth={1.8} aria-hidden />}
+        title="Academy Score"
+        meta={`${passedCount}/${totalCount} lessons passed`}
+        defaultOpen
+        tone={clearance.complete ? "positive" : "watch"}
+      >
+        <FollowTheMoneyCard />
+      </RevealBox>
 
-      <GordonChefScorecard modules={modules} />
+      <RevealBox
+        symbol={<BadgeCheck size={15} strokeWidth={1.8} aria-hidden />}
+        title="Chef Scorecard"
+        meta="Gordon's read of your reasoning"
+      >
+        <GordonChefScorecard modules={modules} />
+      </RevealBox>
 
       {clearance.complete && onTabChange && (
         <div style={{ border: "1px solid #167a3a", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -124,10 +139,16 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
         </div>
       )}
 
-      <ModuleAccordion
-        modules={modules}
-        onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
-      />
+      <RevealBox
+        symbol={<ReceiptText size={15} strokeWidth={1.8} aria-hidden />}
+        title="Follow The Money"
+        meta="Lessons, receipts, and retry flow"
+      >
+        <ModuleAccordion
+          modules={modules}
+          onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
+        />
+      </RevealBox>
 
       {openLesson && (
         <AcademyLessonModal
@@ -366,7 +387,7 @@ function FollowTheMoneyCard() {
   };
 
   return (
-    <BrutalistCard>
+    <div>
       <p className="eyebrow">Follow the Money · Academy Score</p>
 
       {/* Score + rank */}
@@ -512,6 +533,6 @@ function FollowTheMoneyCard() {
           </p>
         )}
       </div>
-    </BrutalistCard>
+    </div>
   );
 }

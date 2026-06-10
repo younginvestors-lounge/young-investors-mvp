@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   applicationName: "Young Investors",
   title: "Young Investors | We Cook",
   description:
-    "Educational paper-trading simulation. Learn before you earn. No real money.",
+    "Educational paper-trading simulation and wealth creation tool. No real money.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

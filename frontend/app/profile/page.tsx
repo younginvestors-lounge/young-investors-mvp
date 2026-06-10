@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BadgeCheck, Share2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useAppSettings } from "@/lib/appSettings";
 import { getProfileIcon, PROFILE_ICONS } from "@/lib/profileIcons";
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const { theme, toggleTheme, pattern, togglePattern, musicOn, musicAvailable, toggleMusic } = useAppSettings();
 
   useEffect(() => {
@@ -95,6 +97,26 @@ export default function ProfilePage() {
     { label: "Kitchen Prediction", value: user.kitchen_prediction_score },
   ];
 
+  const topScore = scores.reduce((best, score) => (score.value > best.value ? score : best), scores[0]);
+  const chefNumber = user.member_number != null ? String(user.member_number).padStart(3, "0") : "---";
+
+  async function shareHallmark() {
+    if (!user) return;
+    const text = `Young Investors Chef ${user.chef_alias} / Chef No. ${chefNumber} / ${user.rank} / Academy ${user.academy_score}/100 / Kitchen ${user.kitchen_score}/100`;
+    setShareNotice(null);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Chef ${user.chef_alias}`, text, url: window.location.href });
+        setShareNotice("Share sheet opened.");
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareNotice("Profile caption copied.");
+      }
+    } catch {
+      setShareNotice("Share cancelled.");
+    }
+  }
+
   return (
     <main style={{ minHeight: "100svh", background: "var(--yi-paper)", color: "var(--yi-ink)", display: "flex", flexDirection: "column" }}>
       <div style={{ height: 2, background: "var(--yi-ink)" }} />
@@ -110,6 +132,72 @@ export default function ProfilePage() {
       </div>
 
       <div style={{ padding: "8px 20px 40px", maxWidth: 600, width: "100%", margin: "0 auto" }}>
+        {/* Screenshot-ready hallmark */}
+        <section
+          aria-label="Chef hallmark"
+          style={{
+            background: "#050505",
+            color: "#ffffff",
+            border: "1px solid #050505",
+            padding: "18px",
+            marginBottom: 18,
+            display: "grid",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+            <div>
+              <p style={{ ...mono, fontSize: "0.52rem", color: "rgba(255,255,255,0.62)", margin: 0 }}>Young Investors / Chef Hallmark</p>
+              <h1 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.2rem,11vw,4rem)", lineHeight: 0.88, letterSpacing: 0, margin: "8px 0 0", color: "#ffffff" }}>
+                Chef<br />{user.chef_alias}
+              </h1>
+            </div>
+            <div style={{ width: 74, height: 74, border: "1px solid rgba(255,255,255,0.42)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+              {user.profile_picture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.profile_picture} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <Icon size={36} strokeWidth={1.25} aria-hidden />
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", border: "1px solid rgba(255,255,255,0.2)" }}>
+            {[
+              ["No.", chefNumber],
+              ["Rank", user.rank],
+              ["Kitchen", user.current_kitchen],
+            ].map(([label, value], i) => (
+              <div key={label} style={{ padding: "10px 9px", borderLeft: i === 0 ? "none" : "1px solid rgba(255,255,255,0.2)", minWidth: 0 }}>
+                <p style={{ ...mono, fontSize: "0.45rem", color: "rgba(255,255,255,0.52)", margin: 0 }}>{label}</p>
+                <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.68rem", color: "#fff", margin: "5px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            {scores.slice(0, 4).map((score) => (
+              <div key={score.label} style={{ display: "grid", gridTemplateColumns: "112px 1fr 42px", alignItems: "center", gap: 8 }}>
+                <span style={{ ...mono, fontSize: "0.48rem", color: "rgba(255,255,255,0.58)" }}>{score.label}</span>
+                <span style={{ height: 6, background: "rgba(255,255,255,0.16)", position: "relative" }}>
+                  <span style={{ position: "absolute", inset: 0, right: `${100 - score.value}%`, background: "#ffffff" }} />
+                </span>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textAlign: "right", color: "#ffffff" }}>{score.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <p style={{ ...mono, fontSize: "0.48rem", color: "rgba(255,255,255,0.62)", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <BadgeCheck size={12} strokeWidth={1.8} aria-hidden /> Signature strength: {topScore.label}
+            </p>
+            <button type="button" onClick={shareHallmark} style={{ ...mono, minHeight: 38, padding: "0 13px", background: "#ffffff", color: "#050505", border: "1px solid #ffffff", fontSize: "0.58rem", display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer" }}>
+              <Share2 size={13} strokeWidth={1.9} aria-hidden /> Share
+            </button>
+          </div>
+        </section>
+        {shareNotice && <p style={{ ...mono, fontSize: "0.52rem", color: "var(--yi-muted)", margin: "-8px 0 14px" }}>{shareNotice}</p>}
+
         {/* Identity */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, borderBottom: "1px solid var(--yi-hairline)", paddingBottom: 22 }}>
           <div style={{ position: "relative", width: 76, height: 76, border: "1px solid var(--yi-ink)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "var(--yi-paper)" }}>

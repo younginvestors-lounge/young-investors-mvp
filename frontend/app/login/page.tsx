@@ -172,16 +172,16 @@ export default function LoginPage() {
 
       <div className="auth-login-grid">
         <section className="auth-brand-panel" aria-label="Young Investors">
-          <p className="auth-kicker">Finance is easier with a Kitchen.</p>
+          <p className="auth-kicker">Wealth Creation Tool</p>
           <h1 className="auth-hero">
             <span>{greeting.word}</span>
             <small>{greeting.lang}</small>
           </h1>
           <p className="auth-copy">
-            Learn first, propose second, vote at the table, and keep every move inside the paper-trading boundary.
+            Build your Kitchen, shape your Vault, and turn market thinking into a shared decision process.
           </p>
           <div className="auth-proof-grid" aria-label="Young Investors safeguards">
-            <span>Academy before Kitchen</span>
+            <span>Kitchen-first collaboration</span>
             <span>60% rule before execution</span>
             <span>Gordon risk review</span>
           </div>

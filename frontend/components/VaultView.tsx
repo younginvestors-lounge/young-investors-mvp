@@ -9,6 +9,7 @@ import {
 import { Gauge, Vault } from "lucide-react";
 import { BrutalistCard } from "@/components/BrutalistCard";
 import { GordonPanel } from "@/components/GordonPanel";
+import { RevealBox } from "@/components/RevealBox";
 import { formatMoney, formatPercent } from "@/lib/domain";
 import type { PortfolioSnapshot } from "@/lib/types";
 
@@ -101,7 +102,7 @@ export function VaultView({ portfolio }: VaultViewProps) {
         </p>
       </div>
 
-      {/* Key metrics */}
+      <RevealBox symbol={<Vault size={15} strokeWidth={1.8} aria-hidden />} title="Vault Summary" meta="Paper balance, lift, level, heat" defaultOpen tone={portfolio.roiPercent >= 0 ? "positive" : "negative"}>
       <div className="grid grid-three">
         <BrutalistCard>
           <div className="status-line">
@@ -139,8 +140,10 @@ export function VaultView({ portfolio }: VaultViewProps) {
           <p className="meta">{heatScore >= 70 ? "The pot is too hot" : heatScore >= 50 ? "Warm — watch closely" : "Controlled heat"}</p>
         </BrutalistCard>
       </div>
+      </RevealBox>
 
       {/* 7-day equity line */}
+      <RevealBox symbol={<Gauge size={15} strokeWidth={1.8} aria-hidden />} title="7-day Vault Line" meta="Simulated portfolio path">
       <BrutalistCard>
         <h3 className="section-title">7-day Vault line</h3>
         <div className="chart-wrap">
@@ -158,8 +161,10 @@ export function VaultView({ portfolio }: VaultViewProps) {
           </ResponsiveContainer>
         </div>
       </BrutalistCard>
+      </RevealBox>
 
       {/* Plate weight / allocation chart */}
+      <RevealBox symbol={<Gauge size={15} strokeWidth={1.8} aria-hidden />} title="Plate Weight" meta="Holdings and concentration" tone={concentrationWarning ? "negative" : "neutral"}>
       <BrutalistCard critical={concentrationWarning}>
         <h3 className="section-title">Holdings · Plate weight</h3>
         {concentrationWarning && (
@@ -174,8 +179,10 @@ export function VaultView({ portfolio }: VaultViewProps) {
         )}
         <AllocationBarChart portfolio={portfolio} />
       </BrutalistCard>
+      </RevealBox>
 
       {/* Individual holdings */}
+      <RevealBox symbol={<Vault size={15} strokeWidth={1.8} aria-hidden />} title="Holdings Shelf" meta={`${portfolio.holdings.length} simulated holdings`}>
       <div className="grid grid-three">
         {portfolio.holdings.map((holding, i) => (
           <BrutalistCard key={holding.symbol}>
@@ -195,6 +202,7 @@ export function VaultView({ portfolio }: VaultViewProps) {
           </BrutalistCard>
         ))}
       </div>
+      </RevealBox>
 
       <GordonPanel read={portfolio.gordonMarketRead} />
     </section>

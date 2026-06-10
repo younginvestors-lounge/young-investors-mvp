@@ -87,7 +87,7 @@ export function cookLine(tier: CookTier, seed = 0): string {
 export const GORDON_LINES = {
   greetingPlain: "I'm Gordon. I'm your Head Chef. My job is simple: don't let you cook with money you don't understand.",
   whyHard: "Markets sound scary because people make them sound scary. I'm going to make them make sense. That's it.",
-  standard: "The Kitchen has standards. Not to gatekeep — to keep you safe. Learn first, then we cook.",
+  standard: "The Kitchen has standards. Not to gatekeep — to keep your reasoning clean while you cook.",
 };
 
 export const SICILIA_LINES = {

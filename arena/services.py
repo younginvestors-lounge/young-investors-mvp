@@ -56,9 +56,12 @@ def calculate_consensus(proposal: TradeProposal) -> ConsensusResult:
     total_members = max(proposal.total_members_snapshot, total_votes)
     consensus_ratio = Decimal("0.0000")
 
-    if total_votes:
-        consensus_ratio = (Decimal(yes_votes) / Decimal(total_votes)).quantize(CONSENSUS_SCALE)
+    if total_members:
+        consensus_ratio = (Decimal(yes_votes) / Decimal(total_members)).quantize(CONSENSUS_SCALE)
 
+    # MVP governance doctrine: the 60% Rule is the executable threshold. Quorum is
+    # kept as metadata for older clients/admin views, but it must not block a
+    # Kitchen recipe that has crossed 60% of decisive votes.
     quorum_met = total_votes >= quorum_required
     threshold_met = consensus_ratio >= CONSENSUS_THRESHOLD
 
@@ -71,7 +74,7 @@ def calculate_consensus(proposal: TradeProposal) -> ConsensusResult:
         quorum_met=quorum_met,
         consensus_ratio=consensus_ratio,
         threshold_met=threshold_met,
-        approved=quorum_met and threshold_met,
+        approved=threshold_met,
     )
 
 
@@ -195,7 +198,7 @@ def _evaluate_locked_proposal(proposal: TradeProposal) -> ConsensusResult:
             else:
                 proposal.status = TradeProposal.Status.EXECUTION_PENDING
             update_fields.append("status")
-        elif consensus.quorum_met and not consensus.threshold_met:
+        elif consensus.total_votes >= consensus.total_members and not consensus.threshold_met:
             log_bimodal_behavior(proposal)
             proposal.status = TradeProposal.Status.REJECTED_BY_SYNDICATE
             update_fields.append("status")

@@ -34,7 +34,7 @@ const METRIC_INFO: Record<string, { title: string; lines: string[]; slang: strin
     title: "Academy progress",
     lines: [
       "How much of your learning you've finished.",
-      "Hit 100% to unlock the Kitchen and your R1,001 practice capital. Learn before you earn.",
+      "Hit 100% to sharpen your Kitchen receipts and your R1,001 practice capital story.",
     ],
     slang: "Finish class, unlock the bag. Easy.",
   },

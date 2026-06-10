@@ -4,7 +4,7 @@
  * Form a Kitchen — the guided, stepped flow (like onboarding) and the Kitchen lobby.
  *
  * Two chefs is enough to start a Kitchen. You found one or join one by code; the
- * lobby shows your real table and unlocks voting once quorum (2) is met. Bottom-up,
+ * lobby shows your real table and unlocks voting once two chefs are present. Bottom-up,
  * organic communities. MOCK_MVP_PAPER_TRADING_ONLY.
  */
 
@@ -77,12 +77,12 @@ export function FormKitchen({ onDone }: { onDone: (k: KitchenState) => void }) {
       <section style={{ display: "grid", gap: 18 }} aria-labelledby="kitchen-heading">
         <Header sub="No Kitchen yet · bottom-up" />
         <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.95rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
-          A Kitchen is your table. Two chefs is enough to start one — found your own and invite a chef you trust, or join one with a code.
+          A Kitchen is your table. Two chefs is enough to start one — found your own as Head Chef and invite a chef you trust, or join one with a code.
         </p>
         <div style={{ display: "grid", gap: 10 }}>
           <button type="button" onClick={() => { tap(); setMode("create"); setStep(0); }} style={choiceBtn}>
             <Soup size={18} strokeWidth={1.7} aria-hidden />
-            <span><b>Start a Kitchen</b><br /><span style={mono(0.55, "var(--yi-muted)")}>You become the founder</span></span>
+            <span><b>Start a Kitchen</b><br /><span style={mono(0.55, "var(--yi-muted)")}>You become Head Chef</span></span>
           </button>
           <button type="button" onClick={() => { tap(); setMode("join"); }} style={choiceBtn}>
             <Users size={18} strokeWidth={1.7} aria-hidden />
@@ -267,7 +267,7 @@ export function KitchenLobby({
                   {m.alias}{m.isYou ? " (You)" : ""}
                 </span>
                 <span style={mono(0.46, m.role === "founder" ? "#167a3a" : "var(--yi-muted)")}>
-                  {m.simulated ? "practice" : m.role}
+                  {m.simulated ? "practice" : m.role === "founder" ? "Head Chef" : "Chef"}
                 </span>
               </div>
             );

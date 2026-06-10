@@ -48,23 +48,39 @@ class KitchenGovernanceTests(TestCase):
 
         self.assertEqual(ProposalVote.objects.filter(proposal=proposal).count(), 1)
 
-    def test_sixty_percent_yes_without_quorum_does_not_execute(self) -> None:
-        voter = self._cleared_member("voter-1")
-        proposal = self._proposal(quorum_required=2, total_members_snapshot=3)
+    def test_sixty_percent_yes_threshold_executes_without_quorum_block(self) -> None:
+        voters = [self._cleared_member(f"threshold-voter-{index}") for index in range(2)]
+        proposal = self._proposal(quorum_required=99, total_members_snapshot=2)
 
-        cast_vote(voter, proposal, ProposalVote.VoteType.YES)
+        cast_vote(voters[0], proposal, ProposalVote.VoteType.YES)
         proposal.refresh_from_db()
 
         self.assertEqual(proposal.status, TradeProposal.Status.ACTIVE_VOTING)
+        self.assertEqual(proposal.consensus_ratio, Decimal("0.5000"))
+
+        cast_vote(voters[1], proposal, ProposalVote.VoteType.YES)
+        proposal.refresh_from_db()
+
+        self.assertEqual(proposal.status, TradeProposal.Status.EXECUTION_PENDING)
         self.assertEqual(proposal.consensus_ratio, Decimal("1.0000"))
 
-    def test_quorum_and_consensus_move_to_execution_pending(self) -> None:
+    def test_two_user_kitchen_requires_sixty_percent_threshold(self) -> None:
+        voters = [self._cleared_member(f"two-user-voter-{index}") for index in range(2)]
+        proposal = self._proposal(quorum_required=2, total_members_snapshot=2)
+
+        cast_vote(voters[0], proposal, ProposalVote.VoteType.YES)
+        cast_vote(voters[1], proposal, ProposalVote.VoteType.NO)
+        proposal.refresh_from_db()
+
+        self.assertEqual(proposal.status, TradeProposal.Status.REJECTED_BY_SYNDICATE)
+        self.assertEqual(proposal.consensus_ratio, Decimal("0.5000"))
+
+    def test_sixty_percent_consensus_moves_to_execution_pending(self) -> None:
         voters = [self._cleared_member(f"voter-{index}") for index in range(3)]
         proposal = self._proposal(quorum_required=3, total_members_snapshot=3)
 
         cast_vote(voters[0], proposal, ProposalVote.VoteType.YES)
         cast_vote(voters[1], proposal, ProposalVote.VoteType.YES)
-        cast_vote(voters[2], proposal, ProposalVote.VoteType.NO)
         proposal.refresh_from_db()
 
         self.assertEqual(proposal.status, TradeProposal.Status.EXECUTION_PENDING)

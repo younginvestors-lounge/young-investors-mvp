@@ -21,6 +21,7 @@ export interface ShelfReceipt {
 
 const SHELF_KEY = "yi_shelf_receipts";
 export const SHELF_EVENT = "yi:shelf-updated";
+export const MAX_SHELF_RECEIPTS = 10;
 
 function readRaw(): ShelfReceipt[] {
   if (typeof window === "undefined") return [];
@@ -35,7 +36,7 @@ function readRaw(): ShelfReceipt[] {
 
 function writeRaw(receipts: ShelfReceipt[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SHELF_KEY, JSON.stringify(receipts.slice(0, 20)));
+  localStorage.setItem(SHELF_KEY, JSON.stringify(receipts.slice(0, MAX_SHELF_RECEIPTS)));
   window.dispatchEvent(new Event(SHELF_EVENT));
 }
 
@@ -65,8 +66,13 @@ export function addShelfReceipt(input: {
     reason: input.reason.trim() || "Shelf decision from Gordon heat check.",
     mode: "MOCK_MVP_PAPER_TRADING_ONLY",
   };
-  writeRaw([receipt, ...readRaw()]);
+  const existing = readRaw().filter((item) => item.symbol !== receipt.symbol);
+  writeRaw([receipt, ...existing]);
   return receipt;
+}
+
+export function removeShelfReceipt(id: string): void {
+  writeRaw(readRaw().filter((item) => item.id !== id));
 }
 
 export function clearShelfReceipts(): void {

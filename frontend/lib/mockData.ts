@@ -255,7 +255,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
       summary: "Momentum looks constructive but the Kitchen is leaning into financials. The next recipe needs a plate-weight check before it can be cleared.",
       riskScore: 72,
       criticalAlerts: [
-        "Learn before you earn is incomplete for this user.",
+        "Wealth creation needs cleaner reasoning receipts for this user.",
         "This plate is too heavy in financials until Gordon reviews it.",
       ],
     },

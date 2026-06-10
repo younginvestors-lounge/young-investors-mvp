@@ -72,7 +72,7 @@ export function KitchenGordonPanel({
           <div className="metric-row">
             <span className="meta">
               <GraduationCap className="icon-inline" aria-hidden="true" />
-              Learn before you earn
+              Reason before you cook
             </span>
             <span className={clearance.complete ? "number metric-positive" : "number metric-negative"}>
               {academyProgress}%

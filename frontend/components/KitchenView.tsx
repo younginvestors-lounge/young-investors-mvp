@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Soup, Users, Vote } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
 import { KitchenChatPanel } from "@/components/KitchenChatPanel";
+import { RevealBox } from "@/components/RevealBox";
 import { getActiveProposal, getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, submitProposal, type KitchenState, type ProposalData } from "@/lib/profileStore";
 import { calculateConsensus } from "@/lib/domain";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
+import { readShelfReceipts, removeShelfReceipt, SHELF_EVENT, type ShelfReceipt } from "@/lib/shelfStore";
 import type { AcademyClearance, ChefVote, KitchenMember, VoteTally } from "@/lib/types";
 
 type GovernanceModel = "slow-cook" | "high-heat";
 type KitchenPhase = "browse" | "propose" | "vote";
 
 interface ProposalDraft {
+  shelfReceiptId: string;
   symbol: string;
   assetName: string;
   side: "BUY" | "SELL";
@@ -24,6 +27,7 @@ interface ProposalDraft {
 }
 
 const BLANK_DRAFT: ProposalDraft = {
+  shelfReceiptId: "",
   symbol: "",
   assetName: "",
   side: "BUY",
@@ -52,8 +56,8 @@ function membersToVoteTally(members: KitchenMember[]): VoteTally {
     yes:           members.filter((m) => m.vote === "FOR").length,
     no:            members.filter((m) => m.vote === "AGAINST").length,
     abstain:       members.filter((m) => m.vote === "ABSTAIN").length,
-    // Quorum scales with the real table (min 2, ~60% of the Kitchen).
-    quorumRequired: Math.max(MIN_KITCHEN_CHEFS, Math.ceil(members.length * 0.6)),
+    // Quorum remains display metadata only. Approval is the 60% Rule.
+    quorumRequired: Math.max(1, members.length),
     totalMembers:  members.length,
   };
 }
@@ -87,17 +91,6 @@ function gordonNoteForProposal(p: ProposalData): string {
   return `Read the seasoning carefully before you vote. A good reason makes the loss a lesson and the win a skill. A missing reason makes both random.`;
 }
 
-const JSE_INSTRUMENTS = [
-  { symbol: "NPN.JO", name: "Naspers Limited" },
-  { symbol: "PRX.JO", name: "Prosus NV" },
-  { symbol: "MTN.JO", name: "MTN Group" },
-  { symbol: "SOL.JO", name: "Sasol Limited" },
-  { symbol: "SBK.JO", name: "Standard Bank Group" },
-  { symbol: "FSR.JO", name: "FirstRand" },
-  { symbol: "REM.JO", name: "Remgro" },
-  { symbol: "ANG.JO", name: "AngloGold Ashanti" },
-];
-
 const GOVERNANCE_NOTES: Record<GovernanceModel, string> = {
   "slow-cook": "Slow Cook · Long game. Democratic consensus, diversified plates, patient capital. Every chef votes equal.",
   "high-heat":  "High Heat · Tactical. Asymmetric strategies, shorter holds, non-negotiable exit discipline. The mandate runs hot.",
@@ -130,12 +123,34 @@ function ProposeScreen({
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [shelf, setShelf] = useState<ShelfReceipt[]>([]);
 
   const reasonWords = draft.reason.trim().split(/\s+/).filter(Boolean).length;
   const reasonOk = reasonWords >= 10;
+  const shelfCount = shelf.length;
+
+  useEffect(() => {
+    const load = () => setShelf(readShelfReceipts());
+    load();
+    window.addEventListener(SHELF_EVENT, load);
+    return () => window.removeEventListener(SHELF_EVENT, load);
+  }, []);
+
+  function selectReceipt(receipt: ShelfReceipt) {
+    setDraft((d) => ({
+      ...d,
+      shelfReceiptId: receipt.id,
+      symbol: receipt.symbol,
+      assetName: receipt.name,
+      side: receipt.decision === "SELL" ? "SELL" : "BUY",
+      units: receipt.units > 0 ? String(receipt.units) : d.units,
+      reason: receipt.reason,
+    }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!draft.shelfReceiptId) { setError("Choose an item from your Shelf first."); return; }
     if (!draft.symbol) { setError("Choose an instrument."); return; }
     if (!draft.units || isNaN(Number(draft.units)) || Number(draft.units) < 1) { setError("Enter a valid unit amount."); return; }
     if (!reasonOk) { setError("Season your recipe — explain the reason in at least 10 words. Gordon needs to read it."); return; }
@@ -152,6 +167,7 @@ function ProposeScreen({
         thesis: draft.reason,
         seasoning: draft.reason,
       });
+      removeShelfReceipt(draft.shelfReceiptId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit the recipe. Try again.");
       setSaving(false);
@@ -189,36 +205,55 @@ function ProposeScreen({
         </h3>
       </div>
 
-      {/* Instrument picker */}
+      {/* Shelf checkout */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
-        <label style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", display: "block", marginBottom: 8 }}>
-          Instrument
-        </label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-          {JSE_INSTRUMENTS.map((ins) => (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+          <label style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)" }}>
+            The Shelf
+          </label>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.1em", color: shelfCount >= 10 ? "#b46918" : "var(--yi-muted)" }}>
+            {shelfCount}/10 items
+          </span>
+        </div>
+        {shelfCount === 0 ? (
+          <div style={{ border: "1px dashed var(--yi-frame)", padding: "14px", background: "var(--yi-paper)" }}>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", color: "var(--yi-copy)", lineHeight: 1.55, margin: 0 }}>
+              Your Shelf is empty. Go to Shop, long-press a stock, and send a mock receipt here before the Kitchen can vote.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: shelfCount > 4 ? "repeat(auto-fill,minmax(min(100%,150px),1fr))" : "1fr", gap: 6 }}>
+            {shelf.map((receipt) => (
             <button
-              key={ins.symbol}
+              key={receipt.id}
               type="button"
-              onClick={() => setDraft((d) => ({ ...d, symbol: ins.symbol, assetName: ins.name }))}
+              onClick={() => selectReceipt(receipt)}
               style={{
-                padding: "10px 8px",
-                border: draft.symbol === ins.symbol ? "1px solid var(--yi-black)" : "1px solid var(--yi-frame)",
-                background: draft.symbol === ins.symbol ? "var(--yi-black)" : "transparent",
-                color: draft.symbol === ins.symbol ? "var(--yi-white)" : "var(--yi-ink)",
+                padding: "11px 10px",
+                border: draft.shelfReceiptId === receipt.id ? "1px solid var(--yi-black)" : "1px solid var(--yi-frame)",
+                background: draft.shelfReceiptId === receipt.id ? "var(--yi-black)" : "transparent",
+                color: draft.shelfReceiptId === receipt.id ? "var(--yi-white)" : "var(--yi-ink)",
                 fontFamily: "var(--font-mono), monospace",
                 fontSize: "0.68rem",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 cursor: "pointer",
                 textAlign: "left",
+                minHeight: 74,
               }}
             >
-              {ins.symbol}
+              {receipt.symbol}
               <br />
-              <span style={{ fontSize: "0.55rem", opacity: 0.7 }}>{ins.name}</span>
+              <span style={{ fontSize: "0.55rem", opacity: 0.7 }}>{receipt.decision} / {receipt.weightPercent}% plate</span>
+              <br />
+              <span style={{ fontSize: "0.52rem", opacity: 0.62 }}>{receipt.name}</span>
             </button>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: "10px 0 0", lineHeight: 1.55 }}>
+          Shop item - Shelf receipt - Recipe checkout - 60% vote
+        </p>
       </div>
 
       {/* Side + Units */}
@@ -524,7 +559,8 @@ function VoteScreen({
   return (
     <div style={{ display: "grid", gap: 20 }}>
       {/* Proposal card */}
-      <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
+      <RevealBox symbol={<Vote size={15} strokeWidth={1.8} aria-hidden />} title="Recipe Checkout" meta="Read the seasoning before voting" defaultOpen>
+      <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "4px 7px" }}>
             Recipe #{proposalNumber}
@@ -546,6 +582,7 @@ function VoteScreen({
           </p>
         )}
       </div>
+      </RevealBox>
 
       {/* THE SEASONING re-surface — last taste at the pass */}
       <div style={{ border: "1px solid var(--yi-frame)", borderLeft: "2px solid var(--yi-black)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
@@ -595,8 +632,8 @@ function VoteScreen({
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>60% threshold</span>
         </div>
-        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: result.quorumMet ? "#167a3a" : "#b46918", margin: "6px 0 0" }}>
-          {result.quorumMet ? `Quorum met · ${result.castCount}/${members.length} voted` : `Quorum needed · ${result.castCount}/${tally.quorumRequired} cast so far`}
+        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: passes ? "#167a3a" : "#b46918", margin: "6px 0 0" }}>
+          {passes ? `60% threshold passed · ${Math.round(result.forRatio * 100)}% yes` : `${result.castCount}/${members.length} voted · ${Math.round(result.forRatio * 100)}% yes`}
         </p>
       </div>
 
@@ -733,6 +770,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         name: m.isYou ? `${m.alias} (You)` : m.alias,
         vote: (m.simulated ? "FOR" : null) as ChefVote,
         isUser: m.isYou,
+        clearanceLevel: m.role === "founder" ? "Head Chef" : "Kitchen Chef",
       }))
     );
     setModel(kitchen.governance === "hedge" ? "high-heat" : "slow-cook");
@@ -778,6 +816,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
     if (member?.isUser && next && activeProposal) {
       void recordKitchenVote({
         kitchenName: kitchen?.name ?? "My Kitchen",
+        proposalId: activeProposal.id,
         proposalTicker: activeProposal.ticker,
         vote: next,
         seasoningReason: activeProposal.seasoning,
@@ -785,7 +824,8 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
     }
   }
 
-  // Clearance gate — show a locked screen before Academy is cleared
+  // Risk-literacy reminder. The product can be explored, but vote/proposal actions
+  // still carry explicit mock-finance safety language.
   if (!clearance.complete) {
     return (
       <section style={{ display: "grid", gap: 22 }} aria-labelledby="kitchen-heading">
@@ -799,13 +839,13 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         </div>
         <div style={{ border: "1px solid #b42318", padding: "20px 18px", background: "var(--yi-card-bg)" }}>
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "#b42318", margin: "0 0 10px" }}>
-            Kitchen access locked · Learn before you earn
+            Practice mode active
           </p>
           <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.2rem,4vw,1.45rem)", fontWeight: 600, color: "var(--yi-ink)", margin: "0 0 12px", lineHeight: 1.15 }}>
-            Complete the required Academy modules to unlock the Kitchen.
+            Build your Kitchen, then sharpen the recipe.
           </p>
           <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: "0 0 16px" }}>
-            Gordon won&apos;t let an unprepared chef near the pass. You need clearance before you can propose a recipe or cast a vote. Head to the Academy — the required modules are waiting.
+            You can explore the table, form your Kitchen, and understand the flow. Recipes remain educational, paper-only, and tied to Gordon&apos;s risk commentary.
           </p>
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
             {clearance.missingModuleIds.length} required module{clearance.missingModuleIds.length !== 1 ? "s" : ""} remaining
@@ -818,7 +858,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
     );
   }
 
-  // ── Kitchen gate: form/join a Kitchen, and reach quorum, before cooking ──
+  // ── Kitchen gate: form/join a Kitchen before cooking ──
   if (loadingKitchen) {
     return (
       <section style={{ display: "grid", gap: 16 }} aria-labelledby="kitchen-heading">
@@ -907,6 +947,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
       </div>
 
       {/* Kitchen meta + governance toggle */}
+      <RevealBox symbol={<Soup size={15} strokeWidth={1.8} aria-hidden />} title="Kitchen Identity" meta="Head Chef, model, paper-only rules" defaultOpen>
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
         <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.28rem", fontWeight: 600, margin: "0 0 4px" }}>{kitchen.name}</p>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 16px" }}>
@@ -929,9 +970,11 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           Educational governance template · not a licensed fund
         </p>
       </div>
+      </RevealBox>
 
       {/* Chefs at the table */}
-      <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
+      <RevealBox symbol={<Users size={15} strokeWidth={1.8} aria-hidden />} title="Chefs At The Table" meta={`${members.length} seated`}>
+      <div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 12px" }}>
           Chefs at the table · {members.length} seated
         </p>
@@ -967,13 +1010,15 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           ))}
         </div>
       </div>
+      </RevealBox>
 
       {/* Active recipe summary */}
-      <div style={{ border: "1px solid var(--yi-frame)", padding: "16px", background: "var(--yi-card-bg)" }}>
+      <RevealBox symbol={<Vote size={15} strokeWidth={1.8} aria-hidden />} title="Active Recipe" meta={passes ? "60% threshold passed" : "Voting open"} defaultOpen tone={passes ? "positive" : "watch"}>
+      <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "4px 7px" }}>Active Recipe</span>
-          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: result.quorumMet && passes ? "#167a3a" : "#b46918", border: `1px solid ${result.quorumMet && passes ? "#167a3a" : "#b46918"}`, padding: "4px 7px" }}>
-            {result.quorumMet && passes ? "Ready to cook" : "Voting open"}
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: passes ? "#167a3a" : "#b46918", border: `1px solid ${passes ? "#167a3a" : "#b46918"}`, padding: "4px 7px" }}>
+            {passes ? "Ready to cook" : "Voting open"}
           </span>
         </div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "1.55rem", lineHeight: 1, margin: "0 0 4px", color: "var(--yi-ink)" }}>{floorProposal.ticker}</p>
@@ -985,8 +1030,8 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           <div style={{ height: "100%", width: `${result.forRatio * 100}%`, background: passes ? "#167a3a" : result.forRatio > 0 ? "#b46918" : "transparent", transition: "width 260ms ease" }} />
           <div style={{ position: "absolute", top: -4, bottom: -4, left: "60%", width: 1, background: "#111" }} />
         </div>
-        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: result.quorumMet ? "#167a3a" : "#b46918", margin: "0 0 14px" }}>
-          {result.forCount} for · {result.againstCount} against · {members.length - result.castCount} pending · {result.quorumMet ? "Quorum met" : "Quorum needed"}
+        <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: passes ? "#167a3a" : "#b46918", margin: "0 0 14px" }}>
+          {result.forCount} for · {result.againstCount} against · {members.length - result.castCount} pending · {Math.round(result.forRatio * 100)}% yes / 60% needed
         </p>
 
         <button
@@ -997,6 +1042,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           Vote on this recipe →
         </button>
       </div>
+      </RevealBox>
 
       {submittedDraft && (
         <div style={{ border: "1px solid #167a3a", padding: "14px 16px", background: "var(--yi-card-bg)" }}>

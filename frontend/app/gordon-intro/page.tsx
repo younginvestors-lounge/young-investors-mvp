@@ -47,7 +47,7 @@ const HOW_IT_WORKS = [
   { word: "Recipe", plain: "A trade — but with reasons, not a wish.", slang: "Basically a plan to buy or sell. You gotta say why." },
   { word: "The Vault", plain: "Everything you're holding, and how it's doing.", slang: "Your bag. Your menu. What you own, no cap." },
   { word: "The 60% Rule", plain: "Nothing happens until 60% of the table agrees.", slang: "Solid majority says yes first. No solo cowboys." },
-  { word: "Clearance", plain: "Finish the Academy and the Kitchen opens. Learn before you earn.", slang: "Pass your classes, unlock the kitchen. Earn your seat." },
+  { word: "Clearance", plain: "Finish the Academy and your Kitchen receipts get stronger.", slang: "Sharpen the classes, sharpen the kitchen. Earn your seat." },
   { word: "Beat Gordon", plain: "Gordon posts a score each week. Try to beat it.", slang: "He sets the bar. You try to cook better than him. Letsss go." },
 ];
 

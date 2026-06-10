@@ -15,7 +15,7 @@ const LESSON_OUTCOMES: Record<string, string[]> = {
   "risk-001": ["Tell risk from reward — and why bet size matters most", "Spot when a plate is too heavy to survive"],
   "portfolio-001": ["Build a balanced plate that doesn't tip over", "See why what you own together beats any single pick"],
   "bias-001": ["Name the mind-traps that make smart chefs slip", "Catch yourself before the trap catches you"],
-  "governance-001": ["Explain the 60% Rule and quorum in your own words", "See why the table decides, not one chef"],
+  "governance-001": ["Explain the 60% Rule in your own words", "See why the table decides, not one chef"],
   "mutual-001": ["Understand the slow-cook, long-game Kitchen", "See how patience and compounding stack up"],
   "hedge-001": ["Understand the high-heat Kitchen and its hard exits", "Respect why strict rules keep you alive"],
   "ethics-001": ["Know the line: fair play vs an insider edge", "Build clean habits before real money shows up"],
@@ -144,7 +144,7 @@ const LESSONS: Record<string, LessonContent> = {
     concept: "How the Kitchen governs itself",
     body: [
       "Kitchen governance is the system that prevents one person from making decisions for everyone. Recipes require a proposer, a reason, and a vote.",
-      "The 60% Rule means at least 60% of voting members must agree before any recipe becomes a trade. Quorum ensures enough chefs are at the table.",
+      "The 60% Rule means at least 60% of decisive votes must agree before any recipe can pass. Participation is visible, but the threshold decides.",
       "The system exists because even brilliant chefs have blind spots. The collective catches what the individual misses.",
     ],
     cookingBridge: "A professional kitchen has a hierarchy — but it also has a tasting process. The head chef proposes, the sous chef checks, the brigade confirms. You don't serve a dish until the table agrees it's ready. The 60% Rule is that tasting table — institutionalised.",
@@ -340,6 +340,7 @@ interface Props {
 }
 
 type ModalPhase = "glossary" | "concept" | "practice" | "quiz" | "result";
+const QUIZ_ATTEMPT_LIMIT = 3;
 
 function GordonLine({ text, speed = 16, delay = 200 }: { text: string; speed?: number; delay?: number }) {
   const { displayed, done } = useTypewriter(text, { speed, delay });
@@ -423,9 +424,10 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
   function handleAnswer() {
     if (selectedAnswer === null) return;
     const isCorrect = selectedAnswer === lesson.quiz.correctIndex;
+    const nextAttempts = attempts + 1;
     setAnswered(true);
     setCorrect(isCorrect);
-    setAttempts((a) => a + 1);
+    setAttempts(nextAttempts);
     if (isCorrect) success(); else warn();
   }
 
@@ -433,6 +435,14 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
     setSelectedAnswer(null);
     setAnswered(false);
     setCorrect(false);
+  }
+
+  function handleReviewAndRetry() {
+    setSelectedAnswer(null);
+    setAnswered(false);
+    setCorrect(false);
+    setAttempts(0);
+    setPhase("concept");
   }
 
   function handlePass() {
@@ -721,7 +731,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
             <>
               <div>
                 <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>
-                  Attempt-before-hint · {attempts === 0 ? "Try it first" : `Attempt ${attempts}`}
+                  Attempt {Math.min(attempts + 1, QUIZ_ATTEMPT_LIMIT)} of {QUIZ_ATTEMPT_LIMIT} · answer before Gordon speaks
                 </p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "1rem", lineHeight: 1.6, color: "var(--yi-ink)", margin: 0, fontWeight: 500 }}>
                   {lesson.quiz.question}
@@ -734,7 +744,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                   let bg = "transparent";
                   let textColor = "var(--yi-ink)";
                   if (answered) {
-                    if (i === lesson.quiz.correctIndex) { borderColor = "#167a3a"; bg = "rgba(22,122,58,0.06)"; textColor = "#167a3a"; }
+                    if (correct && i === lesson.quiz.correctIndex) { borderColor = "#167a3a"; bg = "rgba(22,122,58,0.06)"; textColor = "#167a3a"; }
                     else if (i === selectedAnswer && !correct) { borderColor = "#b42318"; bg = "rgba(180,35,24,0.05)"; textColor = "#b42318"; }
                   } else if (selectedAnswer === i) {
                     borderColor = "var(--yi-black)";
@@ -784,20 +794,24 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                     Gordon · {correct ? "Correct" : "Try again"}
                   </p>
                   <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
-                    <GordonLine text={correct ? lesson.quiz.gordonsAnswer : lesson.quiz.wrongAnswer} />
+                    <GordonLine text={correct ? lesson.quiz.gordonsAnswer : attempts >= QUIZ_ATTEMPT_LIMIT ? "Not yet. I'm not giving you the answer. Go back through the concept, then earn it on the next pass." : `Not yet. Try again before I explain it. ${QUIZ_ATTEMPT_LIMIT - attempts} attempt${QUIZ_ATTEMPT_LIMIT - attempts === 1 ? "" : "s"} left.`} />
                   </p>
                   <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
                     {correct ? (
                       <button onClick={handlePass} style={btnPrimary}>
                         Complete lesson →
                       </button>
-                    ) : (
+                    ) : attempts < QUIZ_ATTEMPT_LIMIT ? (
                       <button onClick={handleRetry} style={btnSecondary}>
                         Try again
                       </button>
+                    ) : (
+                      <button onClick={handleReviewAndRetry} style={btnSecondary}>
+                        Review lesson
+                      </button>
                     )}
                     {!correct && (
-                      <button onClick={() => setPhase("concept")} style={{ ...btnSecondary, borderColor: "var(--yi-frame)" }}>
+                      <button onClick={handleReviewAndRetry} style={{ ...btnSecondary, borderColor: "var(--yi-frame)" }}>
                         Review concept
                       </button>
                     )}

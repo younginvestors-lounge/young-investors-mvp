@@ -36,7 +36,6 @@ export default function JoinPage() {
   const [deferred, setDeferred] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [showIosHelp, setShowIosHelp] = useState(false);
   const [paused, setPaused] = useState(false);
 
   // Pause the animated grid whenever the tab is hidden - don't spend GPU on
@@ -81,7 +80,6 @@ export default function JoinPage() {
       return;
     }
     if (isIOS) {
-      setShowIosHelp(true);
       return;
     }
     window.location.href = "/login";
@@ -338,16 +336,14 @@ export default function JoinPage() {
             </Link>
           </div>
 
-          {showIosHelp && (
-            <div style={{ marginTop: 2, border: "1px solid var(--join-line)", padding: "12px 14px", maxWidth: 440 }}>
-              <p style={{ ...mono("var(--join-muted)"), margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <Smartphone size={13} strokeWidth={1.9} aria-hidden /> Install on iPhone
-              </p>
-              <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--join-muted)", margin: 0, display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                Tap <Share size={14} strokeWidth={1.9} aria-hidden style={{ verticalAlign: "middle" }} /> Share, then <b>Add to Home Screen</b>.
-              </p>
-            </div>
-          )}
+          <div style={{ marginTop: 2, border: "1px solid var(--join-fg)", background: "var(--join-fg)", color: "var(--join-bg)", padding: "14px 16px", maxWidth: 460 }}>
+            <p style={{ ...mono("var(--join-bg)"), margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Smartphone size={13} strokeWidth={1.9} aria-hidden /> Install on iPhone
+            </p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.55, color: "var(--join-bg)", margin: 0, display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              Tap <Share size={14} strokeWidth={1.9} aria-hidden style={{ verticalAlign: "middle" }} /> Share, then <b>Add to Home Screen</b>.
+            </p>
+          </div>
 
           <p style={{ ...mono("var(--join-muted)"), margin: 0, fontSize: "0.52rem", lineHeight: 1.7 }}>
             Home screen install - full screen, native feel
