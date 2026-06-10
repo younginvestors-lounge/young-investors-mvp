@@ -9,12 +9,21 @@ build/
 .eggs/
 *.env
 .env
+.env.*
+!.env.example
 env/
 .venv/
 venv/
 db.sqlite3
 *.sqlite3
 *.log
+*.pem
+*.key
+.local-emails/
+media/
+staticfiles/
+tester-exports/
+uploads/
 
 # Node / Next.js
 node_modules/
@@ -24,6 +33,9 @@ frontend/build/
 frontend/.env
 frontend/.env.local
 frontend/.env*.local
+frontend/.env.*
+!frontend/.env.example
+frontend/tsconfig.tsbuildinfo
 .npm/
 
 # OS

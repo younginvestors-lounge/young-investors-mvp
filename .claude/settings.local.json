@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(npx next *)",
+      "Bash(ls \"c:/Dev/young-investors-mvp/../.claude/projects/c--Dev-young-investors-mvp/memory/\" 2>/dev/null || echo \"MISSING\")",
+      "Read(//c/Dev/.claude/projects/c--Dev-young-investors-mvp/**)",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(./node_modules/.bin/tailwindcss init *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(curl -s http://localhost:3001/login)",
+      "Bash(curl -s \"http://localhost:3001/_next/static/css/app/layout.css\")",
+      "Bash(grep -E \"^\\(\\\\*,|html\\\\s*\\\\{|body\\\\s*\\\\{\\)\")",
+      "Bash(curl -s \"http://localhost:3001/_next/static/css/app/layout.css?v=$\\(date +%s\\)\")",
+      "Bash(curl -s http://localhost:3001/login -o /dev/null -w \"%{http_code}\")",
+      "Bash(npx playwright *)",
+      "Bash(npm init *)",
+      "Bash(node screenshot.js)",
+      "Bash(node -e ' *)",
+      "Bash(git init *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(del package-lock.json)",
+      "Bash(git rebase *)",
+      "Bash(python -m pip install -q djangorestframework-simplejwt django-cors-headers sendgrid python-dotenv psycopg2-binary)",
+      "Bash(python manage.py makemigrations accounts)"
+    ]
+  }
+}

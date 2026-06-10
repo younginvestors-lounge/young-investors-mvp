@@ -1,61 +1,183 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Compass } from "lucide-react";
+import { AcademyComplete } from "@/components/AcademyComplete";
 import { AcademyView } from "@/components/AcademyView";
 import { BottomNav } from "@/components/BottomNav";
-import { BrutalistHeader } from "@/components/BrutalistHeader";
-import { KitchenGordonPanel } from "@/components/KitchenGordonPanel";
 import { KitchenView } from "@/components/KitchenView";
 import { LoungeView } from "@/components/LoungeView";
+import { Reveal } from "@/components/Reveal";
 import { ShopView } from "@/components/ShopView";
-import { VaultView } from "@/components/VaultView";
+import { TopBar } from "@/components/TopBar";
+import { VaultLocked, VaultStart } from "@/components/VaultGate";
 import { getDashboardSnapshot } from "@/lib/api";
-import { buildPatternDataURI } from "@/lib/pattern";
+import { useAuth } from "@/lib/auth-context";
+import { profileIsOnboarded } from "@/lib/profileStore";
 import {
   EXECUTION_MODE,
   type AcademyClearance,
   type AcademyModule,
-  type BackgroundMode,
   type DashboardTab,
-  type ThemeMode,
   type TradeProposal,
 } from "@/lib/types";
 
-export default function AppShell() {
-  const seed = getDashboardSnapshot();
+interface AppShellProps {
+  initialTab?: DashboardTab;
+}
 
-  const [activeTab, setActiveTab] = useState<DashboardTab>("academy");
-  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("solid");
-  const [theme, setTheme] = useState<ThemeMode>("light");
+const ACADEMY_PROGRESS_KEY = "yi_academy_progress";
+const ACADEMY_ACK_KEY = "yi_academy_ack";
+
+function perChefKey(prefix: string, chefId?: string): string {
+  return chefId ? `${prefix}:${chefId}` : prefix;
+}
+
+function deriveAcademyState(
+  seedModules: AcademyModule[],
+  seedClearance: AcademyClearance,
+  passedModuleIds: string[]
+): { modules: AcademyModule[]; clearance: AcademyClearance } {
+  const passed = new Set([...seedModules.filter((module) => module.passed).map((module) => module.id), ...passedModuleIds]);
+  let foundFirstIncomplete = false;
+
+  const modules = seedModules.map((module) => {
+    const isPassed = passed.has(module.id);
+    const locked = isPassed ? false : foundFirstIncomplete;
+    if (!isPassed) foundFirstIncomplete = true;
+    return { ...module, passed: isPassed, locked };
+  });
+
+  const requiredModuleIds = seedClearance.requiredModuleIds;
+  const missingModuleIds = requiredModuleIds.filter((id) => !passed.has(id));
+
+  return {
+    modules,
+    clearance: {
+      ...seedClearance,
+      passedModuleIds: modules.filter((module) => module.passed).map((module) => module.id),
+      missingModuleIds,
+      complete: missingModuleIds.length === 0,
+    },
+  };
+}
+
+function readPassedModules(chefId?: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(perChefKey(ACADEMY_PROGRESS_KEY, chefId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePassedModules(chefId: string | undefined, moduleIds: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(perChefKey(ACADEMY_PROGRESS_KEY, chefId), JSON.stringify(Array.from(new Set(moduleIds))));
+  } catch {
+    /* local demo persistence is best-effort */
+  }
+}
+
+function GordonNextActionCard({
+  activeTab,
+  clearance,
+  modules,
+  onTabChange,
+}: {
+  activeTab: DashboardTab;
+  clearance: AcademyClearance;
+  modules: AcademyModule[];
+  onTabChange: (tab: DashboardTab) => void;
+}) {
+  const nextOpenLesson = modules.find((module) => !module.passed && !module.locked);
+  const missingCount = clearance.missingModuleIds.length;
+  const copyByTab: Record<DashboardTab, { line: string; target?: DashboardTab; cta?: string }> = {
+    academy: {
+      line: nextOpenLesson
+        ? `Next plate: clear ${nextOpenLesson.title}. High scores build trust before the Kitchen votes.`
+        : "Next plate: submit a practice attempt and sharpen your Chef Scorecard.",
+    },
+    kitchen: clearance.complete
+      ? { line: "Next plate: season one reason clearly, then check whether the table can reach 60%." }
+      : { line: `${missingCount} Academy lesson${missingCount === 1 ? "" : "s"} still stand between you and the Kitchen.`, target: "academy", cta: "Go Academy" },
+    vault: {
+      line: "Next plate: long-press a Shop stock, create a Shelf receipt, then follow it back here.",
+      target: "shop",
+      cta: "Open Shop",
+    },
+    shop: {
+      line: "Next plate: tap a Top 40 stock for Gordon's heat check, then long-press to choose buy, sell, or hold.",
+    },
+    lounge: {
+      line: "Next plate: tap a rank term, read the meaning, then open Gordon's Cookbook if the word is still fuzzy.",
+    },
+  };
+  const next = copyByTab[activeTab];
+
+  return (
+    <div style={{ border: "1px solid var(--yi-frame)", borderLeft: "2px solid var(--yi-black)", background: "var(--yi-card-bg)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <p style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.45, color: "var(--yi-copy)", margin: 0, minWidth: 0 }}>
+        <Compass size={15} strokeWidth={1.8} aria-hidden style={{ color: "var(--yi-ink)", flexShrink: 0 }} />
+        <span><strong style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-ink)", marginRight: 6 }}>Gordon / Next</strong>{next.line}</span>
+      </p>
+      {next.target && next.cta && (
+        <button
+          type="button"
+          onClick={() => { if (next.target) onTabChange(next.target); }}
+          style={{ minHeight: 34, border: "none", background: "var(--yi-black)", color: "var(--yi-white)", padding: "0 12px", fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}
+        >
+          {next.cta}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
+  const seed = getDashboardSnapshot();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [proposals, setProposals] = useState<TradeProposal[]>(seed.tradeProposals);
   const [modules, setModules] = useState<AcademyModule[]>(seed.academyModules);
   const [clearance, setClearance] = useState<AcademyClearance>(seed.academyClearance);
+  const [academyLessonOpen, setAcademyLessonOpen] = useState(false);
 
-  // Read persisted preferences on mount
+  const chefName = user?.chef_alias ?? "";
+  const chefId = user?.id;
+
+  // The Academy-complete celebration shows once per device (then Sicilia → Lounge).
+  const [acked, setAcked] = useState(true);
   useEffect(() => {
-    try {
-      const savedTheme = localStorage.getItem("yi_theme") as ThemeMode | null;
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const resolved = savedTheme ?? (systemDark ? "dark" : "light");
-      setTheme(resolved);
+    try { setAcked(localStorage.getItem(perChefKey(ACADEMY_ACK_KEY, chefId)) === "1"); } catch { setAcked(true); }
+  }, [chefId]);
+  function markAck() {
+    setAcked(true);
+    try { localStorage.setItem(perChefKey(ACADEMY_ACK_KEY, chefId), "1"); } catch {}
+  }
 
-      const savedBg = localStorage.getItem("yi_background") as BackgroundMode | null;
-      if (savedBg) setBackgroundMode(savedBg);
-    } catch {}
-  }, []);
-
-  // Sync theme → <html data-theme> + localStorage
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("yi_theme", theme); } catch {}
-  }, [theme]);
+    const next = deriveAcademyState(seed.academyModules, seed.academyClearance, readPassedModules(chefId));
+    setModules(next.modules);
+    setClearance(next.clearance);
+  }, [chefId, seed.academyModules, seed.academyClearance]);
 
-  // Persist background preference
+  // Guard the app shell: Auth creates the account; onboarding clears the profile.
   useEffect(() => {
-    try { localStorage.setItem("yi_background", backgroundMode); } catch {}
-  }, [backgroundMode]);
-
-  const patternUrl = useMemo(() => buildPatternDataURI(theme), [theme]);
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+    if (!isLoading && isAuthenticated && !profileIsOnboarded(user)) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, user, router]);
 
   function handleVote(proposalId: string, vote: "YES" | "NO") {
     setProposals((prev) =>
@@ -74,130 +196,83 @@ export default function AppShell() {
   }
 
   function handleModuleStart(moduleId: string) {
-    setModules((prev) => {
-      const updated = prev.map((m) =>
-        m.id === moduleId && !m.locked && !m.passed ? { ...m, passed: true } : m
-      );
-      let unlockDone = false;
-      return updated.map((m) => {
-        if (m.locked && !unlockDone) {
-          unlockDone = true;
-          return { ...m, locked: false };
-        }
-        return m;
-      });
-    });
+    const nextPassed = Array.from(new Set([...modules.filter((m) => m.passed).map((m) => m.id), moduleId]));
+    writePassedModules(chefId, nextPassed);
+    const next = deriveAcademyState(seed.academyModules, seed.academyClearance, nextPassed);
+    setModules(next.modules);
+    setClearance(next.clearance);
+  }
 
-    setClearance((prev) => {
-      if (prev.passedModuleIds.includes(moduleId)) return prev;
-      const newPassed = [...prev.passedModuleIds, moduleId];
-      const newMissing = prev.missingModuleIds.filter((id) => id !== moduleId);
-      return {
-        ...prev,
-        passedModuleIds: newPassed,
-        missingModuleIds: newMissing,
-        complete: newMissing.length === 0,
-      };
-    });
+  // While auth resolves (or while redirecting an unauthenticated visitor),
+  // hold a calm white screen instead of flashing the dashboard.
+  if (isLoading || !isAuthenticated || !profileIsOnboarded(user)) {
+    return (
+      <div style={{ minHeight: "100svh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.18em", color: "#bbb" }}>
+          Young Investors
+        </span>
+      </div>
+    );
   }
 
   return (
     <div className="dashboard-shell">
-      {backgroundMode === "pattern" && (
-        <div
-          className="pattern-overlay"
-          style={{ backgroundImage: `url("${patternUrl}")` }}
-        />
-      )}
+      <TopBar
+        activeTab={activeTab}
+        executionMode={EXECUTION_MODE}
+        clearance={clearance}
+        modules={modules}
+        proposals={proposals}
+        chefName={chefName}
+      />
 
       <main className="dashboard-main">
-        <BrutalistHeader
+        <GordonNextActionCard
           activeTab={activeTab}
-          executionMode={EXECUTION_MODE}
-          backgroundMode={backgroundMode}
-          onBackgroundModeChange={setBackgroundMode}
-          theme={theme}
-          onThemeChange={setTheme}
-        />
-
-        <KitchenGordonPanel
           clearance={clearance}
           modules={modules}
-          portfolio={seed.portfolio}
-          proposals={proposals}
+          onTabChange={setActiveTab}
         />
 
-        {activeTab === "kitchen" && (
-          <section className="stack" style={{ padding: "48px 0 32px", alignItems: "flex-start" }}>
-            <div>
-              <p className="eyebrow" style={{ color: "#b42318" }}>Demo mode · locked</p>
-              <h2 className="view-title">The Kitchen</h2>
-            </div>
-            <div style={{
-              border: "2px solid #b42318",
-              padding: "28px 24px",
-              maxWidth: 480,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b42318" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-                <span style={{
-                  fontFamily: "var(--font-mono), monospace",
-                  fontSize: "0.65rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  color: "#b42318",
-                }}>
-                  Kitchen access requires Academy clearance
-                </span>
-              </div>
-              <p style={{
-                fontFamily: "var(--font-archivo), system-ui, sans-serif",
-                fontSize: "0.9rem",
-                color: "var(--yi-ink, #111)",
-                margin: "0 0 20px",
-                lineHeight: 1.5,
-              }}>
-                Complete all required Academy lessons to unlock The Kitchen. Recipes, voting, and governance become available once you earn your clearance.
-              </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab("academy")}
-                style={{
-                  fontFamily: "var(--font-mono), monospace",
-                  fontSize: "0.72rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.12em",
-                  background: "#111",
-                  color: "#fff",
-                  border: "none",
-                  padding: "11px 22px",
-                  cursor: "pointer",
-                }}
-              >
-                Return to Academy →
-              </button>
-            </div>
-          </section>
-        )}
-        {activeTab === "academy" && (
-          <AcademyView modules={modules} clearance={clearance} onModuleStart={handleModuleStart} />
-        )}
-        {activeTab === "vault" && <VaultView portfolio={seed.portfolio} />}
-        {activeTab === "shop" && (
-          <ShopView
-            feature={seed.timesFeature}
-            secondaryArticles={seed.timesSecondary}
-            tickers={seed.marketTickers}
-            news={seed.macroNews}
-          />
-        )}
-        {activeTab === "lounge" && <LoungeView rankings={seed.rankings} />}
+        <Reveal key={activeTab}>
+          {activeTab === "kitchen" && <KitchenView clearance={clearance} onTabChange={setActiveTab} />}
+          {activeTab === "academy" && (
+            <AcademyView
+              modules={modules}
+              clearance={clearance}
+              onModuleStart={handleModuleStart}
+              onLessonOpenChange={setAcademyLessonOpen}
+              onTabChange={setActiveTab}
+            />
+          )}
+          {activeTab === "vault" && (
+            clearance.complete
+              ? <VaultStart chefName={chefName || "Chef"} />
+              : <VaultLocked passedCount={modules.filter((m) => m.passed).length} totalCount={modules.length} />
+          )}
+          {activeTab === "shop" && (
+            <ShopView
+              feature={seed.timesFeature}
+              secondaryArticles={seed.timesSecondary}
+              tickers={seed.marketTickers}
+              news={seed.macroNews}
+            />
+          )}
+          {activeTab === "lounge" && <LoungeView rankings={seed.rankings} onTabChange={setActiveTab} />}
+        </Reveal>
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} lockedTabs={{ vault: !clearance.complete }} />
+
+      {clearance.complete && !acked && !academyLessonOpen && (
+        <AcademyComplete
+          chefName={chefName || "Chef"}
+          score={user?.academy_score ?? 0}
+          lessonsPassed={modules.filter((m) => m.passed).length}
+          onEnterLounge={() => { setActiveTab("lounge"); markAck(); }}
+          onClose={markAck}
+        />
+      )}
     </div>
   );
 }

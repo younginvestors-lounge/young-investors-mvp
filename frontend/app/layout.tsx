@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Archivo, Space_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth-context";
+import { AppSettingsProvider } from "@/lib/appSettings";
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 
 const bodoni = Bodoni_Moda({
   subsets: ["latin"],
@@ -24,15 +27,38 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Young Investors",
   title: "Young Investors | We Cook",
   description:
-    "Educational paper-trading simulation. Learn before you earn. No real money.",
+    "Educational paper-trading simulation and wealth creation tool. No real money.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Young Investors",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/yi-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/yi-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/yi-icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#111111",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f0f0f" },
+  ],
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -41,16 +67,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" data-pattern="off" suppressHydrationWarning>
+      <head>
+        {/* Apply the saved theme + pattern before paint so there's no flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var saved=localStorage.getItem('yi_theme');var t=(saved==='dark'||saved==='light')?saved:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);var p=localStorage.getItem('yi_pattern');document.documentElement.setAttribute('data-pattern',p==='on'?'on':'off');}catch(e){}})();",
+          }}
+        />
+      </head>
       <body
         className={`${bodoni.variable} ${archivo.variable} ${spaceMono.variable}`}
       >
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('yi_theme');var s=window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',t||(s?'dark':'light'));}catch(e){}})();`,
-          }}
-        />
-        {children}
+        <AppSettingsProvider>
+          <AuthProvider>{children}</AuthProvider>
+          <ServiceWorkerRegistrar />
+        </AppSettingsProvider>
       </body>
     </html>
   );

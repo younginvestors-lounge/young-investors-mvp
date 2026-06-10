@@ -62,7 +62,7 @@ export function KitchenGordonPanel({
         </h2>
         <p className="copy">
           The Kitchen can only cook after the Academy, the Kitchen Floor, the 60% Rule, and
-          Gordon's heat check all agree. Paper mode stays explicit while the culture stays
+          Gordon&apos;s heat check all agree. Paper mode stays explicit while the culture stays
           personal.
         </p>
       </div>
@@ -72,7 +72,7 @@ export function KitchenGordonPanel({
           <div className="metric-row">
             <span className="meta">
               <GraduationCap className="icon-inline" aria-hidden="true" />
-              Learn before you earn
+              Reason before you cook
             </span>
             <span className={clearance.complete ? "number metric-positive" : "number metric-negative"}>
               {academyProgress}%
@@ -120,7 +120,7 @@ export function KitchenGordonPanel({
           <div className="metric-row">
             <span className="meta">
               <Gauge className="icon-inline" aria-hidden="true" />
-              Gordon's heat check
+              Gordon&apos;s heat check
             </span>
             <span className={`number ${riskTone}`}>{riskScore}</span>
           </div>

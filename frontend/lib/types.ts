@@ -4,9 +4,6 @@ export type ExecutionMode = typeof EXECUTION_MODE;
 
 export type DashboardTab = "kitchen" | "academy" | "vault" | "shop" | "lounge";
 
-export type BackgroundMode = "solid" | "pattern";
-
-export type ThemeMode = "light" | "dark";
 
 export interface Money {
   amount: number;
@@ -119,6 +116,13 @@ export interface MacroNewsCard {
   critical: boolean;
 }
 
+export interface EarnedBadge {
+  id: string;
+  name: string;
+  description: string;
+  category: "clearance" | "process" | "achievement";
+}
+
 export interface RankingRow {
   rank: number;
   name: string;
@@ -126,6 +130,20 @@ export interface RankingRow {
   paperCapital: Money;
   roiPercent: number;
   isGordon: boolean;
+  beatGordon?: boolean;
+  earnedBadges?: EarnedBadge[];
+}
+
+export type ChefVote = "FOR" | "AGAINST" | "ABSTAIN" | null;
+
+export interface KitchenMember {
+  id: string;
+  name: string;
+  vote: ChefVote;
+  isUser: boolean;
+  profileIcon?: string;
+  clearanceLevel?: string;
+  recipesProposed?: number;
 }
 
 export interface DashboardSnapshot {

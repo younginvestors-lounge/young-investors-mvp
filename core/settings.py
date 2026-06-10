@@ -1,0 +1,211 @@
+from pathlib import Path
+import os
+from urllib.parse import urlparse
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.environ.get("SECRET_KEY", "MOCK_MVP_DJANGO_SECRET_KEY")
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+
+def _clean_site_url(raw):
+    return (raw or "").strip().rstrip("/")
+
+
+def _validated_frontend_url():
+    frontend_url = _clean_site_url(os.environ.get("FRONTEND_URL") or os.environ.get("NEXT_PUBLIC_SITE_URL"))
+    if not frontend_url and DEBUG:
+        frontend_url = "http://localhost:3000"
+    if not frontend_url:
+        raise RuntimeError("FRONTEND_URL must be set when DEBUG=False so email links open the correct app.")
+
+    parsed = urlparse(frontend_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise RuntimeError("FRONTEND_URL must be an absolute http(s) URL.")
+    if not DEBUG and parsed.hostname in ("localhost", "127.0.0.1", "0.0.0.0"):
+        raise RuntimeError("FRONTEND_URL must not point to localhost when DEBUG=False.")
+    return frontend_url
+
+
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == "MOCK_MVP_DJANGO_SECRET_KEY" or len(SECRET_KEY) < 32):
+    raise RuntimeError("A strong SECRET_KEY must be set when DEBUG=False.")
+
+FRONTEND_URL = _validated_frontend_url()
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "corsheaders",
+    "accounts",
+    "academy",
+    "kitchen",
+    "arena",
+    "vault",
+    "lounge",
+    "gordon",
+    "marketdata",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "core.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "core.wsgi.application"
+
+# Database routing — explicit precedence so local DB mode is never hidden env state:
+#   1. USE_SQLITE=True          → SQLite (turnkey local dev + tests; `USE_SQLITE=True python manage.py test`)
+#   2. DATABASE_URL             → Postgres (Azure / managed)
+#   3. DB_HOST set, or DEBUG=False → Postgres from DB_* vars
+#   4. DEBUG with nothing set   → SQLite fallback (turnkey first run)
+USE_SQLITE = os.environ.get("USE_SQLITE", "").strip().lower() in ("1", "true", "yes")
+
+
+def _sqlite_config():
+    return {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
+
+
+if USE_SQLITE:
+    DATABASES = {"default": _sqlite_config()}
+elif os.environ.get("DATABASE_URL"):
+    db_url = urlparse(os.environ.get("DATABASE_URL"))
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": db_url.path.lstrip("/"),
+            "USER": db_url.username,
+            "PASSWORD": db_url.password,
+            "HOST": db_url.hostname,
+            "PORT": db_url.port or 5432,
+        }
+    }
+elif os.environ.get("DB_HOST") or not DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("DB_NAME", "young_investors"),
+            "USER": os.environ.get("DB_USER", "postgres"),
+            "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
+            "HOST": os.environ.get("DB_HOST", "localhost"),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+        }
+    }
+else:
+    # DEBUG with no DB configured → turnkey SQLite so a fresh checkout just runs.
+    DATABASES = {"default": _sqlite_config()}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "Africa/Harare"
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL = "accounts.ChefUser"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+}
+
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=24),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": os.environ.get("SECRET_KEY", SECRET_KEY),
+}
+
+# Email-first authentication, with Django's ModelBackend kept as a fallback.
+AUTHENTICATION_BACKENDS = [
+    "accounts.auth_backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# CORS / CSRF
+_default_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+CORS_ALLOWED_ORIGINS = list(
+    dict.fromkeys(
+        _default_origins
+        + [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+        + [FRONTEND_URL]
+    )
+)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = list(
+    dict.fromkeys(
+        _default_origins
+        + [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+        + [FRONTEND_URL]
+    )
+)
+
+# Email configuration
+if DEBUG:
+    EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.filebased.EmailBackend")
+    EMAIL_FILE_PATH = os.environ.get("EMAIL_FILE_PATH", str(BASE_DIR / ".local-emails"))
+else:
+    EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
+    SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@younginvestors.co")
+EMAIL_HOST_USER = os.environ.get("SENDGRID_API_KEY", "")

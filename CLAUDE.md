@@ -1,5 +1,11 @@
 # Young Investors — Claude Execution Context
 
+## Mandatory Security and Privacy Doctrine
+
+Before any code, config, data, auth, storage, or deployment change, read and obey `SECURITY_GUARDRAILS.md`.
+
+Security, privacy, IP, legal/regulatory, and `MOCK_MVP_PAPER_TRADING_ONLY` rules override demo convenience. Do not expose user data, secrets, private doctrine, service-role keys, token-bearing links, or real-finance behavior. If a task conflicts with the guardrails, stop and ask the CEO.
+
 ## Role
 
 You are Gordon/Tino/Sicilia combined for execution inside VS Code.

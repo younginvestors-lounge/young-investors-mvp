@@ -1,287 +1,292 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
+import { profileIsOnboarded } from "@/lib/profileStore";
+import { PROFILE_ICONS } from "@/lib/profileIcons";
 
-const INTENTS = ["Learn the craft", "Build my portfolio", "Start a Kitchen"] as const;
+const INTENTS = [
+  { label: "Learn the craft", value: "learn_craft" },
+  { label: "Build my portfolio", value: "build_portfolio" },
+  { label: "Start a Kitchen", value: "start_kitchen" },
+] as const;
+
+type StepKey = "display" | "alias" | "age" | "intent" | "icon" | "confirm";
+
+const STEPS: StepKey[] = ["display", "alias", "age", "intent", "icon", "confirm"];
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { updateProfile, user, isAuthenticated, isLoading } = useAuth();
+
+  const completingRef = useRef(false);
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [alias, setAlias] = useState("");
   const [age, setAge] = useState("");
   const [intent, setIntent] = useState("");
+  const [icon, setIcon] = useState("chef-default");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const total = 3;
+  const cur = STEPS[Math.min(step, STEPS.length - 1)];
+  const total = STEPS.length;
+  const ageNum = Number(age);
+  const ageInvalid = age !== "" && (Number.isNaN(ageNum) || ageNum < 13 || ageNum > 99);
+  const isTrainingKitchen = !ageInvalid && age !== "" && ageNum < 18;
 
-  function next() {
-    if (step === 0) {
-      if (!name.trim()) return;
-      setStep(1);
-    } else if (step === 1) {
-      const n = Number(age);
-      if (!age || n < 13) return;
-      setStep(2);
-    } else {
-      if (!intent) return;
-      try {
-        localStorage.setItem("yi_chef_name", name.trim());
-        localStorage.setItem("yi_chef_age", age);
-        localStorage.setItem("yi_chef_intent", intent);
-      } catch {}
-      router.push("/kitchen");
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated || !user) {
+      router.replace("/login");
+      return;
+    }
+    if (profileIsOnboarded(user) && !completingRef.current) {
+      router.replace("/kitchen");
+      return;
+    }
+
+    setDisplayName((value) => value || user.display_name || user.chef_alias || "");
+    setAlias((value) => value || user.chef_alias || "");
+    setAge((value) => value || (user.age == null ? "" : String(user.age)));
+    setIntent((value) => value || user.intent || "");
+    setIcon((value) => value || user.profile_icon || "chef-default");
+  }, [isLoading, isAuthenticated, user, router]);
+
+  const selectedIntent = useMemo(() => INTENTS.find((item) => item.value === intent)?.label ?? "", [intent]);
+  const selectedIcon = useMemo(() => PROFILE_ICONS.find((item) => item.key === icon), [icon]);
+
+  function canAdvance(): boolean {
+    switch (cur) {
+      case "display":
+        return displayName.trim().length >= 2;
+      case "alias":
+        return alias.trim().length >= 2;
+      case "age":
+        return age !== "" && !ageInvalid;
+      case "intent":
+        return intent !== "";
+      case "icon":
+        return icon !== "";
+      case "confirm":
+        return !submitting;
+      default:
+        return false;
     }
   }
 
-  const ageNum = Number(age);
-  const ageInvalid = age !== "" && (ageNum < 13 || isNaN(ageNum));
-  const ageMinor = age !== "" && ageNum >= 13 && ageNum < 18;
+  async function finishOnboarding() {
+    if (!user || submitting) return;
+    completingRef.current = true;
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await updateProfile({
+        display_name: displayName.trim(),
+        chef_alias: alias.trim(),
+        age: ageNum,
+        intent,
+        profile_icon: icon,
+        mode: ageNum < 18 ? "training_kitchen" : "full_simulation",
+        onboarding_completed: true,
+      });
+      router.replace("/academy");
+    } catch (err) {
+      completingRef.current = false;
+      if (err instanceof ApiError) {
+        setFormError(err.message);
+      } else {
+        setFormError("We could not save onboarding. Try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function advance() {
+    if (!canAdvance()) return;
+    setFormError(null);
+    if (cur === "confirm") {
+      void finishOnboarding();
+      return;
+    }
+    setStep((value) => Math.min(value + 1, total - 1));
+  }
+
+  function back() {
+    setFormError(null);
+    setStep((value) => Math.max(value - 1, 0));
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && cur !== "intent" && cur !== "icon" && cur !== "confirm") {
+      advance();
+    }
+  }
+
+  if (isLoading || !isAuthenticated || !user) {
+    return (
+      <main className="auth-loading">
+        <span>Young Investors</span>
+      </main>
+    );
+  }
 
   return (
-    <main style={{
-      minHeight: "100svh",
-      background: "#fff",
-      color: "#111",
-      display: "flex",
-      flexDirection: "column",
-      padding: "0 0 40px",
-    }}>
-
-      {/* Progress bar */}
-      <div style={{ height: 2, background: "#eee", flexShrink: 0 }}>
-        <div style={{
-          height: "100%",
-          background: "#111",
-          width: `${((step + 1) / total) * 100}%`,
-          transition: "width 300ms ease",
-        }} />
+    <main className="auth-page auth-onboarding-page">
+      <div className="auth-progress" aria-hidden>
+        <span style={{ width: `${((step + 1) / total) * 100}%` }} />
       </div>
 
-      {/* Header row */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        padding: "20px 24px 0",
-      }}>
-        <span style={{
-          fontFamily: "var(--font-bodoni), Georgia, serif",
-          fontSize: "1.1rem",
-          fontWeight: 700,
-        }}>
-          Young Investors
+      <header className="auth-header">
+        <span className="auth-wordmark">Young Investors</span>
+        <span className="auth-tag">
+          {String(step + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
         </span>
-        <span style={{
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: "0.68rem",
-          letterSpacing: "0.1em",
-          color: "#888",
-        }}>
-          0{step + 1} / 0{total}
-        </span>
-      </div>
+      </header>
 
-      {/* Question area */}
-      <div style={{ flex: 1, padding: "48px 24px 32px", maxWidth: 520 }}>
-
-        {step === 0 && (
+      <section key={cur} className="onboarding-panel auth-step-panel">
+        {cur === "display" && (
           <>
-            <h1 style={{
-              fontFamily: "var(--font-bodoni), Georgia, serif",
-              fontSize: "clamp(1.8rem, 6vw, 2.6rem)",
-              fontWeight: 700,
-              lineHeight: 1.1,
-              margin: "0 0 10px",
-            }}>
-              What should we call you, Chef?
-            </h1>
-            <p style={{
-              fontFamily: "var(--font-archivo), system-ui, sans-serif",
-              fontSize: "0.88rem",
-              color: "#888",
-              margin: "0 0 32px",
-            }}>
-              Your kitchen alias. Make it yours.
-            </p>
+            <p className="auth-kicker">Profile setup</p>
+            <h1 className="auth-onboarding-title">What name should your account carry?</h1>
+            <p className="auth-note">This can be your real first name or a display name. Your Chef alias comes next.</p>
+            <label className="auth-label" htmlFor="display-name">Display name</label>
             <input
+              id="display-name"
+              className="auth-big-input"
+              autoComplete="name"
               autoFocus
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && next()}
-              placeholder="Chef ___"
-              style={{
-                width: "100%",
-                border: "none",
-                borderBottom: "2px solid #111",
-                background: "transparent",
-                color: "#111",
-                padding: "10px 0",
-                fontFamily: "var(--font-bodoni), Georgia, serif",
-                fontSize: "1.4rem",
-                outline: "none",
-                marginBottom: 40,
-              }}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Your name"
             />
           </>
         )}
 
-        {step === 1 && (
+        {cur === "alias" && (
           <>
-            <h1 style={{
-              fontFamily: "var(--font-bodoni), Georgia, serif",
-              fontSize: "clamp(1.8rem, 6vw, 2.6rem)",
-              fontWeight: 700,
-              lineHeight: 1.1,
-              margin: "0 0 10px",
-            }}>
-              How old are you, Chef {name}?
-            </h1>
-            <p style={{
-              fontFamily: "var(--font-archivo), system-ui, sans-serif",
-              fontSize: "0.88rem",
-              color: "#888",
-              margin: "0 0 32px",
-            }}>
-              Age determines your simulation tier.
-            </p>
+            <p className="auth-kicker">Chef alias</p>
+            <h1 className="auth-onboarding-title">What should the Kitchen call you?</h1>
+            <p className="auth-note">This is your public Young Investors username inside the app, not your login credential.</p>
+            <label className="auth-label" htmlFor="chef-alias">Chef alias</label>
             <input
+              id="chef-alias"
+              className="auth-big-input"
+              autoComplete="nickname"
               autoFocus
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Chef ___"
+            />
+          </>
+        )}
+
+        {cur === "age" && (
+          <>
+            <p className="auth-kicker">Age band</p>
+            <h1 className="auth-onboarding-title">How old are you, Chef {alias || "Chef"}?</h1>
+            <p className="auth-note">
+              Under-18 profiles stay in Training Kitchen mode. No banking, broker, payment, or live-trading flow exists here.
+            </p>
+            <label className="auth-label" htmlFor="age">Age</label>
+            <input
+              id="age"
+              className="auth-big-input"
               type="number"
               min={13}
               max={99}
+              autoFocus
               value={age}
-              onChange={e => setAge(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && next()}
+              onChange={(e) => setAge(e.target.value)}
+              onKeyDown={onKeyDown}
               placeholder="__"
-              style={{
-                width: "100%",
-                border: "none",
-                borderBottom: `2px solid ${ageInvalid ? "#b42318" : "#111"}`,
-                background: "transparent",
-                color: "#111",
-                padding: "10px 0",
-                fontFamily: "var(--font-bodoni), Georgia, serif",
-                fontSize: "1.4rem",
-                outline: "none",
-                marginBottom: 12,
-              }}
+              aria-invalid={ageInvalid}
             />
-            {ageInvalid && (
-              <p style={{
-                fontFamily: "var(--font-mono), monospace",
-                fontSize: "0.65rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                color: "#b42318",
-                margin: "0 0 28px",
-              }}>
-                Minimum age 13 to enter
-              </p>
-            )}
-            {ageMinor && !ageInvalid && (
-              <p style={{
-                fontFamily: "var(--font-mono), monospace",
-                fontSize: "0.65rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                color: "#888",
-                margin: "0 0 28px",
-              }}>
-                Training kitchen · simulation only
-              </p>
-            )}
-            {!ageInvalid && !ageMinor && age && (
-              <div style={{ marginBottom: 28 }} />
-            )}
+            {ageInvalid && <p className="auth-error">Enter an age from 13 to 99.</p>}
+            {isTrainingKitchen && <p className="auth-note">Training Kitchen mode will be applied automatically.</p>}
           </>
         )}
 
-        {step === 2 && (
+        {cur === "intent" && (
           <>
-            <h1 style={{
-              fontFamily: "var(--font-bodoni), Georgia, serif",
-              fontSize: "clamp(1.8rem, 6vw, 2.6rem)",
-              fontWeight: 700,
-              lineHeight: 1.1,
-              margin: "0 0 32px",
-            }}>
-              What are you cooking toward, Chef?
-            </h1>
-            <div style={{ display: "grid", gap: 0, marginBottom: 40 }}>
+            <p className="auth-kicker">Intent</p>
+            <h1 className="auth-onboarding-title">What are you cooking toward?</h1>
+            <div className="onboarding-options">
               {INTENTS.map((opt) => (
                 <button
-                  key={opt}
+                  key={opt.value}
                   type="button"
-                  onClick={() => setIntent(opt)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    padding: "16px 18px",
-                    border: "1px solid #111",
-                    borderTop: "none",
-                    background: intent === opt ? "#111" : "#fff",
-                    color: intent === opt ? "#fff" : "#111",
-                    fontFamily: "var(--font-archivo), system-ui, sans-serif",
-                    fontSize: "1rem",
-                    textAlign: "left",
-                    cursor: "pointer",
-                  }}
+                  onClick={() => setIntent(opt.value)}
+                  className={intent === opt.value ? "onboarding-option-active" : ""}
                 >
-                  {opt}
+                  {opt.label}
                 </button>
               ))}
-              {/* top border on first item */}
-              <style>{`.intent-list button:first-child { border-top: 1px solid #111; }`}</style>
             </div>
           </>
         )}
 
-        {/* Continue button */}
-        <button
-          type="button"
-          onClick={next}
-          disabled={
-            (step === 0 && !name.trim()) ||
-            (step === 1 && (!age || ageNum < 13 || isNaN(ageNum))) ||
-            (step === 2 && !intent)
-          }
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "13px 28px",
-            background: "#111",
-            color: "#fff",
-            border: "none",
-            fontFamily: "var(--font-mono), monospace",
-            fontSize: "0.75rem",
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
-            cursor: "pointer",
-            opacity:
-              (step === 0 && !name.trim()) ||
-              (step === 1 && (!age || ageNum < 13 || isNaN(ageNum))) ||
-              (step === 2 && !intent)
-              ? 0.35 : 1,
-            transition: "opacity 180ms ease",
-          }}
-        >
-          Continue →
-        </button>
-      </div>
+        {cur === "icon" && (
+          <>
+            <p className="auth-kicker">Profile mark</p>
+            <h1 className="auth-onboarding-title">Pick your mark.</h1>
+            <p className="auth-note">You can upload a profile picture later from your profile when storage is configured.</p>
+            <div className="onboarding-icon-grid">
+              {PROFILE_ICONS.map(({ key, label, Icon }) => {
+                const active = icon === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setIcon(key)}
+                    aria-pressed={active}
+                    title={label}
+                    className={active ? "onboarding-icon-active" : ""}
+                  >
+                    <Icon size={28} strokeWidth={1.7} aria-hidden />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
-      <p style={{
-        fontFamily: "var(--font-mono), monospace",
-        fontSize: "0.58rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.1em",
-        color: "#bbb",
-        textAlign: "center",
-        margin: 0,
-        padding: "0 24px",
-      }}>
-        Paper trading only · No real money
-      </p>
+        {cur === "confirm" && (
+          <>
+            <p className="auth-kicker">Confirmation</p>
+            <h1 className="auth-onboarding-title">Ready for Follow the Money?</h1>
+            <div className="onboarding-summary">
+              <p><b>Name</b><span>{displayName}</span></p>
+              <p><b>Chef alias</b><span>{alias}</span></p>
+              <p><b>Mode</b><span>{isTrainingKitchen ? "Training Kitchen" : "Full simulation"}</span></p>
+              <p><b>Intent</b><span>{selectedIntent}</span></p>
+              <p><b>Mark</b><span>{selectedIcon?.label ?? "Chef"}</span></p>
+            </div>
+            <p className="auth-note">Academy clearance comes before Kitchen participation. This remains paper trading only.</p>
+          </>
+        )}
+
+        {formError && <p role="alert" className="auth-error">{formError}</p>}
+
+        <div className="onboarding-actions">
+          {step > 0 && (
+            <button type="button" className="auth-secondary" onClick={back}>
+              Back
+            </button>
+          )}
+          <button type="button" className="auth-primary" onClick={advance} disabled={!canAdvance()}>
+            {cur === "confirm" ? (submitting ? "Saving..." : "Start Academy") : "Continue"}
+          </button>
+        </div>
+      </section>
+
+      <p className="auth-legal">MOCK_MVP_PAPER_TRADING_ONLY - educational simulation - no real money.</p>
     </main>
   );
 }

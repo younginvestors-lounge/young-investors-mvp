@@ -1,0 +1,956 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ChefHat, Dumbbell, Maximize2, MessageCircle, Minimize2, Sparkles, X } from "lucide-react";
+import { useTypewriter } from "@/lib/useTypewriter";
+import { useAuth } from "@/lib/auth-context";
+import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
+import { success, tap, warn } from "@/lib/haptics";
+import { glossaryForModule, READER_LEVELS, type GlossaryLevels } from "@/lib/gordonGlossary";
+import { notifyTask } from "@/lib/taskToast";
+
+/** What each class promises — Gordon as lecturer/master chef. */
+const LESSON_OUTCOMES: Record<string, string[]> = {
+  "markets-001": ["Know what a share, an index and the JSE actually are", "Read why a price moves up or down"],
+  "risk-001": ["Tell risk from reward — and why bet size matters most", "Spot when a plate is too heavy to survive"],
+  "portfolio-001": ["Build a balanced plate that doesn't tip over", "See why what you own together beats any single pick"],
+  "bias-001": ["Name the mind-traps that make smart chefs slip", "Catch yourself before the trap catches you"],
+  "governance-001": ["Explain the 60% Rule in your own words", "See why the table decides, not one chef"],
+  "mutual-001": ["Understand the slow-cook, long-game Kitchen", "See how patience and compounding stack up"],
+  "hedge-001": ["Understand the high-heat Kitchen and its hard exits", "Respect why strict rules keep you alive"],
+  "ethics-001": ["Know the line: fair play vs an insider edge", "Build clean habits before real money shows up"],
+  "wealth-001": ["See wealth creation through four different thinker lenses", "Choose the mindset — surplus, compound, asymmetric, or cyclical — that matches your Kitchen's style"],
+  "wave-001": ["Name the five market waves and where you are in each", "Choose the right intervention for each wave stage — hold, add, exit, or wait"],
+};
+
+interface LessonQuiz {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  gordonsAnswer: string;
+  wrongAnswer: string;
+}
+
+interface LessonContent {
+  moduleId: string;
+  concept: string;
+  body: string[];
+  cookingBridge: string;
+  quiz: LessonQuiz;
+  passLine: string;
+}
+
+interface PracticeBeat {
+  setup: string;
+  task: string;
+  check: string;
+}
+
+const LESSONS: Record<string, LessonContent> = {
+  "markets-001": {
+    moduleId: "markets-001",
+    concept: "How exchanges work",
+    body: [
+      "A stock exchange is a marketplace where buyers and sellers agree on a price. When you buy a share, you buy a small piece of ownership in a company.",
+      "The JSE (Johannesburg Stock Exchange) lists South African companies. Prices move because people constantly disagree on what a company is worth.",
+      "An index like the JSE Top 40 is an average of the top 40 companies — a temperature reading for the whole market.",
+    ],
+    cookingBridge: "The market is a busy restaurant. Prices are the menu. They change based on what's popular, what's scarce, and how hungry everyone is. Your job as a chef is to read the menu better than everyone else at the table.",
+    quiz: {
+      question: "If more people want to BUY a share than SELL it, what happens to the price?",
+      options: [
+        "The price falls — supply exceeds demand",
+        "The price rises — demand exceeds supply",
+        "The price stays the same",
+        "The company issues more shares automatically",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Correct. When more buyers than sellers compete for the same share, each buyer bids a little higher to beat the next one. The price rises. Supply and demand. That's the whole game in four words.",
+      wrongAnswer: "Not quite. Think about a market stall with one mango and ten buyers. Each buyer bids higher to secure it. The price goes up. Demand beats supply — price rises. Try again.",
+    },
+    passLine: "Market Basics complete. You understand how a price is set. The foundation is in place.",
+  },
+  "risk-001": {
+    moduleId: "risk-001",
+    concept: "Risk and the survival rule",
+    body: [
+      "Risk is the possibility of loss. Every trade carries it. The question isn't how to eliminate risk — it's how to make sure no single loss ends your game.",
+      "Position sizing is how much of your Kitchen's capital you put on one plate. Too much in one pot and one bad trade wipes out months of gains.",
+      "The 60% Rule governs your Kitchen's vote, but your position size governs your Vault's survival. Both are about not betting so big that being wrong ends you.",
+    ],
+    cookingBridge: "Heat is risk. A little heat cooks the dish. Too much heat burns the kitchen down and you can't cook tomorrow. Every great chef knows the difference between controlled heat and a fire. Your job is controlled heat — always.",
+    quiz: {
+      question: "Your Kitchen has R60,000. A recipe proposes putting R30,000 (50%) into one stock. Gordon says the pot is too hot. Why?",
+      options: [
+        "Because stocks always go down",
+        "Because 50% in one position means a 50% drop in that stock halves your entire Vault",
+        "Because the JSE has a 50% position limit by law",
+        "Because Gordon prefers cash",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Exactly right. If 50% of your capital is in one stock and it drops 50%, your total Vault drops 25%. That's survivable. But if it drops 80%? Your Vault loses 40%. Concentration is the enemy of longevity. Never bet so big that being wrong ends you.",
+      wrongAnswer: "Think about it differently. What happens to your total Vault if that single stock drops 60%? With 50% concentration, you lose 30% of everything. That's the danger. It's not about one trade — it's about whether you can still cook tomorrow.",
+    },
+    passLine: "Risk and Return complete. You understand why position sizing is not optional. The pot is yours to control.",
+  },
+  "portfolio-001": {
+    moduleId: "portfolio-001",
+    concept: "Building a balanced plate",
+    body: [
+      "Portfolio construction is the art of combining different assets so that when one goes down, others hold or go up.",
+      "Diversification doesn't mean owning everything — it means owning things that behave differently under the same conditions.",
+      "A Mutual Kitchen spreads its plate across sectors. A Hedge Kitchen uses asymmetric positions to hedge against specific risks.",
+    ],
+    cookingBridge: "A great menu has variety. You don't serve five different meat dishes and call it balance. The dessert offsets the salt. The wine complements the protein. Your portfolio is a menu — every asset should have a reason to be on the plate alongside the others.",
+    quiz: {
+      question: "You hold 60% in JSE financials (banks). The Reserve Bank raises rates sharply. What risk have you underestimated?",
+      options: [
+        "You're well diversified — banks benefit from rate rises",
+        "You have sector concentration risk — all your financials move together",
+        "Rate rises don't affect JSE stocks",
+        "Your Vault is perfectly balanced",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Correct. All your financials respond to the same macro driver. When rates rise unexpectedly fast, bank earnings can compress even if some banks do better short-term. Sector concentration means your whole plate tilts one way. Diversification means your plate can take a hit on one side and still stand.",
+      wrongAnswer: "Not quite. The key is correlation — do your holdings move together or independently? If they're all in the same sector, they move together. When sector sentiment shifts, your whole plate tilts the same direction.",
+    },
+    passLine: "Portfolio Construction complete. You can read a plate for balance. That's how good chefs protect the Kitchen.",
+  },
+  "bias-001": {
+    moduleId: "bias-001",
+    concept: "Why smart people make bad decisions",
+    body: [
+      "Behavioural biases are patterns where human psychology causes us to make irrational decisions even when we know better.",
+      "Overconfidence makes you bet too large because the last three trades were right. Anchoring makes you hold a losing position because you bought it at a higher price.",
+      "Herding is the most dangerous Kitchen bias — when five chefs agree too quickly, they might just be agreeing with each other, not with the market.",
+    ],
+    cookingBridge: "The kitchen is full of ego. A chef who's had five great nights starts believing they can't make a bad dish. Then they overcook something obvious. The best kitchens have a culture of honest tasting — everyone calls out the dish, not the chef. That's what the 60% Rule is for.",
+    quiz: {
+      question: "Your Kitchen bought MTN at R180. It's now at R120. Everyone is holding because 'it'll recover.' What bias is this?",
+      options: [
+        "Recency bias — betting on recent winners",
+        "Loss aversion and anchoring — the original price is distorting your view of current value",
+        "Overconfidence — too certain of the outcome",
+        "Herding — following the market consensus",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Exactly. The R180 purchase price is an anchor — it has no bearing on what MTN is worth today. Loss aversion is making you hold a deteriorating position rather than accept the loss and redeploy. A great chef doesn't keep a burnt dish on the plate because they spent time on it.",
+      wrongAnswer: "The clue is in the original price. R180 is acting as an anchor — it's psychologically difficult to sell below it. Combined with loss aversion, you hold hoping to 'get back to even' rather than asking: if I didn't own this already, would I buy it now at R120?",
+    },
+    passLine: "Behavioural Biases complete. You now know the traps. Naming the bias is the first defence against it.",
+  },
+  "governance-001": {
+    moduleId: "governance-001",
+    concept: "How the Kitchen governs itself",
+    body: [
+      "Kitchen governance is the system that prevents one person from making decisions for everyone. Recipes require a proposer, a reason, and a vote.",
+      "The 60% Rule means at least 60% of decisive votes must agree before any recipe can pass. Participation is visible, but the threshold decides.",
+      "The system exists because even brilliant chefs have blind spots. The collective catches what the individual misses.",
+    ],
+    cookingBridge: "A professional kitchen has a hierarchy — but it also has a tasting process. The head chef proposes, the sous chef checks, the brigade confirms. You don't serve a dish until the table agrees it's ready. The 60% Rule is that tasting table — institutionalised.",
+    quiz: {
+      question: "A Kitchen has 6 members. For the 60% Rule, how many members must vote FOR a recipe to pass (assuming all 6 vote)?",
+      options: [
+        "3 members (50%)",
+        "4 members (67% — rounds up to first majority above 60%)",
+        "5 members (83%)",
+        "6 members (100%)",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "4 of 6 is 66.7% — the first majority that exceeds the 60% threshold. 3 of 6 is exactly 50% — below the threshold. Governance isn't a technicality. It's the discipline that protects the whole Kitchen from one bad recipe.",
+      wrongAnswer: "Count carefully. 60% of 6 is 3.6 — which means you need at least 4 votes (rounding up to the next whole voter). The first majority that clears 60% is 4 of 6. Governance precision matters.",
+    },
+    passLine: "Kitchen Governance complete. You understand why the rules exist. Now you can be trusted with the Kitchen.",
+  },
+  "mutual-001": {
+    moduleId: "mutual-001",
+    concept: "The Mutual Kitchen mandate",
+    body: [
+      "A Mutual Kitchen is the slow-cook model. Long holds, broad diversification, equal voting weight, patient capital.",
+      "Every member has equal say regardless of capital contribution. Decisions require consensus. The mandate favours quality over speed.",
+      "Mutual Kitchens suit early-stage investors learning the craft — the process builds discipline, the patience builds compounding.",
+    ],
+    cookingBridge: "A slow braise. Low heat for a long time. The flavours develop over hours, not minutes. You can't rush it and you can't force it. The Mutual Kitchen is that braise — patient, consistent, and rewarding precisely because it doesn't try to be clever every week.",
+    quiz: {
+      question: "In a Mutual Kitchen with 6 equal members, one member has contributed 40% of the capital. How much voting weight do they have?",
+      options: [
+        "40% — capital-weighted voting",
+        "1/6 (16.7%) — equal voting regardless of capital",
+        "60% — they're the majority stakeholder",
+        "No vote until they hit 50%",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "One member, one vote. That's the Mutual Kitchen mandate. Capital weight creates oligarchy — the Mutual model specifically rejects this. Equal voice keeps the table honest and prevents any one chef from dominating the recipe book.",
+      wrongAnswer: "The Mutual Kitchen's defining principle is equal voting weight. Capital buys you a seat but not extra votes. This prevents wealthy members from overriding the Kitchen's collective judgment. One chef, one vote.",
+    },
+    passLine: "Mutual Kitchen Mandate complete. You understand the slow cook. Patience is a competitive advantage.",
+  },
+  "hedge-001": {
+    moduleId: "hedge-001",
+    concept: "The Hedge Kitchen mandate",
+    body: [
+      "A Hedge Kitchen is the high-heat model. Asymmetric strategies, shorter holds, non-negotiable exit discipline, and strict risk controls.",
+      "Hedge Kitchens can use directional bets, sector tilts, and momentum strategies — but every recipe must have an explicit exit condition and a maximum loss threshold.",
+      "The mandate rewards expertise. Without Academy clearance and strong reasoning, the Hedge Kitchen is dangerous.",
+    ],
+    cookingBridge: "High heat sears the perfect crust in seconds. But leave it thirty seconds too long and it's ruined. Hedge Kitchens live at that edge — the return is better because the risk is real. You need technique, attention, and an instinct to pull the dish before it burns. That's the mandate.",
+    quiz: {
+      question: "A Hedge Kitchen enters a position with a maximum loss threshold of 15%. The position drops 18%. What must happen according to the mandate?",
+      options: [
+        "Hold — it will probably recover",
+        "Exit the position immediately — the non-negotiable threshold was breached",
+        "Reduce by 50% and wait",
+        "Call a vote to extend the threshold",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Exit. The threshold is non-negotiable because it was set when you were thinking clearly, before the position moved. The moment it becomes negotiable, it's not a rule — it's a suggestion. And suggestions don't protect Kitchens. The Hedge mandate only works because the rules are held.",
+      wrongAnswer: "Non-negotiable means non-negotiable. The threshold was set before the trade to protect the Kitchen from the psychological trap of 'it'll recover.' When the rule is triggered, you exit. That's the whole point of having the rule — to remove the decision when emotions are highest.",
+    },
+    passLine: "Hedge Kitchen Mandate complete. High heat, strict rules. You now know when to pull the dish.",
+  },
+  "ethics-001": {
+    moduleId: "ethics-001",
+    concept: "Clean conscience, clean kitchen",
+    body: [
+      "Market conduct rules exist to keep markets fair. Insider trading — using information unavailable to the public to trade — is illegal and corrosive.",
+      "Even in an educational simulation, the habits you build now are the habits you carry into real markets. A Kitchen that tolerates ethical shortcuts will take financial ones.",
+      "Young Investors is built on the premise that collective governance plus ethical discipline plus education produces better investors and a better market.",
+    ],
+    cookingBridge: "A restaurant with a dirty kitchen will eventually poison someone. The health inspector doesn't catch every violation — but the culture of cleanliness protects the restaurant every day. Your Kitchen's ethical standard is that culture. It protects you, your members, and the credibility of everything you build.",
+    quiz: {
+      question: "A chef in your Kitchen works at a company and learns before the public announcement that it will report a major profit. They propose buying the stock. What should the Kitchen do?",
+      options: [
+        "Vote on it — if the thesis is good, trade it",
+        "Reject the recipe and address the conduct issue — this is insider trading",
+        "Reduce the position size to 5% to reduce risk",
+        "Wait until the announcement is public, then trade",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Reject it immediately and address the conduct directly. Insider trading isn't a technicality — it's a breach of market fairness that harms every other investor who doesn't have that information. The fact that it's a simulation doesn't change the habit. You build clean practices here so they're automatic when it counts.",
+      wrongAnswer: "The answer isn't about position size or timing. The information itself is the problem. Using material non-public information to trade gives an unfair advantage over the rest of the market. Even reducing the position doesn't make it ethical. The Kitchen must reject it and address the conduct.",
+    },
+    passLine: "Market Conduct and Ethics complete. Clean kitchen, clean conscience. The Lounge respects it.",
+  },
+  "wealth-001": {
+    moduleId: "wealth-001",
+    concept: "Four thinkers, one question: how does wealth get made?",
+    body: [
+      "Adam Smith showed that wealth is created when people specialise and trade surpluses. The more efficiently you produce something others want, the more capital accumulates — then gets reinvested. Surplus is the raw material of wealth.",
+      "Warren Buffett's lens: owning productive assets — businesses, property, intellectual capital — that compound returns through time. Not labour income, but ownership income. The Kitchen's Vault grows the same way: own more than you spend, let the return rate and time do the work.",
+      "Nassim Taleb adds the asymmetry lens: wealth survives not by maximising return but by limiting ruin. An asymmetric recipe risks a small loss for a large gain. This is why Kitchen position sizing matters — you stay in the game long enough for compounding to work.",
+    ],
+    cookingBridge: "Smith gives you the surplus to invest. Buffett tells you to own, not just work. Taleb says survive long enough to win. Your job as a chef is to combine all three: produce a surplus, own productive assets with it, and size your positions so no single dish burns the whole kitchen down.",
+    quiz: {
+      question: "A chef earns R5,000 a month, spends R4,000, and asks: what should I do with the R1,000? Which thinker would tell them to buy a productive asset that compounds?",
+      options: [
+        "Adam Smith — specialise harder to earn more",
+        "Warren Buffett — buy an ownership stake in a productive business",
+        "Nassim Taleb — keep cash for optionality and wait for an asymmetric bet",
+        "All three — they each say the same thing",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Buffett's lens. The R1,000 surplus (Smith's gift) should buy ownership — a productive asset that earns while you sleep. Compounding starts small and builds exponentially. The earlier you own, the longer the runway. Taleb then tells you to size each bet so one bad pick doesn't end the game.",
+      wrongAnswer: "Earning more is Smith's lesson, not what to do with the surplus. Buffett's lens specifically answers 'what do I do with savings?' — buy productive ownership. The three thinkers are complementary, not identical. Surplus → own → compound → survive asymmetrically. That's the full chain.",
+    },
+    passLine: "Wealth-Creative Choice complete. You have four thinkers in your kitchen. Surplus, compound, asymmetric, survive.",
+  },
+  "wave-001": {
+    moduleId: "wave-001",
+    concept: "Five market waves every chef must be able to name",
+    body: [
+      "Markets don't move randomly — they move in five recurring phases. Wave 1: Accumulation. Smart capital enters quietly while the crowd is still scared. Prices stabilise. Volume is low. Most retail investors are not watching yet.",
+      "Wave 2: Mark-up. Trend is confirmed. Volume rises. Early movers show profit. The momentum attracts attention. Wave 3 is Distribution: early buyers sell quietly into rising retail demand. Prices are high. Headlines are positive. This is where uninformed capital arrives.",
+      "Wave 4: Mark-down. Selling overwhelms buying. The crowd realises too late. Wave 5 is Re-accumulation — the reset. Scared sellers offer assets below value to patient buyers. The cycle restarts from Wave 1.",
+    ],
+    cookingBridge: "Accumulation is prep work — quiet, invisible. Mark-up is service — the Kitchen is cooking. Distribution is the end of service — the head chef is plating to go. Mark-down is the mess after close. Re-accumulation is the next mise en place. Kitchens that can read the service cycle don't panic when the rush ends.",
+    quiz: {
+      question: "A chef sees positive headlines everywhere, prices near all-time highs, and high retail trading volume. Which wave are they most likely in?",
+      options: [
+        "Wave 1 — Accumulation: smart money is entering",
+        "Wave 2 — Mark-up: trend is just beginning",
+        "Wave 3 — Distribution: early buyers are selling into the excitement",
+        "Wave 5 — Re-accumulation: the reset is underway",
+      ],
+      correctIndex: 2,
+      gordonsAnswer: "Distribution. Positive headlines and high retail volume at all-time highs are the exact conditions when early buyers are quietly exiting. The crowd's excitement is the exit liquidity for smart money. This is not the entry — it's the warning sign. You don't cook in a kitchen that's already being cleaned.",
+      wrongAnswer: "Accumulation is quiet, low-volume, and happens near bottoms. Mark-up is early trend confirmation. Distribution happens at high prices with strong sentiment — exactly what the question describes. Learn to read which service the kitchen is in before you put anything on the pass.",
+    },
+    passLine: "Wave Literacy complete. Five waves, named. You can read the kitchen service cycle now.",
+  },
+};
+
+const PRACTICE_BEATS: Record<string, PracticeBeat> = {
+  "markets-001": {
+    setup: "NPN.JO opens up while the JSE Top 40 is flat.",
+    task: "Name one reason buyers might be pushing this specific share higher.",
+    check: "Reason before reaction: price move plus possible catalyst.",
+  },
+  "risk-001": {
+    setup: "A recipe wants half the Kitchen in one stock.",
+    task: "Shrink the plate into a survivable serving.",
+    check: "A wrong call must hurt, not end the Kitchen.",
+  },
+  "portfolio-001": {
+    setup: "Your Vault is heavy in banks.",
+    task: "Spot one holding that would diversify the plate.",
+    check: "Different drivers beat more of the same.",
+  },
+  "bias-001": {
+    setup: "Everyone says, 'It has to recover.'",
+    task: "Name the thinking trap before you vote.",
+    check: "Bias named, bias weakened.",
+  },
+  "governance-001": {
+    setup: "Six chefs are at the table.",
+    task: "Work out the first vote count that clears 60%.",
+    check: "Governance is maths before mood.",
+  },
+  "mutual-001": {
+    setup: "One chef brings more capital than everyone else.",
+    task: "Decide whether that chef gets more votes.",
+    check: "Mutual means one chef, one vote.",
+  },
+  "hedge-001": {
+    setup: "A high-heat position breaks its loss threshold.",
+    task: "Decide before feelings negotiate the rule.",
+    check: "Exit rules are written while heads are clear.",
+  },
+  "ethics-001": {
+    setup: "A chef brings private company information.",
+    task: "Choose what the Kitchen must do with that recipe.",
+    check: "Clean kitchen, clean conscience.",
+  },
+  "wealth-001": {
+    setup: "A chef earns a steady salary and saves R1,500 a month for six months.",
+    task: "Apply Smith, Buffett, and Taleb in sequence: decide where the surplus goes, what to own, and how to size it safely.",
+    check: "Surplus → ownership → asymmetric bet sizing. That's the wealth-creative chain.",
+  },
+  "wave-001": {
+    setup: "A Kitchen is watching NPN.JO after a sharp pullback. Positive analyst sentiment is rising but retail volume is still thin.",
+    task: "Identify which wave NPN.JO is likely entering and name the intervention: hold, add, exit, or wait.",
+    check: "Thin volume + post-pullback + early sentiment = re-accumulation or early mark-up. The intervention is watch or add small. Not chase.",
+  },
+};
+
+interface Props {
+  moduleId: string;
+  moduleTitle: string;
+  onClose: () => void;
+  onPass: (moduleId: string) => void;
+}
+
+type ModalPhase = "glossary" | "concept" | "practice" | "quiz" | "result";
+const QUIZ_ATTEMPT_LIMIT = 3;
+
+function GordonLine({ text, speed = 16, delay = 200 }: { text: string; speed?: number; delay?: number }) {
+  const { displayed, done } = useTypewriter(text, { speed, delay });
+  return (
+    <span>
+      {displayed}
+      {!done && (
+        <span style={{ display: "inline-block", width: 2, height: "1em", background: "#b42318", marginLeft: 2, verticalAlign: "text-bottom", animation: "cursor-blink 700ms step-end infinite" }} aria-hidden />
+      )}
+    </span>
+  );
+}
+
+export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: Props) {
+  const { user } = useAuth();
+  const lesson = LESSONS[moduleId];
+  const practice = PRACTICE_BEATS[moduleId];
+  const terms = glossaryForModule(moduleId);
+  const outcomes = LESSON_OUTCOMES[moduleId] ?? [];
+  const [phase, setPhase] = useState<ModalPhase>(terms.length > 0 ? "glossary" : "concept");
+  const [level, setLevel] = useState<keyof GlossaryLevels>("twelve");
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [answered, setAnswered] = useState(false);
+  const [correct, setCorrect] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [full, setFull] = useState(true);
+  const [desktop, setDesktop] = useState(false);
+  const [reflection, setReflection] = useState("");
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Full-screen is the user's choice and is remembered across popups.
+  useEffect(() => {
+    try { setFull(localStorage.getItem("yi_full_lesson") === "1"); } catch {}
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    if (media.addEventListener) media.addEventListener("change", update);
+    else media.addListener?.(update);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener("change", update);
+      else media.removeListener?.(update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  }, [phase, moduleId]);
+
+  function toggleFull() {
+    tap();
+    setFull((f) => {
+      const next = !f;
+      try { localStorage.setItem("yi_full_lesson", next ? "1" : "0"); } catch {}
+      return next;
+    });
+  }
+
+  if (!lesson) {
+    return (
+      <div ref={overlayRef} style={overlayStyle} onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}>
+        <div style={modalStyle}>
+          <p style={monoSmall}>Module content coming soon.</p>
+          <button style={btnSecondary} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  function handleAnswer() {
+    if (selectedAnswer === null) return;
+    const isCorrect = selectedAnswer === lesson.quiz.correctIndex;
+    const nextAttempts = attempts + 1;
+    setAnswered(true);
+    setCorrect(isCorrect);
+    setAttempts(nextAttempts);
+    if (isCorrect) success(); else warn();
+  }
+
+  function handleRetry() {
+    setSelectedAnswer(null);
+    setAnswered(false);
+    setCorrect(false);
+  }
+
+  function handleReviewAndRetry() {
+    setSelectedAnswer(null);
+    setAnswered(false);
+    setCorrect(false);
+    setAttempts(0);
+    setPhase("concept");
+  }
+
+  function handlePass() {
+    tap();
+    setPhase("result");
+  }
+
+  const reflectionWord = reflection.trim();
+  const reflectionOk = reflectionWord.length > 0 && !/\s/.test(reflectionWord);
+
+  function finishLesson() {
+    if (!reflectionOk) return;
+    if (user) {
+      rememberGordonChefReason(user.id, {
+        source: "academy",
+        action: "reflection",
+        reason: `${moduleTitle}: ${reflectionWord}`,
+      });
+    }
+    success();
+    notifyTask("Lesson cleared", `${moduleTitle} saved to Gordon's notebook.`);
+    onPass(moduleId);
+    onClose();
+  }
+
+  const activeOverlayStyle: React.CSSProperties = {
+    ...overlayStyle,
+    alignItems: full ? "stretch" : desktop ? "center" : "flex-end",
+    padding: full ? 0 : desktop ? 24 : 0,
+  };
+  const activeModalStyle: React.CSSProperties = full
+    ? { ...modalStyle, maxWidth: "none", maxHeight: "100%", height: "100%", borderBottom: "1px solid var(--yi-frame)" }
+    : { ...modalStyle, borderBottom: desktop ? "1px solid var(--yi-frame)" : "none", maxHeight: desktop ? "86svh" : "92svh" };
+
+  return (
+    <div
+      ref={overlayRef}
+      style={activeOverlayStyle}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lesson-modal-title"
+    >
+      <style>{`@keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}} @keyframes modal-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div style={activeModalStyle}>
+
+        {/* Top bar */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--yi-hairline)", padding: "14px 20px", flexShrink: 0 }}>
+          <div>
+            <p style={{ ...monoSmall, margin: 0, color: "var(--yi-muted)" }}>The Academy · Lesson</p>
+            <h2 id="lesson-modal-title" style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.1rem", fontWeight: 600, margin: "4px 0 0", lineHeight: 1.1 }}>
+              {moduleTitle}
+            </h2>
+          </div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <button
+              type="button"
+              onClick={toggleFull}
+              aria-label={full ? "Exit full screen" : "Full screen"}
+              title={full ? "Exit full screen" : "Full screen"}
+              style={modalIconBtn}
+            >
+              {full ? <Minimize2 size={15} strokeWidth={1.8} aria-hidden /> : <Maximize2 size={15} strokeWidth={1.8} aria-hidden />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close lesson"
+              title="Close"
+              style={modalIconBtn}
+            >
+              <X size={16} strokeWidth={1.8} aria-hidden />
+            </button>
+          </div>
+        </div>
+
+        {/* Progress tabs */}
+        <div style={{ display: "flex", borderBottom: "1px solid var(--yi-hairline)", flexShrink: 0 }}>
+          {(["glossary", "concept", "practice", "quiz", "result"] as ModalPhase[]).map((p, i) => (
+            <div
+              key={p}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.58rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: phase === p ? "var(--yi-ink)" : "var(--yi-muted)",
+                borderBottom: phase === p ? "2px solid var(--yi-black)" : "2px solid transparent",
+                textAlign: "center",
+              }}
+            >
+              {String(i + 1).padStart(2, "0")} {p}
+            </div>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div ref={contentRef} style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "grid", gap: 14, alignContent: "start" }}>
+
+          {phase === "glossary" && (
+            <>
+              {/* Gordon frames the class — lecturer / master chef */}
+              <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 14 }}>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon · Today&apos;s class</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.92rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
+                  <GordonLine text={`"Today we're cooking ${lesson.concept.toLowerCase()}. Four stations - words, theory, practice, then the quiz. Sharp sharp."`} />
+                </p>
+              </div>
+
+              {/* Lesson outline + learning outcomes */}
+              <div style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px", background: "var(--yi-card-bg)" }}>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 8px" }}>Lesson outline</p>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {["Glossary check - the words", "Theory - Gordon's bridge", "Practice - apply it once", "The cook - your quiz"].map((s, i) => (
+                    <div key={s} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                      <span style={{ ...monoSmall, color: "var(--yi-ink)" }}>{String(i + 1).padStart(2, "0")}</span>
+                      <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.85rem", color: "var(--yi-copy)" }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+                {outcomes.length > 0 && (
+                  <>
+                    <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "12px 0 6px" }}>By the end you&apos;ll be able to</p>
+                    <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
+                      {outcomes.map((o) => (
+                        <li key={o} style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.85rem", lineHeight: 1.5, color: "var(--yi-copy)" }}>{o}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+
+              {/* Glossary check intro */}
+              <div>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon&apos;s Glossary Check</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: 0 }}>
+                  Same word, your station. Slide between Junior, Intermediate and Master — no shame, just understanding.
+                </p>
+              </div>
+
+              {/* Chef-rank segmented control */}
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${READER_LEVELS.length}, 1fr)`, border: "1px solid var(--yi-frame)" }}>
+                  {READER_LEVELS.map(({ key, label }, i) => {
+                    const active = level === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { setLevel(key); tap(); }}
+                        aria-pressed={active}
+                        style={{
+                          border: "none",
+                          borderRight: i < READER_LEVELS.length - 1 ? "1px solid var(--yi-frame)" : "none",
+                          background: active ? "var(--yi-black)" : "transparent",
+                          color: active ? "var(--yi-white)" : "var(--yi-ink)",
+                          minHeight: 42,
+                          fontFamily: "var(--font-mono), monospace",
+                          fontSize: "0.6rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                          transition: "background 160ms ease",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  title="Full Gordon AI is still in training — coming soon"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start", border: "1px dashed var(--yi-frame)", background: "transparent", color: "var(--yi-muted)", padding: "7px 11px", fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "not-allowed" }}
+                >
+                  <Sparkles size={12} strokeWidth={1.8} aria-hidden /> Ask Gordon · coming soon
+                </button>
+              </div>
+
+              {/* Terms */}
+              <div style={{ display: "grid", gap: 12 }}>
+                {terms.map((t) => (
+                  <div key={t.key} style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px", background: "var(--yi-card-bg)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                      <h4 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.05rem", fontWeight: 600, margin: 0 }}>{t.term}</h4>
+                      <span style={{ ...monoSmall, color: "var(--yi-muted)", border: "1px solid var(--yi-frame)", padding: "2px 6px" }}>{t.kitchen}</span>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--yi-ink)", margin: "8px 0 0" }}>
+                      {t.levels[level]}
+                    </p>
+                    <p style={{ display: "flex", alignItems: "flex-start", gap: 6, fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0", fontStyle: "italic" }}>
+                      <ChefHat size={13} strokeWidth={1.8} aria-hidden style={{ marginTop: 3, flexShrink: 0 }} /> <span>{t.cooking}</span>
+                    </p>
+                    <p style={{ ...monoSmall, display: "flex", alignItems: "flex-start", gap: 6, color: "#167a3a", margin: "8px 0 0", letterSpacing: "0.04em", textTransform: "none", fontSize: "0.72rem" }}>
+                      <MessageCircle size={12} strokeWidth={1.8} aria-hidden style={{ marginTop: 2, flexShrink: 0 }} /> <span>{t.slang}</span>
+                    </p>
+                    {t.related.length > 0 && (
+                      <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "8px 0 0", textTransform: "none", fontSize: "0.6rem" }}>
+                        connects to: {t.related.join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => { tap(); setPhase("concept"); }} style={btnPrimary}>
+                Got the words — start the class →
+              </button>
+            </>
+          )}
+
+          {phase === "concept" && (
+            <>
+              <div>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>Core concept</p>
+                <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.3rem", fontWeight: 600, margin: 0, lineHeight: 1.1 }}>{lesson.concept}</h3>
+              </div>
+
+              <div style={{ display: "grid", gap: 12 }}>
+                {lesson.body.map((para, i) => (
+                  <p key={i} style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.65, color: "var(--yi-copy)", margin: 0 }}>{para}</p>
+                ))}
+              </div>
+
+              <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 14 }}>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon · Cooking bridge</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
+                  &ldquo;{lesson.cookingBridge}&rdquo;
+                </p>
+              </div>
+
+              <button
+                onClick={() => setPhase("practice")}
+                style={btnPrimary}
+              >
+                Practice station -&gt;
+              </button>
+            </>
+          )}
+
+          {phase === "practice" && (
+            <>
+              <div>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>Theory to practice</p>
+                <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.3rem", fontWeight: 600, margin: 0, lineHeight: 1.1 }}>
+                  Apply it once.
+                </h3>
+              </div>
+
+              <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)", display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <Dumbbell size={17} strokeWidth={1.8} aria-hidden style={{ marginTop: 3, color: "#b42318", flexShrink: 0 }} />
+                  <div>
+                    <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Setup</p>
+                    <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+                      {practice?.setup ?? "A Kitchen has to explain the reason before the table votes."}
+                    </p>
+                  </div>
+                </div>
+
+                <details style={{ borderTop: "1px solid var(--yi-hairline)", paddingTop: 10 }}>
+                  <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>Task</summary>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
+                    {practice?.task ?? "Name the concept Gordon should check before the recipe moves forward."}
+                  </p>
+                </details>
+
+                <details>
+                  <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>Gordon&apos;s check</summary>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
+                    {practice?.check ?? "A reason can be repeated. A hunch cannot."}
+                  </p>
+                </details>
+              </div>
+
+              <button onClick={() => setPhase("quiz")} style={btnPrimary}>
+                Take the quiz -&gt;
+              </button>
+            </>
+          )}
+
+          {phase === "quiz" && (
+            <>
+              <div>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>
+                  Attempt {Math.min(attempts + 1, QUIZ_ATTEMPT_LIMIT)} of {QUIZ_ATTEMPT_LIMIT} · answer before Gordon speaks
+                </p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "1rem", lineHeight: 1.6, color: "var(--yi-ink)", margin: 0, fontWeight: 500 }}>
+                  {lesson.quiz.question}
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {lesson.quiz.options.map((opt, i) => {
+                  let borderColor = "var(--yi-frame)";
+                  let bg = "transparent";
+                  let textColor = "var(--yi-ink)";
+                  if (answered) {
+                    if (correct && i === lesson.quiz.correctIndex) { borderColor = "#167a3a"; bg = "rgba(22,122,58,0.06)"; textColor = "#167a3a"; }
+                    else if (i === selectedAnswer && !correct) { borderColor = "#b42318"; bg = "rgba(180,35,24,0.05)"; textColor = "#b42318"; }
+                  } else if (selectedAnswer === i) {
+                    borderColor = "var(--yi-black)";
+                    bg = "var(--yi-soft)";
+                  }
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={answered}
+                      onClick={() => { setSelectedAnswer(i); tap(); }}
+                      style={{
+                        textAlign: "left",
+                        padding: "12px 14px",
+                        border: `1px solid ${borderColor}`,
+                        background: bg,
+                        color: textColor,
+                        fontFamily: "var(--font-archivo), system-ui, sans-serif",
+                        fontSize: "0.88rem",
+                        lineHeight: 1.5,
+                        cursor: answered ? "default" : "pointer",
+                        transition: "all 150ms ease",
+                      }}
+                    >
+                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", marginRight: 8, textTransform: "uppercase" }}>
+                        {String.fromCharCode(65 + i)}.
+                      </span>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!answered && (
+                <button
+                  onClick={handleAnswer}
+                  disabled={selectedAnswer === null}
+                  style={{ ...btnPrimary, opacity: selectedAnswer === null ? 0.5 : 1, cursor: selectedAnswer === null ? "not-allowed" : "pointer" }}
+                >
+                  Submit answer
+                </button>
+              )}
+
+              {answered && (
+                <div style={{ border: `1px solid ${correct ? "#167a3a" : "#b42318"}`, borderLeft: `2px solid ${correct ? "#167a3a" : "#b42318"}`, padding: "14px 16px", background: "var(--yi-card-bg)" }}>
+                  <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.15em", color: correct ? "#167a3a" : "#b42318", margin: "0 0 8px" }}>
+                    Gordon · {correct ? "Correct" : "Try again"}
+                  </p>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+                    <GordonLine text={correct ? lesson.quiz.gordonsAnswer : attempts >= QUIZ_ATTEMPT_LIMIT ? "Not yet. I'm not giving you the answer. Go back through the concept, then earn it on the next pass." : `Not yet. Try again before I explain it. ${QUIZ_ATTEMPT_LIMIT - attempts} attempt${QUIZ_ATTEMPT_LIMIT - attempts === 1 ? "" : "s"} left.`} />
+                  </p>
+                  <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                    {correct ? (
+                      <button onClick={handlePass} style={btnPrimary}>
+                        Complete lesson →
+                      </button>
+                    ) : attempts < QUIZ_ATTEMPT_LIMIT ? (
+                      <button onClick={handleRetry} style={btnSecondary}>
+                        Try again
+                      </button>
+                    ) : (
+                      <button onClick={handleReviewAndRetry} style={btnSecondary}>
+                        Review lesson
+                      </button>
+                    )}
+                    {!correct && (
+                      <button onClick={handleReviewAndRetry} style={{ ...btnSecondary, borderColor: "var(--yi-frame)" }}>
+                        Review concept
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {phase === "result" && (
+            <>
+              <div style={{ textAlign: "center", padding: "12px 0" }}>
+                <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "#167a3a", margin: "0 0 12px" }}>
+                  Lesson passed
+                </p>
+                <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.4rem", fontWeight: 600, margin: "0 0 12px", lineHeight: 1.1 }}>
+                  {moduleTitle}
+                </h3>
+              </div>
+              <div style={{ borderLeft: "2px solid var(--yi-black)", paddingLeft: 14 }}>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>Gordon</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.65, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
+                  <GordonLine text={`"${lesson.passLine}"`} />
+                </p>
+              </div>
+              <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)", display: "grid", gap: 8 }}>
+                <p style={{ ...monoSmall, color: "#167a3a", margin: 0 }}>One-word reflection</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.5, color: "var(--yi-copy)", margin: 0 }}>
+                  Give Gordon one word to remember from this lesson.
+                </p>
+                <input
+                  aria-label="One-word reflection"
+                  value={reflection}
+                  maxLength={32}
+                  onChange={(e) => setReflection(e.target.value.trimStart().split(/\s+/)[0] ?? "")}
+                  placeholder="sizing"
+                  style={{
+                    minHeight: 42,
+                    border: "1px solid var(--yi-frame)",
+                    background: "var(--yi-paper)",
+                    color: "var(--yi-ink)",
+                    padding: "0 10px",
+                    fontFamily: "var(--font-mono), monospace",
+                    fontSize: "0.72rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    outline: "none",
+                  }}
+                />
+              </div>
+              <button
+                onClick={finishLesson}
+                disabled={!reflectionOk}
+                style={{ ...btnPrimary, opacity: reflectionOk ? 1 : 0.45, cursor: reflectionOk ? "pointer" : "not-allowed" }}
+              >
+                Save reflection &amp; finish -&gt;
+              </button>
+            </>
+          )}
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--yi-hairline)", padding: "10px 20px", flexShrink: 0 }}>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
+            Educational guidance only · Gordon provides informational commentary · Not financial advice
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Styles ── */
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.55)",
+  zIndex: 200,
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+  padding: "0",
+};
+
+const modalStyle: React.CSSProperties = {
+  background: "var(--yi-paper)",
+  width: "100%",
+  maxWidth: 600,
+  maxHeight: "92svh",
+  display: "flex",
+  flexDirection: "column",
+  animation: "modal-in 220ms ease",
+  border: "1px solid var(--yi-frame)",
+  borderBottom: "none",
+};
+
+const monoSmall: React.CSSProperties = {
+  fontFamily: "var(--font-mono), monospace",
+  fontSize: "0.6rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  color: "var(--yi-muted)",
+};
+
+const modalIconBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 30,
+  height: 30,
+  background: "transparent",
+  border: "1px solid var(--yi-hairline)",
+  color: "var(--yi-muted)",
+  cursor: "pointer",
+};
+
+const btnPrimary: React.CSSProperties = {
+  minHeight: 48,
+  padding: "0 24px",
+  background: "var(--yi-black)",
+  color: "var(--yi-white)",
+  border: "none",
+  fontFamily: "var(--font-mono), monospace",
+  fontSize: "0.72rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  cursor: "pointer",
+  alignSelf: "flex-start",
+};
+
+const btnSecondary: React.CSSProperties = {
+  minHeight: 48,
+  padding: "0 20px",
+  background: "transparent",
+  color: "var(--yi-ink)",
+  border: "1px solid var(--yi-black)",
+  fontFamily: "var(--font-mono), monospace",
+  fontSize: "0.72rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  cursor: "pointer",
+  alignSelf: "flex-start",
+};
