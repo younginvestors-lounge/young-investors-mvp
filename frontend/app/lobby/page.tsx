@@ -64,16 +64,6 @@ const mono = (rem: number, color: string): React.CSSProperties => ({
   color,
 });
 
-function Hexagram() {
-  return (
-    <svg width="84" height="92" viewBox="0 0 120 130" aria-hidden style={{ flexShrink: 0 }}>
-      <polygon points="60,14 110,100 10,100" fill="none" stroke={GORDON_TEAL} strokeWidth="1.6" />
-      <polygon points="60,116 10,30 110,30" fill="none" stroke={SICILIA_CORAL} strokeWidth="1.6" strokeDasharray="5 4" />
-      <rect x="49" y="54" width="22" height="22" fill="var(--yi-paper)" stroke="var(--yi-ink)" strokeWidth="1.6" />
-    </svg>
-  );
-}
-
 function RoomCard({ room, onEnter }: { room: Room; onEnter: (room: Room) => void }) {
   const { Icon } = room;
   return (
@@ -172,17 +162,14 @@ export default function LobbyPage() {
       <div className="lobby-body" style={{ width: "100%", maxWidth: 640, margin: "0 auto", padding: "clamp(20px,5vw,36px) 20px 40px", display: "grid", gap: 22 }}>
 
         {/* Hero — the house and the chef at its centre */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ ...mono(0.58, "var(--yi-muted)"), margin: "0 0 8px" }}>Two parents · one home</p>
-            <h1 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.1rem,9vw,3rem)", fontWeight: 700, lineHeight: 0.95, letterSpacing: "-0.02em", margin: 0 }}>
-              The Lobby
-            </h1>
-            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "10px 0 0", maxWidth: 360 }}>
-              Six rooms. Every one of them wires back to you, Chef {alias}.
-            </p>
-          </div>
-          <Hexagram />
+        <div>
+          <p style={{ ...mono(0.58, "var(--yi-muted)"), margin: "0 0 8px" }}>Two parents · one home</p>
+          <h1 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(2.1rem,9vw,3rem)", fontWeight: 700, lineHeight: 0.95, letterSpacing: "-0.02em", margin: 0 }}>
+            The Lobby
+          </h1>
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "10px 0 0", maxWidth: 400 }}>
+            Six rooms. Every one of them wires back to you, Chef {alias}.
+          </p>
         </div>
 
         {/* The Chef — centre of the star */}
