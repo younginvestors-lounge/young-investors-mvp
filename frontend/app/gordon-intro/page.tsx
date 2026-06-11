@@ -1,21 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { markBriefingSeen } from "@/lib/briefing";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { press, tap } from "@/lib/haptics";
 import { GORDON_LINES, SICILIA_LINES } from "@/lib/voice";
 
 /** Live typewriter line. Tap to reveal instantly. Reports when finished. */
-function TypeText({ text, accent, chefName, onDone }: { text: string; accent: string; chefName?: string; onDone: () => void }) {
+function TypeText({ text, accent, onDone }: { text: string; accent: string; onDone: () => void }) {
   const [skip, setSkip] = useState(false);
   const { displayed, done } = useTypewriter(text, { speed: 16, delay: 200 });
   const isDone = skip || done;
   const shown = skip ? text : displayed;
-  const profileLabel = chefName ? `Chef ${chefName}` : "";
-  const profileIndex = profileLabel ? shown.indexOf(profileLabel) : -1;
 
   useEffect(() => {
     if (isDone) onDone();
@@ -26,15 +24,7 @@ function TypeText({ text, accent, chefName, onDone }: { text: string; accent: st
       onClick={() => { if (!isDone) { setSkip(true); tap(); } }}
       style={{ whiteSpace: "pre-line", cursor: isDone ? "default" : "pointer", display: "block" }}
     >
-      {profileIndex >= 0 ? (
-        <>
-          {shown.slice(0, profileIndex)}
-          <Link href="/profile" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 3 }}>
-            {profileLabel}
-          </Link>
-          {shown.slice(profileIndex + profileLabel.length)}
-        </>
-      ) : shown}
+      {shown}
       {!isDone && (
         <span style={{ display: "inline-block", width: 2, height: "1em", background: accent, marginLeft: 2, verticalAlign: "text-bottom", animation: "cursor-blink 700ms step-end infinite" }} aria-hidden />
       )}
@@ -104,9 +94,16 @@ export default function BriefingPage() {
     if (cardIdx < HOW_IT_WORKS.length - 1) {
       setCardIdx((i) => i + 1);
     } else {
-      try { localStorage.setItem("yi_briefing_seen", "1"); } catch {}
+      markBriefingSeen(user?.id);
       router.push("/academy");
     }
+  }
+
+  // The briefing is a choice, not a corridor. Skipping does NOT mark it seen,
+  // so the FocusNag keeps calling the chef back until concentration wins.
+  function skipBriefing() {
+    tap();
+    router.push("/academy");
   }
 
   if (isLoading || !isAuthenticated) {
@@ -130,7 +127,12 @@ export default function BriefingPage() {
           <span style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(0.95rem,3vw,1.1rem)", fontWeight: 700 }}>
             Young Investors
           </span>
-          <span style={mono(0.6, "#888")}>{isGordon ? "Your Head Chef" : "Your Lounge Host"}</span>
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            <span style={mono(0.6, "#888")}>{isGordon ? "Your Head Chef" : "Your Lounge Host"}</span>
+            <button type="button" onClick={skipBriefing} style={skipBtn}>
+              Skip for now →
+            </button>
+          </span>
         </div>
 
         <div style={{ flex: 1, padding: "clamp(28px,6vw,48px) 24px 32px", maxWidth: 560, width: "100%" }}>
@@ -158,7 +160,7 @@ export default function BriefingPage() {
           </h1>
 
           <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: 18, marginBottom: 30, minHeight: 150, fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "clamp(0.95rem,3vw,1.05rem)", lineHeight: 1.7, color: "#111" }}>
-            <TypeText key={phase} text={speech} accent={accent} chefName={name} onDone={() => setTyped(true)} />
+            <TypeText key={phase} text={speech} accent={accent} onDone={() => setTyped(true)} />
           </div>
 
           <button
@@ -188,7 +190,12 @@ export default function BriefingPage() {
       </div>
       <div style={headerRow}>
         <span style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(0.95rem,3vw,1.1rem)", fontWeight: 700 }}>Young Investors</span>
-        <span style={mono(0.6, "#888")}>{String(cardIdx + 1).padStart(2, "0")} / {String(HOW_IT_WORKS.length).padStart(2, "0")}</span>
+        <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <span style={mono(0.6, "#888")}>{String(cardIdx + 1).padStart(2, "0")} / {String(HOW_IT_WORKS.length).padStart(2, "0")}</span>
+          <button type="button" onClick={skipBriefing} style={skipBtn}>
+            Skip for now →
+          </button>
+        </span>
       </div>
 
       <div style={{ flex: 1, padding: "clamp(28px,6vw,48px) 24px 32px", maxWidth: 560, width: "100%", display: "flex", flexDirection: "column" }}>
@@ -231,6 +238,19 @@ const headerRow: React.CSSProperties = {
   justifyContent: "space-between",
   alignItems: "baseline",
   padding: "20px 24px 0",
+};
+const skipBtn: React.CSSProperties = {
+  fontFamily: "var(--font-mono), monospace",
+  fontSize: "0.56rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  color: "#888",
+  background: "transparent",
+  border: "none",
+  padding: 0,
+  cursor: "pointer",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
 };
 const primaryBtn: React.CSSProperties = {
   display: "inline-flex",

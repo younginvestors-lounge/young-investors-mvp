@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useAppSettings } from "@/lib/appSettings";
 import { getProfileIcon, PROFILE_ICONS } from "@/lib/profileIcons";
 import { FIRST_TESTER_NUMBER, RESERVED_CHEFS } from "@/lib/profileStore";
+import { FocusNag } from "@/components/FocusNag";
 import { GordonGuideSheet } from "@/components/GordonGuideSheet";
 
 const CREDENTIAL_LABEL: Record<string, string> = {
@@ -132,6 +133,7 @@ export default function ProfilePage() {
       </div>
 
       <div style={{ padding: "8px 20px 40px", maxWidth: 600, width: "100%", margin: "0 auto" }}>
+        <FocusNag style={{ marginBottom: 16 }} />
         {/* Screenshot-ready hallmark */}
         <section
           aria-label="Chef hallmark"

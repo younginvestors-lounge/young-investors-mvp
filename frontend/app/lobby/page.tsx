@@ -25,6 +25,7 @@ import {
   Sofa,
   Vault as VaultIcon,
 } from "lucide-react";
+import { FocusNag } from "@/components/FocusNag";
 import { useAuth } from "@/lib/auth-context";
 import { tap } from "@/lib/haptics";
 import { getProfileIcon } from "@/lib/profileIcons";
@@ -160,6 +161,8 @@ export default function LobbyPage() {
       </div>
 
       <div className="lobby-body" style={{ width: "100%", maxWidth: 640, margin: "0 auto", padding: "clamp(20px,5vw,36px) 20px 40px", display: "grid", gap: 22 }}>
+
+        <FocusNag />
 
         {/* Hero — the house and the chef at its centre */}
         <div>

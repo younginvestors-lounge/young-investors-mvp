@@ -6,6 +6,7 @@ import { Compass } from "lucide-react";
 import { AcademyComplete } from "@/components/AcademyComplete";
 import { AcademyView } from "@/components/AcademyView";
 import { BottomNav } from "@/components/BottomNav";
+import { FocusNag } from "@/components/FocusNag";
 import { KitchenView } from "@/components/KitchenView";
 import { LoungeView } from "@/components/LoungeView";
 import { Reveal } from "@/components/Reveal";
@@ -227,6 +228,7 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
       />
 
       <main className="dashboard-main">
+        <FocusNag style={{ marginBottom: 14 }} />
         <GordonNextActionCard
           activeTab={activeTab}
           clearance={clearance}
