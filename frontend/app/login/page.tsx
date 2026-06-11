@@ -49,7 +49,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
-    router.replace(profileIsOnboarded(user) ? "/kitchen" : "/onboarding");
+    router.replace(profileIsOnboarded(user) ? "/lobby" : "/onboarding");
   }, [isLoading, isAuthenticated, user, router]);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace(profileIsOnboarded(result.user) ? "/kitchen" : "/onboarding");
+      router.replace(profileIsOnboarded(result.user) ? "/lobby" : "/onboarding");
     } catch (err) {
       if (err instanceof ApiError) {
         setFieldErrors(err.fieldErrors);
@@ -131,7 +131,7 @@ export default function LoginPage() {
     setUnverified(false);
     try {
       const profile = await login({ email: signinEmail.trim(), password: signinPassword });
-      router.replace(profileIsOnboarded(profile) ? "/kitchen" : "/onboarding");
+      router.replace(profileIsOnboarded(profile) ? "/lobby" : "/onboarding");
     } catch (err) {
       if (err instanceof ApiError) {
         setFormError(err.message);

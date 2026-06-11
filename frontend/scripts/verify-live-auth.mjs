@@ -57,8 +57,9 @@ async function completeOnboarding(page) {
   await page.getByRole("button", { name: "Learn the craft" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Start Academy" }).click();
-  await page.waitForFunction(() => location.pathname === "/academy", null, { timeout: 30000 });
+  await page.getByRole("button", { name: "Meet Gordon" }).click();
+  // Onboarding hands off to the Gordon/Sicilia briefing, which later routes to /academy.
+  await page.waitForFunction(() => location.pathname === "/gordon-intro", null, { timeout: 30000 });
 }
 
 async function waitForRoute(page, routes) {
@@ -161,8 +162,8 @@ async function main() {
 
     const signInPage = await pageForTest();
     await signIn(signInPage, completeEmail, password);
-    const completedRoute = await waitForRoute(signInPage, ["/kitchen", "/onboarding"]);
-    if (completedRoute !== "/kitchen") throw new Error("Completed Supabase account did not enter the app on sign-in.");
+    const completedRoute = await waitForRoute(signInPage, ["/lobby", "/onboarding"]);
+    if (completedRoute !== "/lobby") throw new Error("Completed Supabase account did not enter the Lobby on sign-in.");
     console.log("PASS   Completed Supabase account signs in and enters the app");
     await signInPage.close();
 
@@ -193,7 +194,7 @@ async function main() {
 
     const incompleteSignIn = await pageForTest();
     await signIn(incompleteSignIn, incompleteEmail, password);
-    const incompleteReturnRoute = await waitForRoute(incompleteSignIn, ["/onboarding", "/kitchen"]);
+    const incompleteReturnRoute = await waitForRoute(incompleteSignIn, ["/onboarding", "/lobby"]);
     if (incompleteReturnRoute !== "/onboarding") throw new Error("Incomplete Supabase account should return to onboarding.");
     console.log("PASS   Incomplete Supabase account signs in back to onboarding");
     const horizontalOverflow = await incompleteSignIn.evaluate(

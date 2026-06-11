@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import clsx from "clsx";
-import { ChefHat, GraduationCap, Lock, ShoppingBag, Sofa, Vault } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChefHat, GraduationCap, Home, Lock, ShoppingBag, Sofa, Vault } from "lucide-react";
 import { tap } from "@/lib/haptics";
 import type { DashboardTab } from "@/lib/types";
 
@@ -27,6 +28,7 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ activeTab, onTabChange, lockedTabs = {} }: BottomNavProps) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,6 +56,18 @@ export function BottomNav({ activeTab, onTabChange, lockedTabs = {} }: BottomNav
       onMouseLeave={collapse}
       onTouchStart={touchExpand}
     >
+      <button
+        type="button"
+        className="bottom-nav-island-btn"
+        aria-label="Back to the Lobby"
+        onClick={() => { tap(); router.push("/lobby"); }}
+      >
+        <span style={{ position: "relative", display: "inline-flex" }}>
+          <Home size={20} strokeWidth={1.5} aria-hidden="true" />
+        </span>
+        <span className="bottom-nav-island-label">Lobby</span>
+      </button>
+      <span aria-hidden style={{ width: 1, alignSelf: "stretch", margin: "6px 3px", background: "rgba(255,255,255,0.18)", flexShrink: 0 }} />
       {navItems.map(({ id, label, Icon }) => {
         const locked = !!lockedTabs[id];
         const active = activeTab === id;

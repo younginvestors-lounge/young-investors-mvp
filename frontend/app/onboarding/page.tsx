@@ -44,7 +44,7 @@ export default function OnboardingPage() {
       return;
     }
     if (profileIsOnboarded(user) && !completingRef.current) {
-      router.replace("/kitchen");
+      router.replace("/lobby");
       return;
     }
 

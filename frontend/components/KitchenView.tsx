@@ -774,6 +774,19 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
     });
   }, [kitchen]);
 
+  // The Table room in the Lobby deep-links here with chat open. The flag is
+  // consumed once kitchen state is known so it can't fire later by surprise —
+  // chefs without a ready Kitchen land on the form/lobby gate instead.
+  useEffect(() => {
+    if (loadingKitchen) return;
+    try {
+      if (sessionStorage.getItem("yi_open_chat") === "1") {
+        sessionStorage.removeItem("yi_open_chat");
+        if (kitchen && kitchen.members.length >= MIN_KITCHEN_CHEFS) setChatOpen(true);
+      }
+    } catch { /* sessionStorage unavailable — chat stays reachable via the button */ }
+  }, [loadingKitchen, kitchen]);
+
   // Poll every 5 s: refresh votes AND the active proposal (so user B sees user A's new recipe).
   useEffect(() => {
     if (!kitchen || kitchen.members.length < MIN_KITCHEN_CHEFS) return;
