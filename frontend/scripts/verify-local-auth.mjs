@@ -98,8 +98,8 @@ async function main() {
     await page.getByRole("button", { name: "Learn the craft" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.getByRole("button", { name: "Start Academy" }).click();
-    await expectUrl(page, /\/academy/, "Onboarding completes and routes to Academy");
+    await page.getByRole("button", { name: "Meet Gordon" }).click();
+    await expectUrl(page, /\/gordon-intro/, "Onboarding completes and routes to the Gordon briefing");
 
     const storedProfile = await page.evaluate(() => JSON.parse(localStorage.getItem("yi_local_profile") || "{}"));
     if (storedProfile.onboarding_completed !== true) {
@@ -116,7 +116,7 @@ async function main() {
     await page.locator("#signin-email").fill("local-auth-smoke@example.test");
     await page.locator("#signin-password").fill("local-smoke-password");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expectUrl(page, /\/kitchen/, "Returning local user signs in and routes to app");
+    await expectUrl(page, /\/lobby/, "Returning local user signs in and routes to the Lobby");
 
     await page.goto(`${baseUrl}/reset-password`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(800);

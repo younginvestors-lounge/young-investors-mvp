@@ -208,6 +208,7 @@ export function KitchenLobby({
 }) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const ready = kitchen.members.length >= MIN_KITCHEN_CHEFS;
   const needed = Math.max(0, MIN_KITCHEN_CHEFS - kitchen.members.length);
   const local = !isSupabaseConfigured();
@@ -216,7 +217,7 @@ export function KitchenLobby({
     tap();
     const nav = typeof navigator !== "undefined" ? navigator : undefined;
     const site = (process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
-    const text = `Join my Kitchen on Young Investors — code ${kitchen.joinCode}. Two chefs is enough to start cooking. ${site}/onboarding`;
+    const text = `Join my Kitchen on Young Investors — code ${kitchen.joinCode}. Two chefs is enough to start cooking. ${site}/join`;
     if (nav?.share) nav.share({ title: "Join my Kitchen", text }).catch(() => {});
     else if (nav?.clipboard) nav.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }).catch(() => {});
   }
@@ -225,6 +226,13 @@ export function KitchenLobby({
     if (busy) return;
     setBusy(true);
     try { onChanged(await addPracticeChef()); tap(); } catch { /* ignore */ } finally { setBusy(false); }
+  }
+
+  // Leaving is destructive (you need a code to come back) — require a second tap.
+  function requestLeave() {
+    tap();
+    setConfirmLeave(true);
+    setTimeout(() => setConfirmLeave(false), 4000);
   }
 
   async function leave() {
@@ -294,9 +302,18 @@ export function KitchenLobby({
         </button>
       )}
 
-      <button type="button" onClick={leave} disabled={busy} style={{ ...mono(0.55, "var(--yi-muted)"), background: "transparent", border: "none", textDecoration: "underline", cursor: "pointer", justifySelf: "start", padding: 0 }}>
-        Leave this Kitchen
-      </button>
+      {confirmLeave ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <button type="button" onClick={leave} disabled={busy} style={{ ...mono(0.55, "#b42318"), background: "transparent", border: "1px solid #b42318", padding: "8px 14px", cursor: "pointer", minHeight: 40 }}>
+            {busy ? "Leaving…" : "Yes, leave the Kitchen"}
+          </button>
+          <span style={mono(0.5, "var(--yi-muted)")}>You&apos;ll need a code to return</span>
+        </div>
+      ) : (
+        <button type="button" onClick={requestLeave} disabled={busy} style={{ ...mono(0.55, "var(--yi-muted)"), background: "transparent", border: "none", textDecoration: "underline", cursor: "pointer", justifySelf: "start", padding: 0 }}>
+          Leave this Kitchen
+        </button>
+      )}
 
       <p style={mono(0.55, "var(--yi-muted)")}>Kitchen votes are mock governance signals · No live execution</p>
     </section>

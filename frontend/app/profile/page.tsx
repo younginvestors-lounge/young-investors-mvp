@@ -123,8 +123,8 @@ export default function ProfilePage() {
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px" }}>
-        <Link href="/kitchen" style={{ ...mono, fontSize: "0.6rem", color: "var(--yi-ink)", textDecoration: "underline" }}>
-          ← Kitchen
+        <Link href="/lobby" style={{ ...mono, fontSize: "0.6rem", color: "var(--yi-ink)", textDecoration: "underline" }}>
+          ← Lobby
         </Link>
         <span style={{ ...mono, fontSize: "0.56rem", letterSpacing: "0.18em", color: "var(--yi-muted)" }}>
           {isLocalMode ? "Local demo" : "Chef Profile"}

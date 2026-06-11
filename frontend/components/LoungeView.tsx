@@ -295,7 +295,9 @@ function ReferFriendCard() {
 }
 
 export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
-  const [chefName, setChefName] = useState("Chef");
+  const { user } = useAuth();
+  // Strip any leading "Chef " in the alias so Sicilia never says "Chef Chef [name]".
+  const chefName = (user?.chef_alias ?? "").trim().replace(/^chef\s+/i, "") || "Chef";
   const [userRank] = useState(0); // index in rank ladder (0 = Commis)
   const [lifestyleIdx, setLifestyleIdx] = useState(0);
   const [siciliaIdx, setSiciliaIdx] = useState(0);
@@ -303,13 +305,6 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
   const [cookbookPrompt, setCookbookPrompt] = useState(false);
   const [cookbookOpen, setCookbookOpen] = useState(false);
   const rankPressTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const n = localStorage.getItem("yi_chef_name");
-      if (n) setChefName(n);
-    } catch {}
-  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setSiciliaIdx((i) => i + 1), 11000);

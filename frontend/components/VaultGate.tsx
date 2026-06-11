@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LockKeyhole, ReceiptText, Scale, Trash2, Vault as VaultIcon } from "lucide-react";
+import { InflationEroderCard } from "@/components/InflationEroder";
 import { clearShelfReceipts, readShelfReceipts, SHELF_EVENT, type ShelfReceipt } from "@/lib/shelfStore";
 import { notifyTask } from "@/lib/taskToast";
 
@@ -195,6 +196,9 @@ export function VaultStart({ chefName }: { chefName: string }) {
           The simulation starts here. This {STARTING_CAPITAL} is yours to cook with — propose recipes, vote with your Kitchen, and watch your Vault fill up as you trade. It&apos;s pretend money, but every lesson is real.
         </p>
       </div>
+
+      {/* The R1,001 is all cash until the first recipe cooks — show what idle money costs. */}
+      <InflationEroderCard nominalAmount={1001} isIdle currency="ZAR" />
 
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px 18px", background: "var(--yi-card-bg)" }}>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>

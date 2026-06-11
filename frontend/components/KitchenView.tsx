@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CircleCheck, Soup, Users, Vote } from "lucide-react";
+import { getProfileIcon } from "@/lib/profileIcons";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
@@ -34,21 +35,6 @@ const BLANK_DRAFT: ProposalDraft = {
   units: "",
   reason: "",
   riskAck: false,
-};
-
-const BASE_MEMBERS: Omit<KitchenMember, "name">[] = [
-  { id: "jen",    vote: "FOR",     isUser: false, profileIcon: "🧑‍🍳", clearanceLevel: "Master Chef",     recipesProposed: 7 },
-  { id: "sizwe",  vote: "FOR",     isUser: false, profileIcon: "👨‍💼", clearanceLevel: "Controlled Cook",  recipesProposed: 4 },
-  { id: "siya",   vote: "AGAINST", isUser: false, profileIcon: "👩‍🎓", clearanceLevel: "Simmering Base",   recipesProposed: 2 },
-  { id: "tshidi", vote: null,      isUser: false, profileIcon: "🧑‍💻", clearanceLevel: "Leaking Pot",      recipesProposed: 1 },
-  { id: "user",   vote: null,      isUser: true,  profileIcon: "⭐",  clearanceLevel: "Controlled Cook",  recipesProposed: 3 },
-];
-
-const PEER_NAMES: Record<string, string> = {
-  jen:    "Jen",
-  sizwe:  "Sizwe",
-  siya:   "Siya",
-  tshidi: "Tshidi",
 };
 
 function membersToVoteTally(members: KitchenMember[]): VoteTally {
@@ -460,9 +446,9 @@ function ChefProfileSheet({
             width: 64, height: 64,
             border: "1px solid var(--yi-frame)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "2rem", flexShrink: 0, background: "var(--yi-soft)",
+            flexShrink: 0, background: "var(--yi-soft)",
           }}>
-            {member.profileIcon ?? "👤"}
+            {(() => { const I = getProfileIcon(member.profileIcon); return <I size={28} strokeWidth={1.5} />; })()}
           </div>
           <div>
             <p style={{
@@ -775,6 +761,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         name: m.isYou ? `${m.alias} (You)` : m.alias,
         vote: (m.simulated ? "FOR" : null) as ChefVote,
         isUser: m.isYou,
+        profileIcon: m.icon,
         clearanceLevel: m.role === "founder" ? "Head Chef" : "Kitchen Chef",
       }))
     );
@@ -786,6 +773,19 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
       setActiveProposal(DEMO_PROPOSAL);
     });
   }, [kitchen]);
+
+  // The Table room in the Lobby deep-links here with chat open. The flag is
+  // consumed once kitchen state is known so it can't fire later by surprise —
+  // chefs without a ready Kitchen land on the form/lobby gate instead.
+  useEffect(() => {
+    if (loadingKitchen) return;
+    try {
+      if (sessionStorage.getItem("yi_open_chat") === "1") {
+        sessionStorage.removeItem("yi_open_chat");
+        if (kitchen && kitchen.members.length >= MIN_KITCHEN_CHEFS) setChatOpen(true);
+      }
+    } catch { /* sessionStorage unavailable — chat stays reachable via the button */ }
+  }, [loadingKitchen, kitchen]);
 
   // Poll every 5 s: refresh votes AND the active proposal (so user B sees user A's new recipe).
   useEffect(() => {
@@ -959,14 +959,18 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           {kitchen.members.length} chef{kitchen.members.length !== 1 ? "s" : ""} · {kitchen.governance === "hedge" ? "High heat" : "Slow cook"} · paper only
         </p>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>
-          Governance model
+          Governance model · tap to compare
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: "1px solid var(--yi-frame)", maxWidth: 380, marginBottom: 12 }}>
-          {(["slow-cook", "high-heat"] as GovernanceModel[]).map((m, i) => (
-            <button key={m} type="button" onClick={() => setModel(m)} style={{ minHeight: 44, border: "none", borderRight: i === 0 ? "1px solid var(--yi-frame)" : "none", borderBottom: model === m ? "2px solid var(--yi-black)" : "2px solid transparent", background: model === m ? "var(--yi-white)" : "transparent", color: model === m ? "var(--yi-ink)" : "var(--yi-muted)", fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", padding: "8px 12px", transition: "all 180ms ease" }}>
-              {m === "slow-cook" ? "Slow Cook" : "High Heat"}
-            </button>
-          ))}
+          {(["slow-cook", "high-heat"] as GovernanceModel[]).map((m, i) => {
+            const isKitchens = (kitchen.governance === "hedge" ? "high-heat" : "slow-cook") === m;
+            return (
+              <button key={m} type="button" onClick={() => setModel(m)} style={{ minHeight: 44, border: "none", borderRight: i === 0 ? "1px solid var(--yi-frame)" : "none", borderBottom: model === m ? "2px solid var(--yi-black)" : "2px solid transparent", background: model === m ? "var(--yi-white)" : "transparent", color: model === m ? "var(--yi-ink)" : "var(--yi-muted)", fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", padding: "8px 12px", transition: "all 180ms ease" }}>
+                {m === "slow-cook" ? "Slow Cook" : "High Heat"}
+                {isKitchens && <span style={{ display: "block", fontSize: "0.5rem", letterSpacing: "0.1em", color: "#167a3a", marginTop: 2 }}>Your Kitchen</span>}
+              </button>
+            );
+          })}
         </div>
         <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: "0 0 8px", lineHeight: 1.52 }}>
           {GOVERNANCE_NOTES[model]}
@@ -997,7 +1001,9 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
                 position: "relative",
               }}
             >
-              <span style={{ fontSize: "1.55rem", lineHeight: 1 }}>{m.profileIcon ?? "👤"}</span>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
+                {(() => { const I = getProfileIcon(m.profileIcon); return <I size={22} strokeWidth={1.5} />; })()}
+              </span>
               <span style={{
                 fontFamily: "var(--font-archivo), system-ui, sans-serif",
                 fontSize: "0.72rem", fontWeight: m.isUser ? 700 : 400,

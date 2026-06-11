@@ -108,7 +108,7 @@ a {
   background: var(--yi-paper);
   color: var(--yi-ink);
   padding-top: 98px;
-  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 16px));
   padding-right: max(16px, env(safe-area-inset-right, 16px));
   transition: background-color 240ms ease;
@@ -874,7 +874,7 @@ a {
 
   .dashboard-shell {
     padding-top: 106px;
-    padding-bottom: calc(126px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     padding-left: 30px;
     padding-right: 30px;
   }
@@ -1633,6 +1633,86 @@ html {
   letter-spacing: 0.15em;
   color: var(--yi-muted);
 }
+
+/* ─── Dynamic Island bottom nav ─────────────────────────────────────── */
+
+.bottom-nav-island {
+  position: fixed;
+  bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--yi-ink);
+  color: var(--yi-paper);
+  border-radius: 999px;
+  padding: 8px 10px;
+  max-width: calc(100vw - 12px);
+  transition: padding 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              gap 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* subtle depth so it reads over any content */
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.bottom-nav-island--expanded {
+  padding: 10px 14px;
+  gap: 4px;
+}
+
+.bottom-nav-island-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  flex: 0 1 auto;
+  gap: 0;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  transition: color 160ms ease, background 160ms ease, gap 220ms ease, padding 220ms ease;
+  white-space: nowrap;
+}
+
+.bottom-nav-island-btn:active {
+  transform: scale(0.91);
+}
+
+.bottom-nav-island-btn--active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.bottom-nav-island--expanded .bottom-nav-island-btn {
+  gap: 4px;
+  padding: 6px 12px;
+}
+
+.bottom-nav-island-label {
+  font-family: var(--yi-mono);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72px;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 200ms ease, opacity 180ms ease;
+}
+
+.bottom-nav-island--expanded .bottom-nav-island-label {
+  max-height: 20px;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   *,

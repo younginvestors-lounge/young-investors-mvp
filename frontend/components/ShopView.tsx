@@ -125,8 +125,8 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
         ))}
       </div>
 
-      {/* JSE tickers */}
-      <div style={{ display: aisle === "stocks" ? "block" : "none" }}>
+      {/* JSE tickers — market signals alongside the stories (the Stock Aisle has the full JSEMarket) */}
+      <div style={{ display: "block", marginTop: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: 0 }}>
             Market signals · JSE &amp; global

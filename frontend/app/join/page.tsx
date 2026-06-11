@@ -5,7 +5,7 @@
  * MOCK_MVP_PAPER_TRADING_ONLY - educational simulation, no real money.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Download, Share, Smartphone } from "lucide-react";
 
@@ -37,6 +37,8 @@ export default function JoinPage() {
   const [installed, setInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [iosHint, setIosHint] = useState(false);
+  const iosCardRef = useRef<HTMLDivElement | null>(null);
 
   // Pause the animated grid whenever the tab is hidden - don't spend GPU on
   // pixels nobody is looking at. Lighter on integrated/low-power graphics.
@@ -72,6 +74,10 @@ export default function JoinPage() {
   }, []);
 
   async function download() {
+    if (installed) {
+      window.location.href = "/login";
+      return;
+    }
     if (deferred) {
       await deferred.prompt();
       const choice = await deferred.userChoice;
@@ -80,6 +86,10 @@ export default function JoinPage() {
       return;
     }
     if (isIOS) {
+      // No programmatic install on iOS — point the chef at the Share-sheet steps.
+      iosCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setIosHint(true);
+      setTimeout(() => setIosHint(false), 2600);
       return;
     }
     window.location.href = "/login";
@@ -336,7 +346,7 @@ export default function JoinPage() {
             </Link>
           </div>
 
-          <div style={{ marginTop: 2, border: "1px solid var(--join-fg)", background: "var(--join-fg)", color: "var(--join-bg)", padding: "14px 16px", maxWidth: 460 }}>
+          <div ref={iosCardRef} style={{ marginTop: 2, border: "1px solid var(--join-fg)", background: "var(--join-fg)", color: "var(--join-bg)", padding: "14px 16px", maxWidth: 460, outline: iosHint ? "3px solid var(--join-fg)" : "none", outlineOffset: 4, transition: "outline-color 300ms ease" }}>
             <p style={{ ...mono("var(--join-bg)"), margin: "0 0 8px", display: "inline-flex", alignItems: "center", gap: 6 }}>
               <Smartphone size={13} strokeWidth={1.9} aria-hidden /> Install on iPhone
             </p>
