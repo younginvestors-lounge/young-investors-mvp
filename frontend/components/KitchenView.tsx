@@ -37,21 +37,6 @@ const BLANK_DRAFT: ProposalDraft = {
   riskAck: false,
 };
 
-const BASE_MEMBERS: Omit<KitchenMember, "name">[] = [
-  { id: "jen",    vote: "FOR",     isUser: false, profileIcon: "🧑‍🍳", clearanceLevel: "Master Chef",     recipesProposed: 7 },
-  { id: "sizwe",  vote: "FOR",     isUser: false, profileIcon: "👨‍💼", clearanceLevel: "Controlled Cook",  recipesProposed: 4 },
-  { id: "siya",   vote: "AGAINST", isUser: false, profileIcon: "👩‍🎓", clearanceLevel: "Simmering Base",   recipesProposed: 2 },
-  { id: "tshidi", vote: null,      isUser: false, profileIcon: "🧑‍💻", clearanceLevel: "Leaking Pot",      recipesProposed: 1 },
-  { id: "user",   vote: null,      isUser: true,  profileIcon: "⭐",  clearanceLevel: "Controlled Cook",  recipesProposed: 3 },
-];
-
-const PEER_NAMES: Record<string, string> = {
-  jen:    "Jen",
-  sizwe:  "Sizwe",
-  siya:   "Siya",
-  tshidi: "Tshidi",
-};
-
 function membersToVoteTally(members: KitchenMember[]): VoteTally {
   return {
     yes:           members.filter((m) => m.vote === "FOR").length,
@@ -961,14 +946,18 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           {kitchen.members.length} chef{kitchen.members.length !== 1 ? "s" : ""} · {kitchen.governance === "hedge" ? "High heat" : "Slow cook"} · paper only
         </p>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>
-          Governance model
+          Governance model · tap to compare
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", border: "1px solid var(--yi-frame)", maxWidth: 380, marginBottom: 12 }}>
-          {(["slow-cook", "high-heat"] as GovernanceModel[]).map((m, i) => (
-            <button key={m} type="button" onClick={() => setModel(m)} style={{ minHeight: 44, border: "none", borderRight: i === 0 ? "1px solid var(--yi-frame)" : "none", borderBottom: model === m ? "2px solid var(--yi-black)" : "2px solid transparent", background: model === m ? "var(--yi-white)" : "transparent", color: model === m ? "var(--yi-ink)" : "var(--yi-muted)", fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", padding: "8px 12px", transition: "all 180ms ease" }}>
-              {m === "slow-cook" ? "Slow Cook" : "High Heat"}
-            </button>
-          ))}
+          {(["slow-cook", "high-heat"] as GovernanceModel[]).map((m, i) => {
+            const isKitchens = (kitchen.governance === "hedge" ? "high-heat" : "slow-cook") === m;
+            return (
+              <button key={m} type="button" onClick={() => setModel(m)} style={{ minHeight: 44, border: "none", borderRight: i === 0 ? "1px solid var(--yi-frame)" : "none", borderBottom: model === m ? "2px solid var(--yi-black)" : "2px solid transparent", background: model === m ? "var(--yi-white)" : "transparent", color: model === m ? "var(--yi-ink)" : "var(--yi-muted)", fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", padding: "8px 12px", transition: "all 180ms ease" }}>
+                {m === "slow-cook" ? "Slow Cook" : "High Heat"}
+                {isKitchens && <span style={{ display: "block", fontSize: "0.5rem", letterSpacing: "0.1em", color: "#167a3a", marginTop: 2 }}>Your Kitchen</span>}
+              </button>
+            );
+          })}
         </div>
         <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: "0 0 8px", lineHeight: 1.52 }}>
           {GOVERNANCE_NOTES[model]}

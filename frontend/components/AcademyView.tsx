@@ -32,7 +32,10 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
   const passedCount = modules.filter((m) => m.passed).length;
   const totalCount = modules.length;
 
-  const [chefName, setChefName] = useState<string | null>(null);
+  const { user } = useAuth();
+  // Strip any leading "Chef " the user typed into their alias so the greeting
+  // never reads "Chef Chef [name]".
+  const chefName = (user?.chef_alias ?? "").trim().replace(/^chef\s+/i, "") || "Chef";
   const [openLesson, setOpenLesson] = useState<{ id: string; title: string } | null>(null);
 
   function openAcademyLesson(lesson: { id: string; title: string }) {
@@ -44,14 +47,6 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
     setOpenLesson(null);
     onLessonOpenChange?.(false);
   }
-
-  useEffect(() => {
-    try {
-      setChefName(localStorage.getItem("yi_chef_name") || "Chef");
-    } catch {
-      setChefName("Chef");
-    }
-  }, []);
 
   useEffect(() => {
     return () => onLessonOpenChange?.(false);

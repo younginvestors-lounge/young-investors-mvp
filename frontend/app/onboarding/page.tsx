@@ -92,7 +92,7 @@ export default function OnboardingPage() {
         mode: ageNum < 18 ? "training_kitchen" : "full_simulation",
         onboarding_completed: true,
       });
-      router.replace("/academy");
+      router.replace("/gordon-intro");
     } catch (err) {
       completingRef.current = false;
       if (err instanceof ApiError) {
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
             </button>
           )}
           <button type="button" className="auth-primary" onClick={advance} disabled={!canAdvance()}>
-            {cur === "confirm" ? (submitting ? "Saving..." : "Start Academy") : "Continue"}
+            {cur === "confirm" ? (submitting ? "Saving..." : "Meet Gordon") : "Continue"}
           </button>
         </div>
       </section>
