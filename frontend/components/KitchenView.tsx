@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CircleCheck, Soup, Users, Vote } from "lucide-react";
+import { getProfileIcon } from "@/lib/profileIcons";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
@@ -460,9 +461,9 @@ function ChefProfileSheet({
             width: 64, height: 64,
             border: "1px solid var(--yi-frame)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "2rem", flexShrink: 0, background: "var(--yi-soft)",
+            flexShrink: 0, background: "var(--yi-soft)",
           }}>
-            {member.profileIcon ?? "👤"}
+            {(() => { const I = getProfileIcon(member.profileIcon); return <I size={28} strokeWidth={1.5} />; })()}
           </div>
           <div>
             <p style={{
@@ -775,6 +776,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         name: m.isYou ? `${m.alias} (You)` : m.alias,
         vote: (m.simulated ? "FOR" : null) as ChefVote,
         isUser: m.isYou,
+        profileIcon: m.icon,
         clearanceLevel: m.role === "founder" ? "Head Chef" : "Kitchen Chef",
       }))
     );
@@ -997,7 +999,9 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
                 position: "relative",
               }}
             >
-              <span style={{ fontSize: "1.55rem", lineHeight: 1 }}>{m.profileIcon ?? "👤"}</span>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
+                {(() => { const I = getProfileIcon(m.profileIcon); return <I size={22} strokeWidth={1.5} />; })()}
+              </span>
               <span style={{
                 fontFamily: "var(--font-archivo), system-ui, sans-serif",
                 fontSize: "0.72rem", fontWeight: m.isUser ? 700 : 400,
