@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef, useState } from "react";
 import clsx from "clsx";
 import { ChefHat, GraduationCap, Lock, ShoppingBag, Sofa, Vault } from "lucide-react";
 import { tap } from "@/lib/haptics";
@@ -10,48 +13,73 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: "kitchen", label: "The Kitchen", Icon: ChefHat },
-  { id: "academy", label: "The Academy", Icon: GraduationCap },
-  { id: "vault", label: "The Vault", Icon: Vault },
-  { id: "shop", label: "The Shop", Icon: ShoppingBag },
-  { id: "lounge", label: "The Lounge", Icon: Sofa },
+  { id: "kitchen", label: "Kitchen", Icon: ChefHat },
+  { id: "academy", label: "Academy", Icon: GraduationCap },
+  { id: "vault", label: "Vault", Icon: Vault },
+  { id: "shop", label: "Shop", Icon: ShoppingBag },
+  { id: "lounge", label: "Lounge", Icon: Sofa },
 ];
 
 interface BottomNavProps {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
-  /** Tabs to mark as locked (gated until Academy clearance). */
   lockedTabs?: Partial<Record<DashboardTab, boolean>>;
 }
 
 export function BottomNav({ activeTab, onTabChange, lockedTabs = {} }: BottomNavProps) {
+  const [expanded, setExpanded] = useState(false);
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function expand() {
+    if (collapseTimer.current) clearTimeout(collapseTimer.current);
+    setExpanded(true);
+  }
+
+  function collapse() {
+    setExpanded(false);
+  }
+
+  function touchExpand() {
+    if (!expanded) {
+      expand();
+      collapseTimer.current = setTimeout(() => setExpanded(false), 1800);
+    }
+  }
+
   return (
-    <nav className="bottom-nav" aria-label="Young Investors core spaces">
+    <nav
+      className={clsx("bottom-nav-island", expanded && "bottom-nav-island--expanded")}
+      aria-label="Young Investors core spaces"
+      onMouseEnter={expand}
+      onMouseLeave={collapse}
+      onTouchStart={touchExpand}
+    >
       {navItems.map(({ id, label, Icon }) => {
         const locked = !!lockedTabs[id];
+        const active = activeTab === id;
         return (
           <button
             key={id}
             type="button"
-            className={clsx("bottom-nav-button", activeTab === id && "bottom-nav-button-active")}
-            aria-current={activeTab === id ? "page" : undefined}
+            className={clsx("bottom-nav-island-btn", active && "bottom-nav-island-btn--active")}
+            aria-current={active ? "page" : undefined}
             aria-label={locked ? `${label} — locked until Academy is finished` : label}
             title={locked ? "Locked" : undefined}
             onClick={() => { tap(); onTabChange(id); }}
-            style={locked ? { opacity: 0.6 } : undefined}
+            style={locked ? { opacity: 0.45 } : undefined}
           >
             <span style={{ position: "relative", display: "inline-flex" }}>
-              <Icon className="bottom-nav-icon" aria-hidden="true" />
+              <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
               {locked && (
                 <Lock
                   aria-hidden="true"
                   size={8}
                   strokeWidth={2.5}
-                  style={{ position: "absolute", top: -2, right: -5, color: "var(--yi-muted)" }}
+                  style={{ position: "absolute", top: -2, right: -5 }}
                 />
               )}
             </span>
-            <span className="bottom-nav-label">{label}</span>
+            <span className="bottom-nav-island-label">{label}</span>
           </button>
         );
       })}
