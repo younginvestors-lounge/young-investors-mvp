@@ -456,9 +456,37 @@ end;
 $$;
 grant execute on function public.kitchen_votes_for(text) to authenticated;
 
+-- ============================================================================
+-- 8. Kitchen proposals — shared recipe proposals, visible to all Kitchen members
+-- ----------------------------------------------------------------------------
+-- A proposal is tied to a kitchen_id. All members of that kitchen can read it.
+-- SECURITY DEFINER functions avoid direct RLS join-recursion risk.
+-- MOCK_MVP_PAPER_TRADING_ONLY — no live execution, broker, or real money.
+-- ============================================================================
+create table if not exists public.kitchen_proposals (
+  id           uuid primary key default gen_random_uuid(),
+  kitchen_id   uuid not null references public.kitchens(id) on delete cascade,
+  proposer_id  uuid not null references auth.users(id) on delete cascade,
+  ticker       text not null,
+  asset_name   text,
+  side         text not null default 'BUY',   -- 'BUY' | 'SELL'
+  units        integer,
+  thesis       text,
+  seasoning    text not null,                  -- mandatory reason (the seasoning)
+  status       text not null default 'voting', -- 'voting' | 'passed' | 'rejected' | 'withdrawn'
+  created_at   timestamptz default now()
+);
+
+alter table public.kitchen_proposals enable row level security;
+
+-- Members can read their kitchen's proposals (via SECURITY DEFINER function below).
+-- No direct RLS SELECT needed — the RPC enforces membership check.
+-- Direct INSERT also goes through the RPC to verify membership before writing.
+
 -- Cast a vote and evaluate the active recipe using the 60% Rule.
 -- Quorum is not an execution gate in this MVP: approval is based on the
 -- percentage of decisive votes (FOR/AGAINST) crossing 60%.
+-- NOTE: must be defined AFTER kitchen_proposals so %rowtype resolves.
 create or replace function public.cast_kitchen_vote(
   p_proposal_id uuid,
   p_vote text,
@@ -542,33 +570,6 @@ begin
 end;
 $$;
 grant execute on function public.cast_kitchen_vote(uuid, text, text) to authenticated;
-
--- ============================================================================
--- 8. Kitchen proposals — shared recipe proposals, visible to all Kitchen members
--- ----------------------------------------------------------------------------
--- A proposal is tied to a kitchen_id. All members of that kitchen can read it.
--- SECURITY DEFINER functions avoid direct RLS join-recursion risk.
--- MOCK_MVP_PAPER_TRADING_ONLY — no live execution, broker, or real money.
--- ============================================================================
-create table if not exists public.kitchen_proposals (
-  id           uuid primary key default gen_random_uuid(),
-  kitchen_id   uuid not null references public.kitchens(id) on delete cascade,
-  proposer_id  uuid not null references auth.users(id) on delete cascade,
-  ticker       text not null,
-  asset_name   text,
-  side         text not null default 'BUY',   -- 'BUY' | 'SELL'
-  units        integer,
-  thesis       text,
-  seasoning    text not null,                  -- mandatory reason (the seasoning)
-  status       text not null default 'voting', -- 'voting' | 'passed' | 'rejected' | 'withdrawn'
-  created_at   timestamptz default now()
-);
-
-alter table public.kitchen_proposals enable row level security;
-
--- Members can read their kitchen's proposals (via SECURITY DEFINER function below).
--- No direct RLS SELECT needed — the RPC enforces membership check.
--- Direct INSERT also goes through the RPC to verify membership before writing.
 
 -- Submit a proposal (verifies membership before inserting).
 create or replace function public.submit_proposal(
