@@ -1645,8 +1645,10 @@ html {
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--yi-ink);
-  color: var(--yi-paper);
+  /* The island is always a dark pill — its button/icon colors are hardcoded
+     white, so the background must not flip with the theme. */
+  background: #111111;
+  color: #ffffff;
   border-radius: 999px;
   padding: 8px 10px;
   max-width: calc(100vw - 12px);
@@ -1654,6 +1656,12 @@ html {
               gap 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
   /* subtle depth so it reads over any content */
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Night mode: lift the pill off the near-black page with a brighter ring. */
+[data-theme="dark"] .bottom-nav-island {
+  background: #1a1a1a;
+  box-shadow: 0 2px 18px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.26);
 }
 
 .bottom-nav-island--expanded {

@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { BadgeCheck, BookOpenCheck, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle, ReceiptText, Trophy } from "lucide-react";
+import { BadgeCheck, BookOpenCheck, Briefcase, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle, ReceiptText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrutalistButton } from "@/components/BrutalistButton";
 import { BrutalistCard } from "@/components/BrutalistCard";
@@ -101,22 +101,18 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
         )}
       </BrutalistCard>
 
+      {/* Follow The Money — the lessons are the main course of the Academy */}
       <RevealBox
-        symbol={<Trophy size={15} strokeWidth={1.8} aria-hidden />}
-        title="Academy Score"
+        symbol={<ReceiptText size={15} strokeWidth={1.8} aria-hidden />}
+        title="Follow The Money"
         meta={`${passedCount}/${totalCount} lessons passed`}
         defaultOpen
         tone={clearance.complete ? "positive" : "watch"}
       >
-        <FollowTheMoneyCard />
-      </RevealBox>
-
-      <RevealBox
-        symbol={<BadgeCheck size={15} strokeWidth={1.8} aria-hidden />}
-        title="Chef Scorecard"
-        meta="Gordon's read of your reasoning"
-      >
-        <GordonChefScorecard modules={modules} />
+        <ModuleAccordion
+          modules={modules}
+          onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
+        />
       </RevealBox>
 
       {clearance.complete && onTabChange && (
@@ -134,15 +130,18 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
         </div>
       )}
 
+      {/* Chef's Bag — your Academy score and Gordon's scorecard, packed together */}
       <RevealBox
-        symbol={<ReceiptText size={15} strokeWidth={1.8} aria-hidden />}
-        title="Follow The Money"
-        meta="Lessons, receipts, and retry flow"
+        symbol={<Briefcase size={15} strokeWidth={1.8} aria-hidden />}
+        title="Chef's Bag"
+        meta="Academy score · Chef Scorecard"
       >
-        <ModuleAccordion
-          modules={modules}
-          onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
-        />
+        <div style={{ display: "grid", gap: 20 }}>
+          <FollowTheMoneyCard />
+          <div style={{ borderTop: "1px solid var(--yi-hairline)", paddingTop: 18 }}>
+            <GordonChefScorecard modules={modules} />
+          </div>
+        </div>
       </RevealBox>
 
       {openLesson && (
@@ -383,7 +382,7 @@ function FollowTheMoneyCard() {
 
   return (
     <div>
-      <p className="eyebrow">Follow the Money · Academy Score</p>
+      <p className="eyebrow">Chef&apos;s Bag · Academy Score</p>
 
       {/* Score + rank */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
