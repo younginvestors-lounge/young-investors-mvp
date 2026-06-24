@@ -21,6 +21,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
   academyModules: [
     {
       id: "markets-001",
+      track: "follow-money",
       title: "Market Basics",
       description: "How exchanges, indices, liquidity, and listed instruments behave before a Kitchen writes a recipe. The foundation every chef needs.",
       passed: true,
@@ -30,6 +31,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "risk-001",
+      track: "follow-money",
       title: "Risk and Return",
       description: "Position sizing, drawdown discipline, plate weight, and the 60% Rule before anyone cooks. The pot can be too hot.",
       passed: false,
@@ -39,6 +41,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "portfolio-001",
+      track: "follow-money",
       title: "Portfolio Construction",
       description: "Asset allocation, diversification theory, and how Kitchens build a balanced plate across sectors and time horizons.",
       passed: false,
@@ -48,6 +51,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "bias-001",
+      track: "follow-money",
       title: "Behavioural Biases",
       description: "Why smart chefs make irrational decisions — anchoring, overconfidence, herding, and the Kitchen's defence against them.",
       passed: false,
@@ -57,6 +61,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "governance-001",
+      track: "follow-money",
       title: "Kitchen Governance",
       description: "How recipes, votes, chefs at the table, and Gordon's review turn a thesis into a paper order the whole Kitchen can stand behind.",
       passed: false,
@@ -66,6 +71,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "mutual-001",
+      track: "follow-money",
       title: "Mutual Kitchen Mandate",
       description: "Slow cook, long game. Democratic governance with equal voting weight, diversified plates, and patient capital discipline.",
       passed: false,
@@ -75,6 +81,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "hedge-001",
+      track: "follow-money",
       title: "Hedge Kitchen Mandate",
       description: "High heat, strict rules. Asymmetric strategies, short exposure, risk-adjusted returns, and non-negotiable exit discipline.",
       passed: false,
@@ -84,6 +91,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "ethics-001",
+      track: "follow-money",
       title: "Market Conduct and Ethics",
       description: "Insider trading, market manipulation, disclosure obligations, and the ethical table every Young Investor must keep.",
       passed: false,
@@ -93,6 +101,7 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "wealth-001",
+      track: "follow-money",
       title: "Wealth-Creative Choice",
       description: "Four thinkers. One question: how does wealth actually get made? Abstract, iconic, and enactive — see it, map it, apply it.",
       passed: false,
@@ -102,12 +111,53 @@ export const MOCK_MVP_DASHBOARD: DashboardSnapshot = {
     },
     {
       id: "wave-001",
+      track: "follow-money",
       title: "Wave Literacy",
       description: "Markets move in five recognisable waves. Chefs who can name the wave they are riding make better, calmer, fewer decisions.",
       passed: false,
       locked: false,
       requiredForKitchen: false,
       estimatedMinutes: 19,
+    },
+    {
+      id: "mind-purpose-001",
+      track: "follow-mind",
+      title: "Sicilia Lesson 1: Purpose Quantum",
+      description: "Who am I becoming? Adopt the identity of a wealth creator before the Kitchen asks for proof.",
+      passed: false,
+      locked: false,
+      requiredForKitchen: false,
+      estimatedMinutes: 18,
+    },
+    {
+      id: "mind-intellect-001",
+      track: "follow-mind",
+      title: "Sicilia Lesson 2: Intellect Quantum",
+      description: "What do I understand well enough to act on? Turn information into calculation, comparison, simulation, and decision quality.",
+      passed: false,
+      locked: true,
+      requiredForKitchen: false,
+      estimatedMinutes: 20,
+    },
+    {
+      id: "mind-force-001",
+      track: "follow-mind",
+      title: "Sicilia Lesson 3: Force Quantum",
+      description: "What pulls me forward? Train ambition away from greed and toward long life, ownership, freedom, service, and dignity.",
+      passed: false,
+      locked: true,
+      requiredForKitchen: false,
+      estimatedMinutes: 19,
+    },
+    {
+      id: "mind-output-001",
+      track: "follow-mind",
+      title: "Sicilia Lesson 4: Output Quantum",
+      description: "What proof exists? Convert identity into visible receipts: savings, skills, scorecards, simulations, journals, and decisions.",
+      passed: false,
+      locked: true,
+      requiredForKitchen: false,
+      estimatedMinutes: 21,
     },
   ],
   tradeProposals: [

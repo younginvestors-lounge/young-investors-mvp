@@ -6,6 +6,7 @@ import { BookOpen, Check, UserPlus } from "lucide-react";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { GlossaryBook } from "@/components/GlossaryBook";
 import { LoungeMusic } from "@/components/LoungeMusic";
+import { SiciliaCreedCard } from "@/components/SiciliaCreedCard";
 import { useAuth } from "@/lib/auth-context";
 import { tap } from "@/lib/haptics";
 import type { RankingRow } from "@/lib/types";
@@ -564,6 +565,8 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
       </div>
 
       {/* The shared creed */}
+      <SiciliaCreedCard surface="Lounge" onLearnMore={() => onTabChange?.("academy")} />
+
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px 18px", background: "var(--yi-card-bg)", textAlign: "center" }}>
         <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(0.95rem,3.5vw,1.15rem)", fontWeight: 600, fontStyle: "italic", color: "var(--yi-ink)", margin: "0 0 8px", lineHeight: 1.4 }}>
           &ldquo;Too many cooks do not burn the pot — they make it better.&rdquo;

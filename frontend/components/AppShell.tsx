@@ -41,12 +41,14 @@ function deriveAcademyState(
   passedModuleIds: string[]
 ): { modules: AcademyModule[]; clearance: AcademyClearance } {
   const passed = new Set([...seedModules.filter((module) => module.passed).map((module) => module.id), ...passedModuleIds]);
-  let foundFirstIncomplete = false;
+  const foundFirstIncompleteByTrack: Record<string, boolean> = {};
 
   const modules = seedModules.map((module) => {
+    const track = module.track ?? "follow-money";
+    const foundFirstIncomplete = foundFirstIncompleteByTrack[track] === true;
     const isPassed = passed.has(module.id);
     const locked = isPassed ? false : foundFirstIncomplete;
-    if (!isPassed) foundFirstIncomplete = true;
+    if (!isPassed) foundFirstIncompleteByTrack[track] = true;
     return { ...module, passed: isPassed, locked };
   });
 

@@ -18,6 +18,14 @@
 
 import { isSupabaseConfigured, requireSupabase } from "./supabaseClient";
 import { rememberGordonChefReason } from "./gordonKnowledgeBank";
+import {
+  computeGordonScoreFromQuanta,
+  quantumScoresFromAnswers,
+  wealthStateForScore,
+  WEALTH_STATE_BANDS,
+  type GordonQuantumScores,
+  type WealthStateCategory,
+} from "./wealthCreationAcademy";
 
 /* ── Reserved seats + capacity ── */
 
@@ -1039,38 +1047,20 @@ export interface GordonGuideResult {
   score: number;
   band: string;
   bandDescription: string;
+  nextAction: string;
+  quantumScores: GordonQuantumScores;
   inputs: Record<string, string>;
   computedAt: string;
 }
 
-export type GuideBand =
-  | "Burn Risk"
-  | "Leaking Pot"
-  | "Simmering Base"
-  | "Controlled Cook"
-  | "Wealth-Creative Path"
-  | "Master Chef Mode";
-
-const BAND_DESCRIPTIONS: Record<GuideBand, string> = {
-  "Burn Risk": "Your Kitchen floor needs reinforcing before the heat goes up. Focus on protecting the base.",
-  "Leaking Pot": "The pot is leaking — repair habits, plug the debt, fill the information bank.",
-  "Simmering Base": "Your pot is simmering upward. Stay patient; low-heat learning builds the base.",
-  "Controlled Cook": "Controlled cook — you can handle low-heat proposals with safeguards in place.",
-  "Wealth-Creative Path": "The Kitchen is running well. Higher complexity unlocked.",
-  "Master Chef Mode": "Master Chef Mode — advanced strategy, mentoring others, leading the Kitchen.",
-};
+export type GuideBand = WealthStateCategory;
 
 export function scoreToBand(score: number): GuideBand {
-  if (score <= 20) return "Burn Risk";
-  if (score <= 40) return "Leaking Pot";
-  if (score <= 60) return "Simmering Base";
-  if (score <= 75) return "Controlled Cook";
-  if (score <= 90) return "Wealth-Creative Path";
-  return "Master Chef Mode";
+  return wealthStateForScore(score).category;
 }
 
 export function bandDescription(band: GuideBand): string {
-  return BAND_DESCRIPTIONS[band] ?? "";
+  return WEALTH_STATE_BANDS.find((b) => b.category === band)?.meaning ?? "";
 }
 
 /**
@@ -1083,6 +1073,20 @@ export function bandDescription(band: GuideBand): string {
  * Full weights (for future): GG = .20B + .20T + .15I + .15D + .10C + .10W + .10K
  */
 export function computeGordonGuide(answers: Record<string, string>): GordonGuideResult {
+  const quantumScores = quantumScoresFromAnswers(answers);
+  const score = computeGordonScoreFromQuanta(quantumScores);
+  const state = wealthStateForScore(score);
+
+  return {
+    score,
+    band: state.category,
+    bandDescription: state.meaning,
+    nextAction: state.nextAction,
+    quantumScores,
+    inputs: answers,
+    computedAt: new Date().toISOString(),
+  };
+/*
   // Simple point map: positive/protective answers score 2, neutral 1, negative 0
   const positiveMap: Record<string, number> = {
     // Q1 Base
@@ -1120,6 +1124,7 @@ export function computeGordonGuide(answers: Record<string, string>): GordonGuide
     inputs: answers,
     computedAt: new Date().toISOString(),
   };
+*/
 }
 
 /** Save (upsert) the caller's Gordon Guide result to Supabase. Best-effort. */
@@ -1155,12 +1160,17 @@ export async function getGordonGuide(): Promise<GordonGuideResult | null> {
       .maybeSingle();
     if (error || !data) return null;
     const row = data as Record<string, unknown>;
-    const band = String(row.band ?? "Burn Risk") as GuideBand;
+    const inputs = (row.inputs as Record<string, string>) ?? {};
+    const quantumScores = quantumScoresFromAnswers(inputs);
+    const score = Number(row.score ?? computeGordonScoreFromQuanta(quantumScores));
+    const state = wealthStateForScore(score);
     return {
-      score: Number(row.score ?? 0),
-      band,
-      bandDescription: BAND_DESCRIPTIONS[band] ?? "",
-      inputs: (row.inputs as Record<string, string>) ?? {},
+      score,
+      band: state.category,
+      bandDescription: state.meaning,
+      nextAction: state.nextAction,
+      quantumScores,
+      inputs,
       computedAt: String(row.computed_at ?? ""),
     };
   } catch {

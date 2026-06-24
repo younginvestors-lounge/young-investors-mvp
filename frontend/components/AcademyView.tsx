@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { BadgeCheck, BookOpenCheck, Briefcase, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle, ReceiptText } from "lucide-react";
+import { BadgeCheck, BookOpenCheck, BrainCircuit, Briefcase, CheckCircle, ChevronDown, ChevronUp, LockKeyhole, PlayCircle, ReceiptText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BrutalistButton } from "@/components/BrutalistButton";
 import { BrutalistCard } from "@/components/BrutalistCard";
@@ -31,6 +31,10 @@ interface AcademyViewProps {
 export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenChange, onTabChange }: AcademyViewProps) {
   const passedCount = modules.filter((m) => m.passed).length;
   const totalCount = modules.length;
+  const moneyModules = modules.filter((m) => (m.track ?? "follow-money") === "follow-money");
+  const mindModules = modules.filter((m) => m.track === "follow-mind");
+  const moneyPassedCount = moneyModules.filter((m) => m.passed).length;
+  const mindPassedCount = mindModules.filter((m) => m.passed).length;
 
   const { user } = useAuth();
   // Strip any leading "Chef " the user typed into their alias so the greeting
@@ -55,7 +59,7 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
   return (
     <section className="stack" aria-labelledby="academy-heading">
       <div>
-        <p className="eyebrow">Wealth Creation Tool</p>
+        <p className="eyebrow">Wealth Creation Academy</p>
         <h2 id="academy-heading" className="view-title">The Academy</h2>
         {chefName && (
           <p style={{
@@ -105,14 +109,40 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
       <RevealBox
         symbol={<ReceiptText size={15} strokeWidth={1.8} aria-hidden />}
         title="Follow The Money"
-        meta={`${passedCount}/${totalCount} lessons passed`}
+        meta={`${moneyPassedCount}/${moneyModules.length} lessons passed`}
         defaultOpen
         tone={clearance.complete ? "positive" : "watch"}
       >
         <ModuleAccordion
-          modules={modules}
+          modules={moneyModules}
+          empty="Follow The Money lessons are being prepared."
           onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
         />
+      </RevealBox>
+
+      {/* Sicilia's Follow The Mind - identity, drive, proof, and the psychology of wealth creation */}
+      <RevealBox
+        symbol={<BrainCircuit size={15} strokeWidth={1.8} aria-hidden />}
+        title="Sicilia's Follow The Mind"
+        meta={`${mindPassedCount}/${mindModules.length} lessons passed`}
+        defaultOpen={mindPassedCount > 0}
+        tone={mindPassedCount === mindModules.length && mindModules.length > 0 ? "positive" : "neutral"}
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ borderLeft: "2px solid var(--yi-black)", paddingLeft: 12 }}>
+            <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.02rem", lineHeight: 1.35, color: "var(--yi-ink)", margin: 0, fontStyle: "italic" }}>
+              Change the Mind, Change the Chef, Change the Meal.
+            </p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.82rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
+              Sicilia teaches the inner kitchen: Purpose, Intellect, Force, and Output. The Creed lives at the Kitchen Table and in the Lounge; this is where the chef learns the method.
+            </p>
+          </div>
+          <ModuleAccordion
+            modules={mindModules}
+            empty="Sicilia's Follow The Mind lessons are being prepared."
+            onOpen={(mod) => openAcademyLesson({ id: mod.id, title: mod.title })}
+          />
+        </div>
       </RevealBox>
 
       {clearance.complete && onTabChange && (
@@ -161,9 +191,11 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
 /* ── Module accordion — compact tap-to-expand rows ── */
 function ModuleAccordion({
   modules,
+  empty,
   onOpen,
 }: {
   modules: AcademyModule[];
+  empty: string;
   onOpen: (mod: AcademyModule) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -174,6 +206,11 @@ function ModuleAccordion({
 
   return (
     <div style={{ border: "1px solid var(--yi-frame)" }}>
+      {modules.length === 0 && (
+        <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.82rem", color: "var(--yi-copy)", lineHeight: 1.5, margin: 0, padding: "14px" }}>
+          {empty}
+        </p>
+      )}
       {modules.map((module, idx) => {
         const isOpen = expanded === module.id;
         const isCritical = module.requiredForKitchen && !module.passed;
@@ -235,7 +272,11 @@ function ModuleAccordion({
                   letterSpacing: "0.12em",
                   color: "var(--yi-muted)",
                 }}>
-                  {module.requiredForKitchen ? "Core · required" : "Extra seasoning"} · {module.estimatedMinutes} min
+                  {module.requiredForKitchen
+                    ? "Core · required"
+                    : module.track === "follow-mind"
+                      ? "Sicilia · follow the mind"
+                      : "Extra seasoning"} · {module.estimatedMinutes} min
                 </span>
               </span>
 

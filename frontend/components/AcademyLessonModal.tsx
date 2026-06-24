@@ -21,6 +21,10 @@ const LESSON_OUTCOMES: Record<string, string[]> = {
   "ethics-001": ["Know the line: fair play vs an insider edge", "Build clean habits before real money shows up"],
   "wealth-001": ["See wealth creation through four different thinker lenses", "Choose the mindset — surplus, compound, asymmetric, or cyclical — that matches your Kitchen's style"],
   "wave-001": ["Name the five market waves and where you are in each", "Choose the right intervention for each wave stage — hold, add, exit, or wait"],
+  "mind-purpose-001": ["Adopt the identity of a wealth creator in training", "Write the purpose statements that guide attention before money moves"],
+  "mind-intellect-001": ["Turn information into calculation, comparison, simulation, and decision quality", "Explain why R1,000 can become spending, savings, debt repair, skill, or ownership"],
+  "mind-force-001": ["Separate disciplined desire from greed, envy, and status pressure", "Name the kind of life your ambition is serving"],
+  "mind-output-001": ["Convert identity into visible proof", "Build a proof board of savings, skills, scorecards, simulations, and decisions"],
 };
 
 interface LessonQuiz {
@@ -277,6 +281,98 @@ const LESSONS: Record<string, LessonContent> = {
     },
     passLine: "Wave Literacy complete. Five waves, named. You can read the kitchen service cycle now.",
   },
+  "mind-purpose-001": {
+    moduleId: "mind-purpose-001",
+    concept: "Purpose Quantum: who is the chef becoming?",
+    body: [
+      "Wealth is not money first. Wealth begins when a person stops moving like a passive consumer and starts moving like a wealth creator in training.",
+      "Purpose gives direction to attention. If you do not know who you are becoming, every trend, fear, advert, and status signal can pull your eyes away from value.",
+      "The Young Investors identity is simple: I identify value, protect value, create value, and compound value. That identity must guide the meal before the ingredients arrive.",
+    ],
+    cookingBridge: "Darling, before the cake rises, the baker must know what she is making. Purpose is the recipe card. Without it, sugar, flour, and butter become a mess. With it, the same ingredients become proof.",
+    quiz: {
+      question: "Which statement best expresses the Purpose Quantum?",
+      options: [
+        "I need more money before I can become serious",
+        "I identify value, protect value, create value, and compound value",
+        "I will invest only when I feel inspired",
+        "I follow whatever the richest person in the room says",
+      ],
+      correctIndex: 1,
+      gordonsAnswer: "Yes. That is purpose as identity. The chef is named before the meal is served. When identity is clear, attention has somewhere clean to go.",
+      wrongAnswer: "Not quite, my love. Purpose is not waiting for money, mood, or applause. Purpose names the person you are becoming so your choices can follow.",
+    },
+    passLine: "Purpose Quantum complete. The chef has a name: wealth creator in training.",
+  },
+  "mind-intellect-001": {
+    moduleId: "mind-intellect-001",
+    concept: "Intellect Quantum: what do you understand well enough to act on?",
+    body: [
+      "Intellect is not collecting fancy words. It is the ability to calculate, compare, simulate, and decide when a real choice is in front of you.",
+      "Young Investors trains the information bank: savings, debt, risk, assets, inflation, compounding, opportunity cost, decision quality, social capital, institutions, and digital footprint.",
+      "A chef with intellect can look at R1,000 and ask: should this be spent, saved, invested in skill, used to reduce debt, or kept for opportunity? The answer depends on the whole recipe.",
+    ],
+    cookingBridge: "A pantry full of ingredients is not dinner. Intellect is knowing what each ingredient does under heat. Salt lifts flavour. Too much salt ruins the dish. Money works the same way.",
+    quiz: {
+      question: "A chef receives R1,000. What is the strongest Intellect Quantum response?",
+      options: [
+        "Spend it quickly before it disappears",
+        "Copy the first investment idea on social media",
+        "Compare spending, saving, debt repair, skill-building, and ownership before deciding",
+        "Keep it hidden and avoid thinking about it",
+      ],
+      correctIndex: 2,
+      gordonsAnswer: "Correct. Intellect compares choices before action. The money is an ingredient; the decision process is the recipe.",
+      wrongAnswer: "Try again. Intellect does not panic, copy, or hide. It compares the available conversions and chooses the one that protects the future meal.",
+    },
+    passLine: "Intellect Quantum complete. The pantry is becoming a decision system.",
+  },
+  "mind-force-001": {
+    moduleId: "mind-force-001",
+    concept: "Force Quantum: what pulls the chef forward?",
+    body: [
+      "Force is desire, ambition, discipline, love, and will. Information without force does not move. But force without purpose becomes greed, gambling, envy, or performance.",
+      "Young Investors trains ambition toward long life, prosperity, ownership, freedom, service, family protection, and dignity.",
+      "The clean sentence is this: I love the person I am becoming, so I act like that person now.",
+    ],
+    cookingBridge: "Heat is not the enemy. Heat is how the meal becomes real. But uncontrolled heat burns the sauce. Sicilia wants your ambition hot enough to rise and disciplined enough not to scorch.",
+    quiz: {
+      question: "Which desire has the cleanest Force Quantum?",
+      options: [
+        "I want wealth so people feel small around me",
+        "I want wealth because panic makes me chase anything",
+        "I want wealth for freedom, dignity, ownership, service, and a longer life",
+        "I want wealth only when other people are watching",
+      ],
+      correctIndex: 2,
+      gordonsAnswer: "Correct. Clean force has direction and dignity. It can survive slow progress because it is not fed only by attention.",
+      wrongAnswer: "Not that one. Force is powerful, but Sicilia will not let it become envy in a pretty apron. The clean pull is freedom, dignity, ownership, service, and long life.",
+    },
+    passLine: "Force Quantum complete. The flame is hot, but the hand is steady.",
+  },
+  "mind-output-001": {
+    moduleId: "mind-output-001",
+    concept: "Output Quantum: what proof exists?",
+    body: [
+      "Output is visible proof. If identity never becomes behaviour, it has not created wealth capability yet.",
+      "Proof can be a savings record, debt reduction, skill portfolio, budget, decision log, Gordon score, investment simulation, public post, digital footprint, community contribution, or eventually real assets.",
+      "The Kitchen respects proof because proof can be inspected. A claim says 'trust me.' Output says 'taste this.'",
+    ],
+    cookingBridge: "A recipe is not finished because the chef imagined it. It is finished when the plate leaves the pass. Output is the plate: visible, testable, repeatable, and worthy of the table.",
+    quiz: {
+      question: "Which item is the clearest Output Quantum proof?",
+      options: [
+        "I thought about saving someday",
+        "I posted that I will be rich",
+        "I kept a four-week savings record and wrote why each decision mattered",
+        "I bought something expensive to look successful",
+      ],
+      correctIndex: 2,
+      gordonsAnswer: "Correct. Output is proof. The table can see the record, inspect the decision, and trust the behaviour more than the intention.",
+      wrongAnswer: "Not yet. Output must be visible behaviour, not performance. Sicilia wants receipts: savings, skills, scorecards, simulations, decisions, proof.",
+    },
+    passLine: "Output Quantum complete. The meal has left the kitchen. Proof exists.",
+  },
 };
 
 const PRACTICE_BEATS: Record<string, PracticeBeat> = {
@@ -330,6 +426,26 @@ const PRACTICE_BEATS: Record<string, PracticeBeat> = {
     task: "Identify which wave NPN.JO is likely entering and name the intervention: hold, add, exit, or wait.",
     check: "Thin volume + post-pullback + early sentiment = re-accumulation or early mark-up. The intervention is watch or add small. Not chase.",
   },
+  "mind-purpose-001": {
+    setup: "A chef keeps saying, 'I am just broke,' before every money decision.",
+    task: "Rewrite that identity into a wealth creator statement that can guide behaviour today.",
+    check: "Purpose changes attention. Attention changes the meal.",
+  },
+  "mind-intellect-001": {
+    setup: "A chef has R1,000 and five possible uses: spend, save, repay debt, learn a skill, or buy a paper asset.",
+    task: "Compare the options before choosing the best conversion for the chef's current state.",
+    check: "Intellect is the pantry becoming a decision system.",
+  },
+  "mind-force-001": {
+    setup: "A chef wants wealth because everyone online looks ahead of them.",
+    task: "Separate envy from clean ambition and name the deeper reason.",
+    check: "Clean force pulls toward freedom, dignity, ownership, service, and long life.",
+  },
+  "mind-output-001": {
+    setup: "A chef says they are changing, but the table cannot see proof yet.",
+    task: "Choose one visible receipt they can produce this week.",
+    check: "If it does not become visible in behaviour, it has not converted yet.",
+  },
 };
 
 interface Props {
@@ -341,6 +457,10 @@ interface Props {
 
 type ModalPhase = "glossary" | "concept" | "practice" | "quiz" | "result";
 const QUIZ_ATTEMPT_LIMIT = 3;
+
+function guideNameForModule(moduleId: string): "Gordon" | "Sicilia" {
+  return moduleId.startsWith("mind-") ? "Sicilia" : "Gordon";
+}
 
 function GordonLine({ text, speed = 16, delay = 200 }: { text: string; speed?: number; delay?: number }) {
   const { displayed, done } = useTypewriter(text, { speed, delay });
@@ -360,6 +480,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
   const practice = PRACTICE_BEATS[moduleId];
   const terms = glossaryForModule(moduleId);
   const outcomes = LESSON_OUTCOMES[moduleId] ?? [];
+  const guideName = guideNameForModule(moduleId);
   const [phase, setPhase] = useState<ModalPhase>(terms.length > 0 ? "glossary" : "concept");
   const [level, setLevel] = useState<keyof GlossaryLevels>("twelve");
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -463,7 +584,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
       });
     }
     success();
-    notifyTask("Lesson cleared", `${moduleTitle} saved to Gordon's notebook.`);
+    notifyTask("Lesson cleared", `${moduleTitle} saved to ${guideName}'s notebook.`);
     onPass(moduleId);
     onClose();
   }
@@ -546,11 +667,14 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
 
           {phase === "glossary" && (
             <>
-              {/* Gordon frames the class — lecturer / master chef */}
+              {/* The guide frames the class - lecturer / master chef */}
               <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 14 }}>
-                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon · Today&apos;s class</p>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>{guideName} · Today&apos;s class</p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.92rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
-                  <GordonLine text={`"Today we're cooking ${lesson.concept.toLowerCase()}. Four stations - words, theory, practice, then the quiz. Sharp sharp."`} />
+                  <GordonLine text={guideName === "Sicilia"
+                    ? `"Today we are baking the inner recipe: ${lesson.concept.toLowerCase()}. Mind first, chef next, meal after. Soft hands, sharp standards."`
+                    : `"Today we're cooking ${lesson.concept.toLowerCase()}. Four stations - words, theory, practice, then the quiz. Sharp sharp."`}
+                  />
                 </p>
               </div>
 
@@ -558,7 +682,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               <div style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px", background: "var(--yi-card-bg)" }}>
                 <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 8px" }}>Lesson outline</p>
                 <div style={{ display: "grid", gap: 6 }}>
-                  {["Glossary check - the words", "Theory - Gordon's bridge", "Practice - apply it once", "The cook - your quiz"].map((s, i) => (
+                  {["Glossary check - the words", `Theory - ${guideName}'s bridge`, "Practice - apply it once", "The cook - your quiz"].map((s, i) => (
                     <div key={s} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
                       <span style={{ ...monoSmall, color: "var(--yi-ink)" }}>{String(i + 1).padStart(2, "0")}</span>
                       <span style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.85rem", color: "var(--yi-copy)" }}>{s}</span>
@@ -671,7 +795,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               </div>
 
               <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 14 }}>
-                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>Gordon · Cooking bridge</p>
+                <p style={{ ...monoSmall, color: "#b42318", margin: "0 0 6px" }}>{guideName} · Cooking bridge</p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
                   &ldquo;{lesson.cookingBridge}&rdquo;
                 </p>
@@ -709,12 +833,12 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                 <details style={{ borderTop: "1px solid var(--yi-hairline)", paddingTop: 10 }}>
                   <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>Task</summary>
                   <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
-                    {practice?.task ?? "Name the concept Gordon should check before the recipe moves forward."}
+                    {practice?.task ?? `Name the concept ${guideName} should check before the recipe moves forward.`}
                   </p>
                 </details>
 
                 <details>
-                  <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>Gordon&apos;s check</summary>
+                  <summary style={{ ...monoSmall, color: "var(--yi-ink)", cursor: "pointer" }}>{guideName}&apos;s check</summary>
                   <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", lineHeight: 1.55, color: "var(--yi-copy)", margin: "8px 0 0" }}>
                     {practice?.check ?? "A reason can be repeated. A hunch cannot."}
                   </p>
@@ -731,7 +855,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
             <>
               <div>
                 <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>
-                  Attempt {Math.min(attempts + 1, QUIZ_ATTEMPT_LIMIT)} of {QUIZ_ATTEMPT_LIMIT} · answer before Gordon speaks
+                  Attempt {Math.min(attempts + 1, QUIZ_ATTEMPT_LIMIT)} of {QUIZ_ATTEMPT_LIMIT} · answer before {guideName} speaks
                 </p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "1rem", lineHeight: 1.6, color: "var(--yi-ink)", margin: 0, fontWeight: 500 }}>
                   {lesson.quiz.question}
@@ -791,7 +915,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               {answered && (
                 <div style={{ border: `1px solid ${correct ? "#167a3a" : "#b42318"}`, borderLeft: `2px solid ${correct ? "#167a3a" : "#b42318"}`, padding: "14px 16px", background: "var(--yi-card-bg)" }}>
                   <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.15em", color: correct ? "#167a3a" : "#b42318", margin: "0 0 8px" }}>
-                    Gordon · {correct ? "Correct" : "Try again"}
+                    {guideName} · {correct ? "Correct" : "Try again"}
                   </p>
                   <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
                     <GordonLine text={correct ? lesson.quiz.gordonsAnswer : attempts >= QUIZ_ATTEMPT_LIMIT ? "Not yet. I'm not giving you the answer. Go back through the concept, then earn it on the next pass." : `Not yet. Try again before I explain it. ${QUIZ_ATTEMPT_LIMIT - attempts} attempt${QUIZ_ATTEMPT_LIMIT - attempts === 1 ? "" : "s"} left.`} />
@@ -832,7 +956,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                 </h3>
               </div>
               <div style={{ borderLeft: "2px solid var(--yi-black)", paddingLeft: 14 }}>
-                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>Gordon</p>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>{guideName}</p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.65, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
                   <GordonLine text={`"${lesson.passLine}"`} />
                 </p>
@@ -840,7 +964,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)", display: "grid", gap: 8 }}>
                 <p style={{ ...monoSmall, color: "#167a3a", margin: 0 }}>One-word reflection</p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.84rem", lineHeight: 1.5, color: "var(--yi-copy)", margin: 0 }}>
-                  Give Gordon one word to remember from this lesson.
+                  Give {guideName} one word to remember from this lesson.
                 </p>
                 <input
                   aria-label="One-word reflection"
@@ -875,7 +999,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
 
         <div style={{ borderTop: "1px solid var(--yi-hairline)", padding: "10px 20px", flexShrink: 0 }}>
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
-            Educational guidance only · Gordon provides informational commentary · Not financial advice
+            Educational guidance only · {guideName} provides informational commentary · Not financial advice
           </p>
         </div>
       </div>

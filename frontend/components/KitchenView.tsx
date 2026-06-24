@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
 import { KitchenChatPanel } from "@/components/KitchenChatPanel";
 import { RevealBox } from "@/components/RevealBox";
+import { SiciliaCreedCard } from "@/components/SiciliaCreedCard";
 import { getActiveProposal, getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, submitProposal, type KitchenState, type ProposalData } from "@/lib/profileStore";
 import { calculateConsensus, dynamicQuorum } from "@/lib/domain";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
@@ -983,7 +984,8 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
 
       {/* Chefs at the table */}
       <RevealBox symbol={<Users size={15} strokeWidth={1.8} aria-hidden />} title="Chefs At The Table" meta={`${members.length} seated`}>
-      <div>
+      <div style={{ display: "grid", gap: 12 }}>
+        <SiciliaCreedCard surface="Kitchen Table" compact />
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 12px" }}>
           Chefs at the table · {members.length} seated
         </p>

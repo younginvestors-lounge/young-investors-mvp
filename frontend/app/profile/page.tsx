@@ -9,7 +9,7 @@ import { useAppSettings } from "@/lib/appSettings";
 import { getProfileIcon, PROFILE_ICONS } from "@/lib/profileIcons";
 import { FIRST_TESTER_NUMBER, RESERVED_CHEFS } from "@/lib/profileStore";
 import { FocusNag } from "@/components/FocusNag";
-import { GordonGuideSheet } from "@/components/GordonGuideSheet";
+import { GordonQuantumGuideSheet } from "@/components/GordonQuantumGuideSheet";
 
 const CREDENTIAL_LABEL: Record<string, string> = {
   not_started: "Not started",
@@ -348,9 +348,9 @@ export default function ProfilePage() {
 
         {/* Gordon's Guide diagnostic */}
         <div style={{ margin: "24px 0 0", border: "1px solid var(--yi-frame)", padding: "16px" }}>
-          <p style={{ ...mono, fontSize: "0.56rem", color: "var(--yi-muted)", margin: "0 0 6px" }}>Gordon&apos;s Guide · Baseline Diagnostic</p>
+          <p style={{ ...mono, fontSize: "0.56rem", color: "var(--yi-muted)", margin: "0 0 6px" }}>Gordon&apos;s Guide · Four-Quanta Diagnostic</p>
           <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", color: "var(--yi-copy)", margin: "0 0 14px", lineHeight: 1.55 }}>
-            A 10-question financial health check. Gordon reads your starting point and names your band — from Burn Risk to Master Chef Mode.
+            A Purpose, Intellect, Force, and Output check. Gordon names your wealth state from Empty Pot to Wealth Converter.
           </p>
           <button
             type="button"
@@ -373,7 +373,15 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      {guideOpen && <GordonGuideSheet onClose={() => setGuideOpen(false)} />}
+      {guideOpen && (
+        <GordonQuantumGuideSheet
+          onClose={() => setGuideOpen(false)}
+          onNavigate={(tab) => {
+            setGuideOpen(false);
+            router.push(`/${tab}`);
+          }}
+        />
+      )}
     </main>
   );
 }

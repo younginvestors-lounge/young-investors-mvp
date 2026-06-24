@@ -4,6 +4,7 @@ export type ExecutionMode = typeof EXECUTION_MODE;
 
 export type DashboardTab = "kitchen" | "academy" | "vault" | "shop" | "lounge";
 
+export type AcademyTrack = "follow-money" | "follow-mind";
 
 export interface Money {
   amount: number;
@@ -14,6 +15,7 @@ export interface Money {
 
 export interface AcademyModule {
   id: string;
+  track?: AcademyTrack;
   title: string;
   description: string;
   passed: boolean;
