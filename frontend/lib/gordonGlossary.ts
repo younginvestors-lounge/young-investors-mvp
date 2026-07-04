@@ -592,6 +592,34 @@ export const GLOSSARY_LIST: GlossaryEntry[] = [
     related: ["consensus-60", "compounding", "hedge-kitchen"],
   },
   {
+    key: "sector",
+    term: "Sector",
+    kitchen: "Kitchen Station",
+    cooking: "A professional kitchen has stations — grill, sauce, pastry. The JSE has stations too: Financials, Resources, Industrials, Telecoms.",
+    slang: "Sector = the station a company works at. Same station, same heat.",
+    levels: {
+      five: "A group of shops that all sell a similar kind of thing.",
+      twelve: "A sector groups companies doing similar business — banks together, miners together, and so on.",
+      eighteen: "A sector groups companies with similar economic exposures — the same rates, currencies, or commodity prices tend to move them together.",
+      fortyFive: "A GICS-style classification grouping issuers by shared revenue drivers and macro sensitivities — the basis for sector-concentration risk analysis.",
+    },
+    related: ["diversification", "correlation", "index"],
+  },
+  {
+    key: "fundamentals",
+    term: "Fundamentals / Financial statements",
+    kitchen: "The Recipe Card",
+    cooking: "The card behind the dish: revenue is food through the door, profit is what's left after ingredients and staff, debt is what's still owed.",
+    slang: "Fundamentals = the real numbers behind a ticker. Read the card before you cook the dish.",
+    levels: {
+      five: "The facts about a shop: how much it sells, how much it keeps, and what it owes.",
+      twelve: "Fundamentals are a company's basic financial facts — revenue, profit, debt, and cash flow.",
+      eighteen: "Fundamentals ground a thesis in the company's real numbers, not just a feeling about the ticker.",
+      fortyFive: "Core financial-statement data (income statement, balance sheet, cash-flow statement) underpinning valuation and thesis quality, distinct from price action alone.",
+    },
+    related: ["stock", "risk", "return"],
+  },
+  {
     key: "hedge-kitchen",
     term: "Hedge Kitchen",
     kitchen: "The high heat",
@@ -677,6 +705,9 @@ export const MODULE_GLOSSARY: Record<string, string[]> = {
   "mutual-001": ["mutual-kitchen", "compounding", "dividend"],
   "hedge-001": ["hedge-kitchen", "hedge", "position-size"],
   "ethics-001": ["market-conduct", "insider-trading"],
+  "jse-sectors-001": ["sector", "index", "diversification"],
+  "inflation-compounding-001": ["inflation", "compounding", "return"],
+  "fundamentals-001": ["fundamentals", "stock", "risk"],
 };
 
 export function glossaryForModule(moduleId: string): GlossaryEntry[] {

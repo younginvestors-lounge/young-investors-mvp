@@ -105,6 +105,24 @@ export function AcademyView({ modules, clearance, onModuleStart, onLessonOpenCha
         )}
       </BrutalistCard>
 
+      {/* Whole-course progress — both tracks combined */}
+      <div style={{ border: "1px solid var(--yi-frame)", padding: "12px 14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
+            Whole course
+          </p>
+          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-ink)", margin: 0, fontWeight: 700 }}>
+            {passedCount} of {totalCount} modules cleared
+          </p>
+        </div>
+        <div className="progress-track" style={{ marginTop: 8 }} aria-hidden="true">
+          <div
+            className="progress-fill-watch"
+            style={{ width: `${totalCount > 0 ? Math.round((passedCount / totalCount) * 100) : 0}%` }}
+          />
+        </div>
+      </div>
+
       {/* Follow The Money — the lessons are the main course of the Academy */}
       <RevealBox
         symbol={<ReceiptText size={15} strokeWidth={1.8} aria-hidden />}

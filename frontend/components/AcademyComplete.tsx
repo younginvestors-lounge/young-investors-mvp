@@ -27,7 +27,7 @@ interface Props {
 
 function gordonGrade(name: string, score: number, lessonsPassed: number): { tier: string; line: string } {
   if (score >= 95) {
-    return { tier: "Head Chef energy", line: `Magnifico, Chef ${name}. ${score}/100. You didn't just pass — you cooked. I don't say this often, so hear it: that was clean. The Lounge is going to know your name.` };
+    return { tier: "Master Chef energy", line: `Magnifico, Chef ${name}. ${score}/100. You didn't just pass — you cooked. I don't say this often, so hear it: that was clean. The Lounge is going to know your name.` };
   }
   if (score >= 80) {
     return { tier: "Strong hands", line: `Strong work, Chef ${name}. ${score}/100. You earned this clearance, no cap. You read the risk, you respected the rules. Now the real cooking starts.` };

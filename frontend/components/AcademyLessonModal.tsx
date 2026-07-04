@@ -8,445 +8,17 @@ import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
 import { success, tap, warn } from "@/lib/haptics";
 import { glossaryForModule, READER_LEVELS, type GlossaryLevels } from "@/lib/gordonGlossary";
 import { notifyTask } from "@/lib/taskToast";
+import { dynamicQuorum } from "@/lib/domain";
+import {
+  ACADEMY_LESSON_CONTENT,
+  ACADEMY_LESSON_OUTCOMES,
+  ACADEMY_PRACTICE_BEATS,
+  ACADEMY_QUIZZES,
+} from "@/lib/academySyllabus";
 
-/** What each class promises — Gordon as lecturer/master chef. */
-const LESSON_OUTCOMES: Record<string, string[]> = {
-  "markets-001": ["Know what a share, an index and the JSE actually are", "Read why a price moves up or down"],
-  "risk-001": ["Tell risk from reward — and why bet size matters most", "Spot when a plate is too heavy to survive"],
-  "portfolio-001": ["Build a balanced plate that doesn't tip over", "See why what you own together beats any single pick"],
-  "bias-001": ["Name the mind-traps that make smart chefs slip", "Catch yourself before the trap catches you"],
-  "governance-001": ["Explain the 60% Rule in your own words", "See why the table decides, not one chef"],
-  "mutual-001": ["Understand the slow-cook, long-game Kitchen", "See how patience and compounding stack up"],
-  "hedge-001": ["Understand the high-heat Kitchen and its hard exits", "Respect why strict rules keep you alive"],
-  "ethics-001": ["Know the line: fair play vs an insider edge", "Build clean habits before real money shows up"],
-  "wealth-001": ["See wealth creation through four different thinker lenses", "Choose the mindset — surplus, compound, asymmetric, or cyclical — that matches your Kitchen's style"],
-  "wave-001": ["Name the five market waves and where you are in each", "Choose the right intervention for each wave stage — hold, add, exit, or wait"],
-  "mind-purpose-001": ["Adopt the identity of a wealth creator in training", "Write the purpose statements that guide attention before money moves"],
-  "mind-intellect-001": ["Turn information into calculation, comparison, simulation, and decision quality", "Explain why R1,000 can become spending, savings, debt repair, skill, or ownership"],
-  "mind-force-001": ["Separate disciplined desire from greed, envy, and status pressure", "Name the kind of life your ambition is serving"],
-  "mind-output-001": ["Convert identity into visible proof", "Build a proof board of savings, skills, scorecards, simulations, and decisions"],
-};
+/** What each class promises — Gordon/Sicilia as lecturer/master chef. */
+const LESSON_OUTCOMES = ACADEMY_LESSON_OUTCOMES;
 
-interface LessonQuiz {
-  question: string;
-  options: string[];
-  correctIndex: number;
-  gordonsAnswer: string;
-  wrongAnswer: string;
-}
-
-interface LessonContent {
-  moduleId: string;
-  concept: string;
-  body: string[];
-  cookingBridge: string;
-  quiz: LessonQuiz;
-  passLine: string;
-}
-
-interface PracticeBeat {
-  setup: string;
-  task: string;
-  check: string;
-}
-
-const LESSONS: Record<string, LessonContent> = {
-  "markets-001": {
-    moduleId: "markets-001",
-    concept: "How exchanges work",
-    body: [
-      "A stock exchange is a marketplace where buyers and sellers agree on a price. When you buy a share, you buy a small piece of ownership in a company.",
-      "The JSE (Johannesburg Stock Exchange) lists South African companies. Prices move because people constantly disagree on what a company is worth.",
-      "An index like the JSE Top 40 is an average of the top 40 companies — a temperature reading for the whole market.",
-    ],
-    cookingBridge: "The market is a busy restaurant. Prices are the menu. They change based on what's popular, what's scarce, and how hungry everyone is. Your job as a chef is to read the menu better than everyone else at the table.",
-    quiz: {
-      question: "If more people want to BUY a share than SELL it, what happens to the price?",
-      options: [
-        "The price falls — supply exceeds demand",
-        "The price rises — demand exceeds supply",
-        "The price stays the same",
-        "The company issues more shares automatically",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Correct. When more buyers than sellers compete for the same share, each buyer bids a little higher to beat the next one. The price rises. Supply and demand. That's the whole game in four words.",
-      wrongAnswer: "Not quite. Think about a market stall with one mango and ten buyers. Each buyer bids higher to secure it. The price goes up. Demand beats supply — price rises. Try again.",
-    },
-    passLine: "Market Basics complete. You understand how a price is set. The foundation is in place.",
-  },
-  "risk-001": {
-    moduleId: "risk-001",
-    concept: "Risk and the survival rule",
-    body: [
-      "Risk is the possibility of loss. Every trade carries it. The question isn't how to eliminate risk — it's how to make sure no single loss ends your game.",
-      "Position sizing is how much of your Kitchen's capital you put on one plate. Too much in one pot and one bad trade wipes out months of gains.",
-      "The 60% Rule governs your Kitchen's vote, but your position size governs your Vault's survival. Both are about not betting so big that being wrong ends you.",
-    ],
-    cookingBridge: "Heat is risk. A little heat cooks the dish. Too much heat burns the kitchen down and you can't cook tomorrow. Every great chef knows the difference between controlled heat and a fire. Your job is controlled heat — always.",
-    quiz: {
-      question: "Your Kitchen has R60,000. A recipe proposes putting R30,000 (50%) into one stock. Gordon says the pot is too hot. Why?",
-      options: [
-        "Because stocks always go down",
-        "Because 50% in one position means a 50% drop in that stock halves your entire Vault",
-        "Because the JSE has a 50% position limit by law",
-        "Because Gordon prefers cash",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Exactly right. If 50% of your capital is in one stock and it drops 50%, your total Vault drops 25%. That's survivable. But if it drops 80%? Your Vault loses 40%. Concentration is the enemy of longevity. Never bet so big that being wrong ends you.",
-      wrongAnswer: "Think about it differently. What happens to your total Vault if that single stock drops 60%? With 50% concentration, you lose 30% of everything. That's the danger. It's not about one trade — it's about whether you can still cook tomorrow.",
-    },
-    passLine: "Risk and Return complete. You understand why position sizing is not optional. The pot is yours to control.",
-  },
-  "portfolio-001": {
-    moduleId: "portfolio-001",
-    concept: "Building a balanced plate",
-    body: [
-      "Portfolio construction is the art of combining different assets so that when one goes down, others hold or go up.",
-      "Diversification doesn't mean owning everything — it means owning things that behave differently under the same conditions.",
-      "A Mutual Kitchen spreads its plate across sectors. A Hedge Kitchen uses asymmetric positions to hedge against specific risks.",
-    ],
-    cookingBridge: "A great menu has variety. You don't serve five different meat dishes and call it balance. The dessert offsets the salt. The wine complements the protein. Your portfolio is a menu — every asset should have a reason to be on the plate alongside the others.",
-    quiz: {
-      question: "You hold 60% in JSE financials (banks). The Reserve Bank raises rates sharply. What risk have you underestimated?",
-      options: [
-        "You're well diversified — banks benefit from rate rises",
-        "You have sector concentration risk — all your financials move together",
-        "Rate rises don't affect JSE stocks",
-        "Your Vault is perfectly balanced",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Correct. All your financials respond to the same macro driver. When rates rise unexpectedly fast, bank earnings can compress even if some banks do better short-term. Sector concentration means your whole plate tilts one way. Diversification means your plate can take a hit on one side and still stand.",
-      wrongAnswer: "Not quite. The key is correlation — do your holdings move together or independently? If they're all in the same sector, they move together. When sector sentiment shifts, your whole plate tilts the same direction.",
-    },
-    passLine: "Portfolio Construction complete. You can read a plate for balance. That's how good chefs protect the Kitchen.",
-  },
-  "bias-001": {
-    moduleId: "bias-001",
-    concept: "Why smart people make bad decisions",
-    body: [
-      "Behavioural biases are patterns where human psychology causes us to make irrational decisions even when we know better.",
-      "Overconfidence makes you bet too large because the last three trades were right. Anchoring makes you hold a losing position because you bought it at a higher price.",
-      "Herding is the most dangerous Kitchen bias — when five chefs agree too quickly, they might just be agreeing with each other, not with the market.",
-    ],
-    cookingBridge: "The kitchen is full of ego. A chef who's had five great nights starts believing they can't make a bad dish. Then they overcook something obvious. The best kitchens have a culture of honest tasting — everyone calls out the dish, not the chef. That's what the 60% Rule is for.",
-    quiz: {
-      question: "Your Kitchen bought MTN at R180. It's now at R120. Everyone is holding because 'it'll recover.' What bias is this?",
-      options: [
-        "Recency bias — betting on recent winners",
-        "Loss aversion and anchoring — the original price is distorting your view of current value",
-        "Overconfidence — too certain of the outcome",
-        "Herding — following the market consensus",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Exactly. The R180 purchase price is an anchor — it has no bearing on what MTN is worth today. Loss aversion is making you hold a deteriorating position rather than accept the loss and redeploy. A great chef doesn't keep a burnt dish on the plate because they spent time on it.",
-      wrongAnswer: "The clue is in the original price. R180 is acting as an anchor — it's psychologically difficult to sell below it. Combined with loss aversion, you hold hoping to 'get back to even' rather than asking: if I didn't own this already, would I buy it now at R120?",
-    },
-    passLine: "Behavioural Biases complete. You now know the traps. Naming the bias is the first defence against it.",
-  },
-  "governance-001": {
-    moduleId: "governance-001",
-    concept: "How the Kitchen governs itself",
-    body: [
-      "Kitchen governance is the system that prevents one person from making decisions for everyone. Recipes require a proposer, a reason, and a vote.",
-      "The 60% Rule means at least 60% of decisive votes must agree before any recipe can pass. Participation is visible, but the threshold decides.",
-      "The system exists because even brilliant chefs have blind spots. The collective catches what the individual misses.",
-    ],
-    cookingBridge: "A professional kitchen has a hierarchy — but it also has a tasting process. The head chef proposes, the sous chef checks, the brigade confirms. You don't serve a dish until the table agrees it's ready. The 60% Rule is that tasting table — institutionalised.",
-    quiz: {
-      question: "A Kitchen has 6 members. For the 60% Rule, how many members must vote FOR a recipe to pass (assuming all 6 vote)?",
-      options: [
-        "3 members (50%)",
-        "4 members (67% — rounds up to first majority above 60%)",
-        "5 members (83%)",
-        "6 members (100%)",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "4 of 6 is 66.7% — the first majority that exceeds the 60% threshold. 3 of 6 is exactly 50% — below the threshold. Governance isn't a technicality. It's the discipline that protects the whole Kitchen from one bad recipe.",
-      wrongAnswer: "Count carefully. 60% of 6 is 3.6 — which means you need at least 4 votes (rounding up to the next whole voter). The first majority that clears 60% is 4 of 6. Governance precision matters.",
-    },
-    passLine: "Kitchen Governance complete. You understand why the rules exist. Now you can be trusted with the Kitchen.",
-  },
-  "mutual-001": {
-    moduleId: "mutual-001",
-    concept: "The Mutual Kitchen mandate",
-    body: [
-      "A Mutual Kitchen is the slow-cook model. Long holds, broad diversification, equal voting weight, patient capital.",
-      "Every member has equal say regardless of capital contribution. Decisions require consensus. The mandate favours quality over speed.",
-      "Mutual Kitchens suit early-stage investors learning the craft — the process builds discipline, the patience builds compounding.",
-    ],
-    cookingBridge: "A slow braise. Low heat for a long time. The flavours develop over hours, not minutes. You can't rush it and you can't force it. The Mutual Kitchen is that braise — patient, consistent, and rewarding precisely because it doesn't try to be clever every week.",
-    quiz: {
-      question: "In a Mutual Kitchen with 6 equal members, one member has contributed 40% of the capital. How much voting weight do they have?",
-      options: [
-        "40% — capital-weighted voting",
-        "1/6 (16.7%) — equal voting regardless of capital",
-        "60% — they're the majority stakeholder",
-        "No vote until they hit 50%",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "One member, one vote. That's the Mutual Kitchen mandate. Capital weight creates oligarchy — the Mutual model specifically rejects this. Equal voice keeps the table honest and prevents any one chef from dominating the recipe book.",
-      wrongAnswer: "The Mutual Kitchen's defining principle is equal voting weight. Capital buys you a seat but not extra votes. This prevents wealthy members from overriding the Kitchen's collective judgment. One chef, one vote.",
-    },
-    passLine: "Mutual Kitchen Mandate complete. You understand the slow cook. Patience is a competitive advantage.",
-  },
-  "hedge-001": {
-    moduleId: "hedge-001",
-    concept: "The Hedge Kitchen mandate",
-    body: [
-      "A Hedge Kitchen is the high-heat model. Asymmetric strategies, shorter holds, non-negotiable exit discipline, and strict risk controls.",
-      "Hedge Kitchens can use directional bets, sector tilts, and momentum strategies — but every recipe must have an explicit exit condition and a maximum loss threshold.",
-      "The mandate rewards expertise. Without Academy clearance and strong reasoning, the Hedge Kitchen is dangerous.",
-    ],
-    cookingBridge: "High heat sears the perfect crust in seconds. But leave it thirty seconds too long and it's ruined. Hedge Kitchens live at that edge — the return is better because the risk is real. You need technique, attention, and an instinct to pull the dish before it burns. That's the mandate.",
-    quiz: {
-      question: "A Hedge Kitchen enters a position with a maximum loss threshold of 15%. The position drops 18%. What must happen according to the mandate?",
-      options: [
-        "Hold — it will probably recover",
-        "Exit the position immediately — the non-negotiable threshold was breached",
-        "Reduce by 50% and wait",
-        "Call a vote to extend the threshold",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Exit. The threshold is non-negotiable because it was set when you were thinking clearly, before the position moved. The moment it becomes negotiable, it's not a rule — it's a suggestion. And suggestions don't protect Kitchens. The Hedge mandate only works because the rules are held.",
-      wrongAnswer: "Non-negotiable means non-negotiable. The threshold was set before the trade to protect the Kitchen from the psychological trap of 'it'll recover.' When the rule is triggered, you exit. That's the whole point of having the rule — to remove the decision when emotions are highest.",
-    },
-    passLine: "Hedge Kitchen Mandate complete. High heat, strict rules. You now know when to pull the dish.",
-  },
-  "ethics-001": {
-    moduleId: "ethics-001",
-    concept: "Clean conscience, clean kitchen",
-    body: [
-      "Market conduct rules exist to keep markets fair. Insider trading — using information unavailable to the public to trade — is illegal and corrosive.",
-      "Even in an educational simulation, the habits you build now are the habits you carry into real markets. A Kitchen that tolerates ethical shortcuts will take financial ones.",
-      "Young Investors is built on the premise that collective governance plus ethical discipline plus education produces better investors and a better market.",
-    ],
-    cookingBridge: "A restaurant with a dirty kitchen will eventually poison someone. The health inspector doesn't catch every violation — but the culture of cleanliness protects the restaurant every day. Your Kitchen's ethical standard is that culture. It protects you, your members, and the credibility of everything you build.",
-    quiz: {
-      question: "A chef in your Kitchen works at a company and learns before the public announcement that it will report a major profit. They propose buying the stock. What should the Kitchen do?",
-      options: [
-        "Vote on it — if the thesis is good, trade it",
-        "Reject the recipe and address the conduct issue — this is insider trading",
-        "Reduce the position size to 5% to reduce risk",
-        "Wait until the announcement is public, then trade",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Reject it immediately and address the conduct directly. Insider trading isn't a technicality — it's a breach of market fairness that harms every other investor who doesn't have that information. The fact that it's a simulation doesn't change the habit. You build clean practices here so they're automatic when it counts.",
-      wrongAnswer: "The answer isn't about position size or timing. The information itself is the problem. Using material non-public information to trade gives an unfair advantage over the rest of the market. Even reducing the position doesn't make it ethical. The Kitchen must reject it and address the conduct.",
-    },
-    passLine: "Market Conduct and Ethics complete. Clean kitchen, clean conscience. The Lounge respects it.",
-  },
-  "wealth-001": {
-    moduleId: "wealth-001",
-    concept: "Four thinkers, one question: how does wealth get made?",
-    body: [
-      "Adam Smith showed that wealth is created when people specialise and trade surpluses. The more efficiently you produce something others want, the more capital accumulates — then gets reinvested. Surplus is the raw material of wealth.",
-      "Warren Buffett's lens: owning productive assets — businesses, property, intellectual capital — that compound returns through time. Not labour income, but ownership income. The Kitchen's Vault grows the same way: own more than you spend, let the return rate and time do the work.",
-      "Nassim Taleb adds the asymmetry lens: wealth survives not by maximising return but by limiting ruin. An asymmetric recipe risks a small loss for a large gain. This is why Kitchen position sizing matters — you stay in the game long enough for compounding to work.",
-    ],
-    cookingBridge: "Smith gives you the surplus to invest. Buffett tells you to own, not just work. Taleb says survive long enough to win. Your job as a chef is to combine all three: produce a surplus, own productive assets with it, and size your positions so no single dish burns the whole kitchen down.",
-    quiz: {
-      question: "A chef earns R5,000 a month, spends R4,000, and asks: what should I do with the R1,000? Which thinker would tell them to buy a productive asset that compounds?",
-      options: [
-        "Adam Smith — specialise harder to earn more",
-        "Warren Buffett — buy an ownership stake in a productive business",
-        "Nassim Taleb — keep cash for optionality and wait for an asymmetric bet",
-        "All three — they each say the same thing",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Buffett's lens. The R1,000 surplus (Smith's gift) should buy ownership — a productive asset that earns while you sleep. Compounding starts small and builds exponentially. The earlier you own, the longer the runway. Taleb then tells you to size each bet so one bad pick doesn't end the game.",
-      wrongAnswer: "Earning more is Smith's lesson, not what to do with the surplus. Buffett's lens specifically answers 'what do I do with savings?' — buy productive ownership. The three thinkers are complementary, not identical. Surplus → own → compound → survive asymmetrically. That's the full chain.",
-    },
-    passLine: "Wealth-Creative Choice complete. You have four thinkers in your kitchen. Surplus, compound, asymmetric, survive.",
-  },
-  "wave-001": {
-    moduleId: "wave-001",
-    concept: "Five market waves every chef must be able to name",
-    body: [
-      "Markets don't move randomly — they move in five recurring phases. Wave 1: Accumulation. Smart capital enters quietly while the crowd is still scared. Prices stabilise. Volume is low. Most retail investors are not watching yet.",
-      "Wave 2: Mark-up. Trend is confirmed. Volume rises. Early movers show profit. The momentum attracts attention. Wave 3 is Distribution: early buyers sell quietly into rising retail demand. Prices are high. Headlines are positive. This is where uninformed capital arrives.",
-      "Wave 4: Mark-down. Selling overwhelms buying. The crowd realises too late. Wave 5 is Re-accumulation — the reset. Scared sellers offer assets below value to patient buyers. The cycle restarts from Wave 1.",
-    ],
-    cookingBridge: "Accumulation is prep work — quiet, invisible. Mark-up is service — the Kitchen is cooking. Distribution is the end of service — the head chef is plating to go. Mark-down is the mess after close. Re-accumulation is the next mise en place. Kitchens that can read the service cycle don't panic when the rush ends.",
-    quiz: {
-      question: "A chef sees positive headlines everywhere, prices near all-time highs, and high retail trading volume. Which wave are they most likely in?",
-      options: [
-        "Wave 1 — Accumulation: smart money is entering",
-        "Wave 2 — Mark-up: trend is just beginning",
-        "Wave 3 — Distribution: early buyers are selling into the excitement",
-        "Wave 5 — Re-accumulation: the reset is underway",
-      ],
-      correctIndex: 2,
-      gordonsAnswer: "Distribution. Positive headlines and high retail volume at all-time highs are the exact conditions when early buyers are quietly exiting. The crowd's excitement is the exit liquidity for smart money. This is not the entry — it's the warning sign. You don't cook in a kitchen that's already being cleaned.",
-      wrongAnswer: "Accumulation is quiet, low-volume, and happens near bottoms. Mark-up is early trend confirmation. Distribution happens at high prices with strong sentiment — exactly what the question describes. Learn to read which service the kitchen is in before you put anything on the pass.",
-    },
-    passLine: "Wave Literacy complete. Five waves, named. You can read the kitchen service cycle now.",
-  },
-  "mind-purpose-001": {
-    moduleId: "mind-purpose-001",
-    concept: "Purpose Quantum: who is the chef becoming?",
-    body: [
-      "Wealth is not money first. Wealth begins when a person stops moving like a passive consumer and starts moving like a wealth creator in training.",
-      "Purpose gives direction to attention. If you do not know who you are becoming, every trend, fear, advert, and status signal can pull your eyes away from value.",
-      "The Young Investors identity is simple: I identify value, protect value, create value, and compound value. That identity must guide the meal before the ingredients arrive.",
-    ],
-    cookingBridge: "Darling, before the cake rises, the baker must know what she is making. Purpose is the recipe card. Without it, sugar, flour, and butter become a mess. With it, the same ingredients become proof.",
-    quiz: {
-      question: "Which statement best expresses the Purpose Quantum?",
-      options: [
-        "I need more money before I can become serious",
-        "I identify value, protect value, create value, and compound value",
-        "I will invest only when I feel inspired",
-        "I follow whatever the richest person in the room says",
-      ],
-      correctIndex: 1,
-      gordonsAnswer: "Yes. That is purpose as identity. The chef is named before the meal is served. When identity is clear, attention has somewhere clean to go.",
-      wrongAnswer: "Not quite, my love. Purpose is not waiting for money, mood, or applause. Purpose names the person you are becoming so your choices can follow.",
-    },
-    passLine: "Purpose Quantum complete. The chef has a name: wealth creator in training.",
-  },
-  "mind-intellect-001": {
-    moduleId: "mind-intellect-001",
-    concept: "Intellect Quantum: what do you understand well enough to act on?",
-    body: [
-      "Intellect is not collecting fancy words. It is the ability to calculate, compare, simulate, and decide when a real choice is in front of you.",
-      "Young Investors trains the information bank: savings, debt, risk, assets, inflation, compounding, opportunity cost, decision quality, social capital, institutions, and digital footprint.",
-      "A chef with intellect can look at R1,000 and ask: should this be spent, saved, invested in skill, used to reduce debt, or kept for opportunity? The answer depends on the whole recipe.",
-    ],
-    cookingBridge: "A pantry full of ingredients is not dinner. Intellect is knowing what each ingredient does under heat. Salt lifts flavour. Too much salt ruins the dish. Money works the same way.",
-    quiz: {
-      question: "A chef receives R1,000. What is the strongest Intellect Quantum response?",
-      options: [
-        "Spend it quickly before it disappears",
-        "Copy the first investment idea on social media",
-        "Compare spending, saving, debt repair, skill-building, and ownership before deciding",
-        "Keep it hidden and avoid thinking about it",
-      ],
-      correctIndex: 2,
-      gordonsAnswer: "Correct. Intellect compares choices before action. The money is an ingredient; the decision process is the recipe.",
-      wrongAnswer: "Try again. Intellect does not panic, copy, or hide. It compares the available conversions and chooses the one that protects the future meal.",
-    },
-    passLine: "Intellect Quantum complete. The pantry is becoming a decision system.",
-  },
-  "mind-force-001": {
-    moduleId: "mind-force-001",
-    concept: "Force Quantum: what pulls the chef forward?",
-    body: [
-      "Force is desire, ambition, discipline, love, and will. Information without force does not move. But force without purpose becomes greed, gambling, envy, or performance.",
-      "Young Investors trains ambition toward long life, prosperity, ownership, freedom, service, family protection, and dignity.",
-      "The clean sentence is this: I love the person I am becoming, so I act like that person now.",
-    ],
-    cookingBridge: "Heat is not the enemy. Heat is how the meal becomes real. But uncontrolled heat burns the sauce. Sicilia wants your ambition hot enough to rise and disciplined enough not to scorch.",
-    quiz: {
-      question: "Which desire has the cleanest Force Quantum?",
-      options: [
-        "I want wealth so people feel small around me",
-        "I want wealth because panic makes me chase anything",
-        "I want wealth for freedom, dignity, ownership, service, and a longer life",
-        "I want wealth only when other people are watching",
-      ],
-      correctIndex: 2,
-      gordonsAnswer: "Correct. Clean force has direction and dignity. It can survive slow progress because it is not fed only by attention.",
-      wrongAnswer: "Not that one. Force is powerful, but Sicilia will not let it become envy in a pretty apron. The clean pull is freedom, dignity, ownership, service, and long life.",
-    },
-    passLine: "Force Quantum complete. The flame is hot, but the hand is steady.",
-  },
-  "mind-output-001": {
-    moduleId: "mind-output-001",
-    concept: "Output Quantum: what proof exists?",
-    body: [
-      "Output is visible proof. If identity never becomes behaviour, it has not created wealth capability yet.",
-      "Proof can be a savings record, debt reduction, skill portfolio, budget, decision log, Gordon score, investment simulation, public post, digital footprint, community contribution, or eventually real assets.",
-      "The Kitchen respects proof because proof can be inspected. A claim says 'trust me.' Output says 'taste this.'",
-    ],
-    cookingBridge: "A recipe is not finished because the chef imagined it. It is finished when the plate leaves the pass. Output is the plate: visible, testable, repeatable, and worthy of the table.",
-    quiz: {
-      question: "Which item is the clearest Output Quantum proof?",
-      options: [
-        "I thought about saving someday",
-        "I posted that I will be rich",
-        "I kept a four-week savings record and wrote why each decision mattered",
-        "I bought something expensive to look successful",
-      ],
-      correctIndex: 2,
-      gordonsAnswer: "Correct. Output is proof. The table can see the record, inspect the decision, and trust the behaviour more than the intention.",
-      wrongAnswer: "Not yet. Output must be visible behaviour, not performance. Sicilia wants receipts: savings, skills, scorecards, simulations, decisions, proof.",
-    },
-    passLine: "Output Quantum complete. The meal has left the kitchen. Proof exists.",
-  },
-};
-
-const PRACTICE_BEATS: Record<string, PracticeBeat> = {
-  "markets-001": {
-    setup: "NPN.JO opens up while the JSE Top 40 is flat.",
-    task: "Name one reason buyers might be pushing this specific share higher.",
-    check: "Reason before reaction: price move plus possible catalyst.",
-  },
-  "risk-001": {
-    setup: "A recipe wants half the Kitchen in one stock.",
-    task: "Shrink the plate into a survivable serving.",
-    check: "A wrong call must hurt, not end the Kitchen.",
-  },
-  "portfolio-001": {
-    setup: "Your Vault is heavy in banks.",
-    task: "Spot one holding that would diversify the plate.",
-    check: "Different drivers beat more of the same.",
-  },
-  "bias-001": {
-    setup: "Everyone says, 'It has to recover.'",
-    task: "Name the thinking trap before you vote.",
-    check: "Bias named, bias weakened.",
-  },
-  "governance-001": {
-    setup: "Six chefs are at the table.",
-    task: "Work out the first vote count that clears 60%.",
-    check: "Governance is maths before mood.",
-  },
-  "mutual-001": {
-    setup: "One chef brings more capital than everyone else.",
-    task: "Decide whether that chef gets more votes.",
-    check: "Mutual means one chef, one vote.",
-  },
-  "hedge-001": {
-    setup: "A high-heat position breaks its loss threshold.",
-    task: "Decide before feelings negotiate the rule.",
-    check: "Exit rules are written while heads are clear.",
-  },
-  "ethics-001": {
-    setup: "A chef brings private company information.",
-    task: "Choose what the Kitchen must do with that recipe.",
-    check: "Clean kitchen, clean conscience.",
-  },
-  "wealth-001": {
-    setup: "A chef earns a steady salary and saves R1,500 a month for six months.",
-    task: "Apply Smith, Buffett, and Taleb in sequence: decide where the surplus goes, what to own, and how to size it safely.",
-    check: "Surplus → ownership → asymmetric bet sizing. That's the wealth-creative chain.",
-  },
-  "wave-001": {
-    setup: "A Kitchen is watching NPN.JO after a sharp pullback. Positive analyst sentiment is rising but retail volume is still thin.",
-    task: "Identify which wave NPN.JO is likely entering and name the intervention: hold, add, exit, or wait.",
-    check: "Thin volume + post-pullback + early sentiment = re-accumulation or early mark-up. The intervention is watch or add small. Not chase.",
-  },
-  "mind-purpose-001": {
-    setup: "A chef keeps saying, 'I am just broke,' before every money decision.",
-    task: "Rewrite that identity into a wealth creator statement that can guide behaviour today.",
-    check: "Purpose changes attention. Attention changes the meal.",
-  },
-  "mind-intellect-001": {
-    setup: "A chef has R1,000 and five possible uses: spend, save, repay debt, learn a skill, or buy a paper asset.",
-    task: "Compare the options before choosing the best conversion for the chef's current state.",
-    check: "Intellect is the pantry becoming a decision system.",
-  },
-  "mind-force-001": {
-    setup: "A chef wants wealth because everyone online looks ahead of them.",
-    task: "Separate envy from clean ambition and name the deeper reason.",
-    check: "Clean force pulls toward freedom, dignity, ownership, service, and long life.",
-  },
-  "mind-output-001": {
-    setup: "A chef says they are changing, but the table cannot see proof yet.",
-    task: "Choose one visible receipt they can produce this week.",
-    check: "If it does not become visible in behaviour, it has not converted yet.",
-  },
-};
 
 interface Props {
   moduleId: string;
@@ -456,7 +28,6 @@ interface Props {
 }
 
 type ModalPhase = "glossary" | "concept" | "practice" | "quiz" | "result";
-const QUIZ_ATTEMPT_LIMIT = 3;
 
 function guideNameForModule(moduleId: string): "Gordon" | "Sicilia" {
   return moduleId.startsWith("mind-") ? "Sicilia" : "Gordon";
@@ -476,17 +47,19 @@ function GordonLine({ text, speed = 16, delay = 200 }: { text: string; speed?: n
 
 export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: Props) {
   const { user } = useAuth();
-  const lesson = LESSONS[moduleId];
-  const practice = PRACTICE_BEATS[moduleId];
+  const lesson = ACADEMY_LESSON_CONTENT[moduleId];
+  const practice = ACADEMY_PRACTICE_BEATS[moduleId];
+  const quizzes = ACADEMY_QUIZZES[moduleId] ?? [];
   const terms = glossaryForModule(moduleId);
   const outcomes = LESSON_OUTCOMES[moduleId] ?? [];
   const guideName = guideNameForModule(moduleId);
   const [phase, setPhase] = useState<ModalPhase>(terms.length > 0 ? "glossary" : "concept");
   const [level, setLevel] = useState<keyof GlossaryLevels>("twelve");
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [correct, setCorrect] = useState(false);
-  const [attempts, setAttempts] = useState(0);
   const [full, setFull] = useState(true);
   const [desktop, setDesktop] = useState(false);
   const [reflection, setReflection] = useState("");
@@ -531,7 +104,7 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
     });
   }
 
-  if (!lesson) {
+  if (!lesson || quizzes.length === 0) {
     return (
       <div ref={overlayRef} style={overlayStyle} onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}>
         <div style={modalStyle}>
@@ -542,34 +115,39 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
     );
   }
 
+  const passThreshold = dynamicQuorum(quizzes.length);
+  const currentQuiz = quizzes[questionIndex];
+
   function handleAnswer() {
     if (selectedAnswer === null) return;
-    const isCorrect = selectedAnswer === lesson.quiz.correctIndex;
-    const nextAttempts = attempts + 1;
+    const isCorrect = selectedAnswer === currentQuiz.correctIndex;
     setAnswered(true);
     setCorrect(isCorrect);
-    setAttempts(nextAttempts);
-    if (isCorrect) success(); else warn();
+    if (isCorrect) { setCorrectCount((c) => c + 1); success(); } else { warn(); }
   }
 
-  function handleRetry() {
-    setSelectedAnswer(null);
-    setAnswered(false);
-    setCorrect(false);
+  function handleNextQuestion() {
+    tap();
+    if (questionIndex < quizzes.length - 1) {
+      setQuestionIndex((i) => i + 1);
+      setSelectedAnswer(null);
+      setAnswered(false);
+      setCorrect(false);
+    } else {
+      setPhase("result");
+    }
   }
 
   function handleReviewAndRetry() {
+    setQuestionIndex(0);
+    setCorrectCount(0);
     setSelectedAnswer(null);
     setAnswered(false);
     setCorrect(false);
-    setAttempts(0);
     setPhase("concept");
   }
 
-  function handlePass() {
-    tap();
-    setPhase("result");
-  }
+  const lessonPassed = correctCount >= passThreshold;
 
   const reflectionWord = reflection.trim();
   const reflectionOk = reflectionWord.length > 0 && !/\s/.test(reflectionWord);
@@ -853,22 +431,36 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
 
           {phase === "quiz" && (
             <>
-              <div>
-                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>
-                  Attempt {Math.min(attempts + 1, QUIZ_ATTEMPT_LIMIT)} of {QUIZ_ATTEMPT_LIMIT} · answer before {guideName} speaks
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {quizzes.map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        flex: 1,
+                        height: 4,
+                        background: i < questionIndex || (i === questionIndex && answered)
+                          ? (i === questionIndex ? (correct ? "#167a3a" : "#b42318") : "var(--yi-black)")
+                          : "var(--yi-frame)",
+                      }}
+                    />
+                  ))}
+                </div>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: 0 }}>
+                  Question {questionIndex + 1} of {quizzes.length} · {correctCount} correct so far
                 </p>
                 <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "1rem", lineHeight: 1.6, color: "var(--yi-ink)", margin: 0, fontWeight: 500 }}>
-                  {lesson.quiz.question}
+                  {currentQuiz.question}
                 </p>
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                {lesson.quiz.options.map((opt, i) => {
+                {currentQuiz.options.map((opt, i) => {
                   let borderColor = "var(--yi-frame)";
                   let bg = "transparent";
                   let textColor = "var(--yi-ink)";
                   if (answered) {
-                    if (correct && i === lesson.quiz.correctIndex) { borderColor = "#167a3a"; bg = "rgba(22,122,58,0.06)"; textColor = "#167a3a"; }
+                    if (i === currentQuiz.correctIndex) { borderColor = "#167a3a"; bg = "rgba(22,122,58,0.06)"; textColor = "#167a3a"; }
                     else if (i === selectedAnswer && !correct) { borderColor = "#b42318"; bg = "rgba(180,35,24,0.05)"; textColor = "#b42318"; }
                   } else if (selectedAnswer === i) {
                     borderColor = "var(--yi-black)";
@@ -915,41 +507,26 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
               {answered && (
                 <div style={{ border: `1px solid ${correct ? "#167a3a" : "#b42318"}`, borderLeft: `2px solid ${correct ? "#167a3a" : "#b42318"}`, padding: "14px 16px", background: "var(--yi-card-bg)" }}>
                   <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.15em", color: correct ? "#167a3a" : "#b42318", margin: "0 0 8px" }}>
-                    {guideName} · {correct ? "Correct" : "Try again"}
+                    {guideName} · {correct ? "Correct" : "Not quite"}
                   </p>
                   <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
-                    <GordonLine text={correct ? lesson.quiz.gordonsAnswer : attempts >= QUIZ_ATTEMPT_LIMIT ? "Not yet. I'm not giving you the answer. Go back through the concept, then earn it on the next pass." : `Not yet. Try again before I explain it. ${QUIZ_ATTEMPT_LIMIT - attempts} attempt${QUIZ_ATTEMPT_LIMIT - attempts === 1 ? "" : "s"} left.`} />
+                    <GordonLine text={correct ? currentQuiz.gordonsAnswer : currentQuiz.wrongAnswer} />
                   </p>
                   <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-                    {correct ? (
-                      <button onClick={handlePass} style={btnPrimary}>
-                        Complete lesson →
-                      </button>
-                    ) : attempts < QUIZ_ATTEMPT_LIMIT ? (
-                      <button onClick={handleRetry} style={btnSecondary}>
-                        Try again
-                      </button>
-                    ) : (
-                      <button onClick={handleReviewAndRetry} style={btnSecondary}>
-                        Review lesson
-                      </button>
-                    )}
-                    {!correct && (
-                      <button onClick={handleReviewAndRetry} style={{ ...btnSecondary, borderColor: "var(--yi-frame)" }}>
-                        Review concept
-                      </button>
-                    )}
+                    <button onClick={handleNextQuestion} style={btnPrimary}>
+                      {questionIndex < quizzes.length - 1 ? "Next question →" : "See results →"}
+                    </button>
                   </div>
                 </div>
               )}
             </>
           )}
 
-          {phase === "result" && (
+          {phase === "result" && lessonPassed && (
             <>
               <div style={{ textAlign: "center", padding: "12px 0" }}>
                 <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "#167a3a", margin: "0 0 12px" }}>
-                  Lesson passed
+                  Lesson passed · {correctCount} of {quizzes.length} correct
                 </p>
                 <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.4rem", fontWeight: 600, margin: "0 0 12px", lineHeight: 1.1 }}>
                   {moduleTitle}
@@ -992,6 +569,28 @@ export function AcademyLessonModal({ moduleId, moduleTitle, onClose, onPass }: P
                 style={{ ...btnPrimary, opacity: reflectionOk ? 1 : 0.45, cursor: reflectionOk ? "pointer" : "not-allowed" }}
               >
                 Save reflection &amp; finish -&gt;
+              </button>
+            </>
+          )}
+
+          {phase === "result" && !lessonPassed && (
+            <>
+              <div style={{ textAlign: "center", padding: "12px 0" }}>
+                <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "#b42318", margin: "0 0 12px" }}>
+                  Not cleared yet · {correctCount} of {quizzes.length} correct
+                </p>
+                <h3 style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "1.4rem", fontWeight: 600, margin: "0 0 12px", lineHeight: 1.1 }}>
+                  {moduleTitle}
+                </h3>
+              </div>
+              <div style={{ borderLeft: "2px solid #b42318", paddingLeft: 14 }}>
+                <p style={{ ...monoSmall, color: "var(--yi-muted)", margin: "0 0 6px" }}>{guideName}</p>
+                <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", lineHeight: 1.65, color: "var(--yi-copy)", margin: 0, fontStyle: "italic" }}>
+                  {`"Not yet. You need ${passThreshold} of ${quizzes.length} to clear this station. Go back through the concept, then take the quiz again."`}
+                </p>
+              </div>
+              <button onClick={handleReviewAndRetry} style={btnPrimary}>
+                Review lesson &amp; retry -&gt;
               </button>
             </>
           )}

@@ -7,10 +7,12 @@ import { useTypewriter } from "@/lib/useTypewriter";
 import { GlossaryBook } from "@/components/GlossaryBook";
 import { LoungeMusic } from "@/components/LoungeMusic";
 import { SiciliaCreedCard } from "@/components/SiciliaCreedCard";
+import { ChefIdentityCard } from "@/components/ChefIdentityCard";
 import { useAuth } from "@/lib/auth-context";
 import { tap } from "@/lib/haptics";
 import type { RankingRow } from "@/lib/types";
 import { formatPercent } from "@/lib/domain";
+import { getLoungeKitchenRankings, type LoungeKitchenRow } from "@/lib/profileStore";
 
 interface LoungeViewProps {
   rankings: RankingRow[];
@@ -18,11 +20,14 @@ interface LoungeViewProps {
 }
 
 const RANK_LADDER = [
-  { rank: "01", label: "Commis",          note: "First steps in the Kitchen",           requirement: "Complete any Academy module", meaning: "You have entered service. The goal is basic fluency: words, risk, and why recipes need reasons." },
-  { rank: "02", label: "Chef de Partie",  note: "You know your station",                 requirement: "Earn Kitchen clearance", meaning: "You can hold a station without burning the table. Academy clearance turns learning into Kitchen access." },
-  { rank: "03", label: "Sous Chef",       note: "Ready to lead a section",               requirement: "Beat Gordon 3 times", meaning: "You are not just participating. Your reasoning and votes have started beating Gordon's benchmark." },
-  { rank: "04", label: "Chef de Cuisine", note: "The Kitchen is yours",                  requirement: "Beat Gordon across a full month", meaning: "You have sustained process over time. The Lounge sees consistency, not one lucky night." },
-  { rank: "05", label: "Michelin Star",   note: "The Lounge remembers you",              requirement: "Win a full season against Gordon", meaning: "Season-level excellence. Status here means discipline, receipts, risk control, and results." },
+  { rank: "01", label: "Commis",       note: "First steps in the Kitchen",   requirement: "Complete any Academy module", meaning: "You have entered service. The goal is basic fluency: words, risk, and why recipes need reasons." },
+  { rank: "02", label: "Demi Chef",    note: "Building the basics",          requirement: "Score 40+ in the Academy", meaning: "You are past the first lessons. The words are starting to stick, and the reasoning is starting to hold." },
+  { rank: "03", label: "Chef de Partie", note: "You know your station",      requirement: "Earn Kitchen clearance", meaning: "You can hold a station without burning the table. Academy clearance turns learning into Kitchen access." },
+  { rank: "04", label: "Sous Chef",    note: "Ready to lead a section",      requirement: "Score 80+ in the Academy", meaning: "You are not just participating. Your reasoning and votes carry real weight at the table." },
+  { rank: "05", label: "Master Chef",  note: "The Kitchen is yours",         requirement: "Clear the Academy at 95+", meaning: "Full command of the craft. Every Follow The Money module cleared, and cleared well." },
+  { rank: "06", label: "5-Star",       note: "The Lounge starts watching",   requirement: "Beat Gordon once", meaning: "Mastery alone isn't proof. This is your reasoning outperforming the benchmark, for real, once." },
+  { rank: "07", label: "6-Star",       note: "The Lounge remembers you",     requirement: "Beat Gordon twice", meaning: "Not a fluke. Two wins against the benchmark means the process, not the luck, is doing the work." },
+  { rank: "08", label: "7-Star",       note: "The Lounge's highest seat",    requirement: "Beat Gordon three times", meaning: "The ceiling of this ladder. Three confirmed wins against Gordon — the table's most trusted reasoning." },
 ];
 
 const BEAT_GORDON_PLATE = {
@@ -305,11 +310,20 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
   const [rankMeaning, setRankMeaning] = useState<(typeof RANK_LADDER)[number] | null>(null);
   const [cookbookPrompt, setCookbookPrompt] = useState(false);
   const [cookbookOpen, setCookbookOpen] = useState(false);
+  const [realKitchens, setRealKitchens] = useState<LoungeKitchenRow[]>([]);
+  const [selectedFounder, setSelectedFounder] = useState<LoungeKitchenRow | null>(null);
   const rankPressTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setSiciliaIdx((i) => i + 1), 11000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  // A newly formed Kitchen gets an identity here — real Kitchens, ranked by size.
+  useEffect(() => {
+    let cancelled = false;
+    getLoungeKitchenRankings().then((rows) => { if (!cancelled) setRealKitchens(rows); });
+    return () => { cancelled = true; };
   }, []);
 
   function clearRankPress() {
@@ -396,26 +410,65 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
       {/* Kitchen Law — the 60% Rule governance table */}
       <KitchenLawCard />
 
-      {/* Beat Gordon leaderboard — no Kitchens have formed yet (this is the real thing) */}
+      {/* Beat Gordon leaderboard — real Kitchens once at least one has formed */}
       <div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
           30-day return · Beat Gordon benchmark
         </p>
 
-        <div style={{ border: "1px solid var(--yi-frame)", padding: "30px 20px", background: "var(--yi-card-bg)", textAlign: "center" }}>
-          <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.15rem,4.5vw,1.5rem)", fontWeight: 600, color: "var(--yi-ink)", margin: "0 0 8px", lineHeight: 1.2 }}>
-            No Kitchens Trying to Beat Gordon Yet
-          </p>
-          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--yi-muted)", margin: "0 0 14px" }}>
-            follow the money
-          </p>
-          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: "0 auto 12px", maxWidth: 360 }}>
-            This is the real thing now — no fake Kitchens, no fake scores. When the first Kitchen forms and posts a 30-day return, it shows up here, chasing Gordon&apos;s +{gordonReturn.toFixed(1)}%.
-          </p>
-          <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-ink)", margin: 0 }}>
-            Be the first. Earn your seat. Letsss go.
-          </p>
-        </div>
+        {realKitchens.length === 0 ? (
+          <div style={{ border: "1px solid var(--yi-frame)", padding: "30px 20px", background: "var(--yi-card-bg)", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--font-bodoni), Georgia, serif", fontSize: "clamp(1.15rem,4.5vw,1.5rem)", fontWeight: 600, color: "var(--yi-ink)", margin: "0 0 8px", lineHeight: 1.2 }}>
+              No Kitchens Trying to Beat Gordon Yet
+            </p>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--yi-muted)", margin: "0 0 14px" }}>
+              follow the money
+            </p>
+            <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: "0 auto 12px", maxWidth: 360 }}>
+              This is the real thing now — no fake Kitchens, no fake scores. When the first Kitchen forms and posts a 30-day return, it shows up here, chasing Gordon&apos;s +{gordonReturn.toFixed(1)}%.
+            </p>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-ink)", margin: 0 }}>
+              Be the first. Earn your seat. Letsss go.
+            </p>
+          </div>
+        ) : (
+          <div style={{ border: "1px solid var(--yi-frame)", background: "var(--yi-card-bg)" }}>
+            {realKitchens.map((k, i) => (
+              <div
+                key={k.kitchenId}
+                style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "12px 14px", gap: 10,
+                  borderBottom: i < realKitchens.length - 1 ? "1px solid var(--yi-hairline)" : "none",
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.9rem", fontWeight: 600, margin: 0, color: "var(--yi-ink)" }}>
+                    {k.name}
+                  </p>
+                  <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: "2px 0 0" }}>
+                    {k.governance === "hedge" ? "High heat" : "Slow cook"} · {k.memberCount} chef{k.memberCount !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFounder(k)}
+                  style={{
+                    flexShrink: 0, background: "transparent", border: "1px solid var(--yi-frame)",
+                    fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem",
+                    textTransform: "uppercase", letterSpacing: "0.08em",
+                    padding: "8px 10px", cursor: "pointer", color: "var(--yi-ink)",
+                  }}
+                >
+                  View Chef&apos;s Card
+                </button>
+              </div>
+            ))}
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.5rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0, padding: "10px 14px" }}>
+              Ranked by table size · Real performance arrives once there&apos;s enough data to be honest about
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Start a Kitchen · refer a friend (2 chefs is enough) */}
@@ -477,7 +530,7 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
       {/* Rank ladder */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,2vw,0.62rem)", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 14px" }}>
-          The rank ladder · Commis → Michelin Star
+          The rank ladder · Commis → 7-Star
         </p>
         {RANK_LADDER.map((r, i) => {
           const isActive = i === userRank;
@@ -592,6 +645,15 @@ export function LoungeView({ rankings, onTabChange }: LoungeViewProps) {
       )}
 
       <GlossaryBook open={cookbookOpen} onClose={() => setCookbookOpen(false)} />
+
+      {selectedFounder?.founderUserId && (
+        <ChefIdentityCard
+          userId={selectedFounder.founderUserId}
+          fallbackName={selectedFounder.founderAlias}
+          fallbackIcon="chef-default"
+          onClose={() => setSelectedFounder(null)}
+        />
+      )}
     </section>
   );
 }
