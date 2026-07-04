@@ -52,3 +52,5 @@ desktop.ini
 *.diff
 package-lock.json.broken
 package.json.broken
+
+.vercel

@@ -38,6 +38,17 @@ for this frontend.
 
 Do not set `NEXT_PUBLIC_API_BASE_URL` for this tester stack.
 
+## Public veil
+
+Production defaults to a public veil so `younginvestors.co.za` and
+`www.younginvestors.co.za` show only:
+
+```text
+CURRENTLY STILL COOKING, WE WILL SERVE YOU LATER
+```
+
+Set `YI_PUBLIC_VEIL=0` in Vercel only when the full tester app should be public.
+
 ## 4. Domain
 
 Add both Vercel domains:
