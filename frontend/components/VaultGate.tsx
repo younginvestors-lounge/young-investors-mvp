@@ -4,8 +4,8 @@
  * Vault gating for the tester build.
  *
  * Testers do not get the Vault until they finish the Academy. Then they're granted
- * R1,001 of *practice* capital and the paper simulation begins. No fake holdings,
- * no fake performance — the real thing now.
+ * R1,001 of *practice* capital and the paper simulation begins. No live holdings,
+ * no live performance — production-shaped paper state only.
  *
  * MOCK_MVP_PAPER_TRADING_ONLY — pretend money, real lessons. Never financial advice.
  */
@@ -16,6 +16,23 @@ import { LockKeyhole, ReceiptText, Scale, Trash2, Vault as VaultIcon } from "luc
 import { InflationEroderCard } from "@/components/InflationEroder";
 import { clearShelfReceipts, readShelfReceipts, SHELF_EVENT, type ShelfReceipt } from "@/lib/shelfStore";
 import { notifyTask } from "@/lib/taskToast";
+import { formatRand } from "@/lib/jseMarket";
+import { getKitchenVaultLedger, type KitchenVaultLedger } from "@/lib/profileStore";
+import type { DashboardTab } from "@/lib/types";
+
+const EMPTY_LEDGER: KitchenVaultLedger = { receipts: [], holdings: [] };
+
+function TabLink({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}
+    >
+      {label}
+    </button>
+  );
+}
 
 export const STARTING_CAPITAL = "R1,001.00";
 
@@ -32,7 +49,15 @@ function receiptDate(ts: number): string {
 }
 
 /** Shown when a Chef taps the Vault before finishing the Academy. */
-export function VaultLocked({ passedCount, totalCount }: { passedCount: number; totalCount: number }) {
+export function VaultLocked({
+  passedCount,
+  totalCount,
+  onTabChange,
+}: {
+  passedCount: number;
+  totalCount: number;
+  onTabChange?: (tab: DashboardTab) => void;
+}) {
   const pct = totalCount > 0 ? Math.round((passedCount / totalCount) * 100) : 0;
   const remaining = Math.max(0, totalCount - passedCount);
 
@@ -69,6 +94,13 @@ export function VaultLocked({ passedCount, totalCount }: { passedCount: number; 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
         Build the Academy receipts · Educational simulation only
       </p>
+
+      {onTabChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <TabLink label="Continue the Academy →" onClick={() => onTabChange("academy")} />
+          <TabLink label="Browse the Shop meanwhile →" onClick={() => onTabChange("shop")} />
+        </div>
+      )}
     </section>
   );
 }
@@ -166,7 +198,19 @@ function VaultShelfReceipts() {
 }
 
 /** Shown once the Academy is cleared: the R1,001 grant + the start of the simulation. */
-export function VaultStart({ chefName }: { chefName: string }) {
+export function VaultStart({ chefName, onTabChange }: { chefName: string; onTabChange?: (tab: DashboardTab) => void }) {
+  const [kitchenVault, setKitchenVault] = useState<KitchenVaultLedger>(EMPTY_LEDGER);
+
+  // The Kitchen vote is the gate: nothing lands here that the table did not approve.
+  useEffect(() => {
+    let cancelled = false;
+    getKitchenVaultLedger().then((ledger) => { if (!cancelled) setKitchenVault(ledger); });
+    const t = setInterval(() => {
+      getKitchenVaultLedger().then((ledger) => { if (!cancelled) setKitchenVault(ledger); });
+    }, 10000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
   return (
     <section style={{ display: "grid", gap: 18 }} aria-labelledby="vault-start-heading">
       <div>
@@ -200,13 +244,30 @@ export function VaultStart({ chefName }: { chefName: string }) {
       {/* The R1,001 is all cash until the first recipe cooks — show what idle money costs. */}
       <InflationEroderCard nominalAmount={1001} isIdle currency="ZAR" />
 
+      {/* Kitchen Vault — paper receipts once a recipe crosses the 60% Rule. */}
       <div style={{ border: "1px solid var(--yi-frame)", padding: "16px 18px", background: "var(--yi-card-bg)" }}>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 8px" }}>
-          What happens next · follow the money
+          Kitchen Vault · what happens next
         </p>
-        <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
-          Right now your Vault is all cash — no positions yet. When your Kitchen votes a recipe through the 60% Rule, the holding shows up here with its plate weight and heat. No fake holdings. This is the real thing.
-        </p>
+        {kitchenVault.receipts.length === 0 ? (
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--yi-copy)", margin: 0 }}>
+            Right now your Vault is all paper cash — no positions yet. When your Kitchen votes a recipe through the 60% Rule, the holding shows up here with its plate weight and heat. Production-shaped, paper-only.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {kitchenVault.holdings.map((h) => (
+              <div key={h.ticker} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--yi-frame)", padding: "8px 12px" }}>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.78rem", fontWeight: 700 }}>{h.ticker}</span>
+                <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.7rem", color: "var(--yi-muted)" }}>
+                  {h.netUnits > 0 ? "+" : ""}{h.netUnits} units · {formatRand(h.netNotional)}
+                </span>
+              </div>
+            ))}
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
+              {kitchenVault.receipts.length} recipe{kitchenVault.receipts.length !== 1 ? "s" : ""} executed by your Kitchen · Mock execution only
+            </p>
+          </div>
+        )}
       </div>
 
       <VaultShelfReceipts />
@@ -214,6 +275,13 @@ export function VaultStart({ chefName }: { chefName: string }) {
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.56rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: 0 }}>
         Paper trading only · No real money · No live execution · Not financial advice
       </p>
+
+      {onTabChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <TabLink label="Open the Kitchen →" onClick={() => onTabChange("kitchen")} />
+          <TabLink label="Browse the Shop for ideas →" onClick={() => onTabChange("shop")} />
+        </div>
+      )}
     </section>
   );
 }

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
     "verify:supabase": "node scripts/verify-supabase-auth.mjs",
     "verify:auth-local": "node scripts/verify-local-auth.mjs",
     "verify:auth-live": "node scripts/verify-live-auth.mjs"
@@ -30,6 +31,7 @@
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.9"
   }
 }

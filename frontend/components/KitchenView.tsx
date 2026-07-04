@@ -1,19 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleCheck, Soup, Users, Vote } from "lucide-react";
+import { CircleCheck, MessageCircle, Soup, Users, Vault, Vote } from "lucide-react";
 import { getProfileIcon } from "@/lib/profileIcons";
 import { useTypewriter } from "@/lib/useTypewriter";
 import { useAuth } from "@/lib/auth-context";
 import { FormKitchen, KitchenLobby } from "@/components/KitchenFlow";
 import { KitchenChatPanel } from "@/components/KitchenChatPanel";
+import { ChefIdentityCard } from "@/components/ChefIdentityCard";
 import { RevealBox } from "@/components/RevealBox";
 import { SiciliaCreedCard } from "@/components/SiciliaCreedCard";
-import { getActiveProposal, getKitchenVotes, getMyKitchen, MIN_KITCHEN_CHEFS, submitProposal, type KitchenState, type ProposalData } from "@/lib/profileStore";
-import { calculateConsensus, dynamicQuorum } from "@/lib/domain";
+import { TransactionTerminal } from "@/components/TransactionTerminal";
+import {
+  getActiveProposal,
+  getKitchenVaultLedger,
+  getKitchenVotes,
+  getMyKitchen,
+  MIN_KITCHEN_CHEFS,
+  submitProposal,
+  type KitchenState,
+  type KitchenVaultLedger,
+  type ProposalData,
+} from "@/lib/profileStore";
+import { calculateConsensus, calculateWeightedConsensus, dynamicQuorum } from "@/lib/domain";
 import { rememberGordonChefReason } from "@/lib/gordonKnowledgeBank";
 import { readShelfReceipts, removeShelfReceipt, SHELF_EVENT, type ShelfReceipt } from "@/lib/shelfStore";
+import { appendTerminalEvent } from "@/lib/transactionTerminal";
+import { formatRand, JSE_STOCKS } from "@/lib/jseMarket";
 import type { AcademyClearance, ChefVote, KitchenMember, VoteTally } from "@/lib/types";
+
+const EMPTY_VAULT_LEDGER: KitchenVaultLedger = { receipts: [], holdings: [] };
 
 type GovernanceModel = "slow-cook" | "high-heat";
 type KitchenPhase = "browse" | "propose" | "vote";
@@ -145,14 +161,23 @@ function ProposeScreen({
     setError("");
     setSaving(true);
     try {
+      // Capture the mock JSE price at propose-time so a passed recipe becomes a
+      // priced paper execution receipt in the Kitchen Vault.
+      const stock = JSE_STOCKS.find((s) => s.symbol === draft.symbol);
+      const units = Number(draft.units);
+      const price = stock?.price;
+      const notional = price != null ? Math.round(price * units * 100) / 100 : undefined;
+
       // Write to DB (no-op in local demo mode — returns null)
       await submitProposal({
         ticker: draft.symbol,
         assetName: draft.assetName,
         side: draft.side,
-        units: Number(draft.units),
+        units,
         thesis: draft.reason,
         seasoning: draft.reason,
+        price,
+        notional,
       });
       removeShelfReceipt(draft.shelfReceiptId);
     } catch (err) {
@@ -404,128 +429,27 @@ function ProposeScreen({
   );
 }
 
-/* ── Chef profile bottom sheet ── */
-function ChefProfileSheet({
-  member,
-  onClose,
-}: {
-  member: KitchenMember;
-  onClose: () => void;
-}) {
-  const voteColor = member.vote === "FOR" ? "#167a3a" : member.vote === "AGAINST" ? "#b42318" : "var(--yi-muted)";
-  const voteLabel = member.vote === "FOR" ? "Voted For" : member.vote === "AGAINST" ? "Voted Against" : "Pending";
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 120,
-        background: "rgba(0,0,0,0.35)",
-        display: "flex", alignItems: "flex-end",
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 480,
-          margin: "0 auto",
-          background: "var(--yi-white)",
-          border: "1px solid var(--yi-frame)",
-          borderBottom: "none",
-          padding: "24px 20px 32px",
-          display: "grid",
-          gap: 16,
-          animation: "modal-in 200ms ease",
-        }}
-      >
-        <style>{`@keyframes modal-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
-
-        {/* Avatar + name */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{
-            width: 64, height: 64,
-            border: "1px solid var(--yi-frame)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, background: "var(--yi-soft)",
-          }}>
-            {(() => { const I = getProfileIcon(member.profileIcon); return <I size={28} strokeWidth={1.5} />; })()}
-          </div>
-          <div>
-            <p style={{
-              fontFamily: "var(--font-bodoni), Georgia, serif",
-              fontSize: "1.35rem", fontWeight: 600, margin: 0, lineHeight: 1.1,
-            }}>
-              {member.isUser ? `You (${member.name})` : member.name}
-            </p>
-            <p style={{
-              fontFamily: "var(--font-mono), monospace",
-              fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.12em",
-              color: "var(--yi-muted)", margin: "4px 0 0",
-            }}>
-              {member.clearanceLevel ?? "Young Investor"} · Chef
-            </p>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "var(--yi-frame)" }}>
-          {[
-            { label: "Recipes", value: String(member.recipesProposed ?? 0) },
-            { label: "Vote", value: voteLabel },
-            { label: "Status", value: member.isUser ? "You" : "Member" },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ background: "var(--yi-white)", padding: "12px 10px", textAlign: "center" }}>
-              <p style={{
-                fontFamily: "var(--font-mono), monospace",
-                fontSize: "1rem", fontWeight: 700, margin: "0 0 3px",
-                color: label === "Vote" ? voteColor : "var(--yi-ink)",
-              }}>
-                {value}
-              </p>
-              <p style={{
-                fontFamily: "var(--font-mono), monospace",
-                fontSize: "0.52rem", textTransform: "uppercase", letterSpacing: "0.1em",
-                color: "var(--yi-muted)", margin: 0,
-              }}>
-                {label}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            background: "transparent", border: "1px solid var(--yi-frame)",
-            fontFamily: "var(--font-mono), monospace", fontSize: "0.65rem",
-            textTransform: "uppercase", letterSpacing: "0.1em",
-            padding: "10px 16px", cursor: "pointer", color: "var(--yi-ink)",
-            justifySelf: "start",
-          }}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ── Active proposal + vote screen ── */
 function VoteScreen({
   proposal,
   members,
+  governance,
   onVote,
   onBack,
 }: {
   proposal: ProposalData;
   members: KitchenMember[];
+  governance: "mutual" | "hedge";
   onVote: (memberId: string, vote: ChefVote) => void;
   onBack: () => void;
 }) {
+  const isHedge = governance === "hedge";
   const tally = membersToVoteTally(members);
-  const consensus = calculateConsensus(tally);
+  const yesSay = members.filter((m) => m.vote === "FOR").reduce((sum, m) => sum + (m.chefSay ?? 1), 0);
+  const totalSay = members.reduce((sum, m) => sum + (m.chefSay ?? 1), 0);
+  const consensus = isHedge
+    ? calculateWeightedConsensus({ yesSay, totalSay })
+    : calculateConsensus(tally);
   const result = {
     forCount: tally.yes,
     againstCount: tally.no,
@@ -618,14 +542,20 @@ function VoteScreen({
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
           <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>
-            Need {dynamicQuorum(members.length)} of {members.length}
+            {isHedge ? `${yesSay.toFixed(2)} of ${totalSay.toFixed(2)} say` : `Need ${dynamicQuorum(members.length)} of ${members.length}`}
           </span>
-          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>60% rule</span>
+          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)" }}>
+            60% rule{isHedge ? " · Chef's Say" : ""}
+          </span>
         </div>
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", color: passes ? "#167a3a" : "#b46918", margin: "6px 0 0" }}>
-          {passes
-            ? `Kitchen is ready to cook · ${result.forCount} YES of ${dynamicQuorum(members.length)} needed`
-            : `${result.forCount} YES · need ${dynamicQuorum(members.length) - result.forCount} more to cook`}
+          {isHedge
+            ? (passes
+                ? `Kitchen is ready to cook · ${consensus.yesPercent}% of the table's say`
+                : `${consensus.yesPercent}% of the table's say · needs 60%`)
+            : (passes
+                ? `Kitchen is ready to cook · ${result.forCount} YES of ${dynamicQuorum(members.length)} needed`
+                : `${result.forCount} YES · need ${dynamicQuorum(members.length) - result.forCount} more to cook`)}
         </p>
       </div>
 
@@ -642,11 +572,9 @@ function VoteScreen({
               <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "clamp(0.82rem,3vw,0.9rem)", fontWeight: member.isUser ? 600 : 400, margin: 0, color: "var(--yi-ink)", whiteSpace: "nowrap" }}>
                 {member.name}
               </p>
-              {member.isUser && (
-                <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,1.8vw,0.58rem)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: "2px 0 0" }}>
-                  Your vote
-                </p>
-              )}
+              <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.5rem,1.8vw,0.58rem)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", margin: "2px 0 0" }}>
+                {[member.isUser ? "Your vote" : null, isHedge && member.chefSay != null ? `${member.chefSay.toFixed(2)} say` : null].filter(Boolean).join(" · ")}
+              </p>
             </div>
             <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
               {member.isUser ? (
@@ -735,6 +663,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
   const [activeProposal, setActiveProposal] = useState<ProposalData | null>(null);
   const [selectedMember, setSelectedMember] = useState<KitchenMember | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [kitchenVault, setKitchenVault] = useState<KitchenVaultLedger>(EMPTY_VAULT_LEDGER);
 
   // Load the chef's real Kitchen (Supabase RPC or local demo).
   useEffect(() => {
@@ -764,6 +693,7 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         isUser: m.isYou,
         profileIcon: m.icon,
         clearanceLevel: m.role === "founder" ? "Head Chef" : "Kitchen Chef",
+        chefSay: m.chefSay,
       }))
     );
     setModel(kitchen.governance === "hedge" ? "high-heat" : "slow-cook");
@@ -773,6 +703,8 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
     }).catch(() => {
       setActiveProposal(DEMO_PROPOSAL);
     });
+    // ...and the Kitchen Vault: receipts + net holdings from recipes that already passed.
+    getKitchenVaultLedger().then(setKitchenVault);
   }, [kitchen]);
 
   // The Table room in the Lobby deep-links here with chat open. The flag is
@@ -798,6 +730,10 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
       const proposal = await getActiveProposal().catch(() => null) ?? DEMO_PROPOSAL;
       if (!cancelled) setActiveProposal(proposal);
 
+      // Refresh the Kitchen Vault so a recipe that just crossed 60% shows its
+      // receipt without needing a manual refresh.
+      getKitchenVaultLedger().then((ledger) => { if (!cancelled) setKitchenVault(ledger); });
+
       const votes = await getKitchenVotes(proposal.ticker);
       if (cancelled || Object.keys(votes).length === 0) return;
       setMembers((prev) =>
@@ -820,6 +756,18 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
     setMembers((prev) => prev.map((m) => (m.id !== memberId ? m : { ...m, vote: next })));
     // Persist only the user's own cast (not an un-vote). Best-effort, never blocks.
     if (member?.isUser && next && activeProposal) {
+      const sayNote = kitchen?.governance === "hedge" && member.chefSay != null
+        ? ` (${member.chefSay.toFixed(2)} say)`
+        : "";
+      appendTerminalEvent({
+        kind: "vote_cast",
+        title: "Kitchen vote committed",
+        line: `${next} on ${activeProposal.ticker}${sayNote} / concealed Kitchen accounting vote`,
+        ticker: activeProposal.ticker,
+        side: next,
+        amount: null,
+        status: next === "AGAINST" ? "rejected" : next === "FOR" ? "approved" : "info",
+      });
       void recordKitchenVote({
         kitchenName: kitchen?.name ?? "My Kitchen",
         proposalId: activeProposal.id,
@@ -860,6 +808,13 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
           Kitchen votes are mock governance signals · No live execution
         </p>
+        {onTabChange && (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => onTabChange("academy")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+              Finish the Academy →
+            </button>
+          </div>
+        )}
       </section>
     );
   }
@@ -877,20 +832,22 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
   if (!kitchen) {
     return (
       <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
-        <FormKitchen onDone={setKitchen} />
+        <FormKitchen onDone={setKitchen} onTabChange={onTabChange} />
       </section>
     );
   }
   if (kitchen.members.length < MIN_KITCHEN_CHEFS) {
     return (
       <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
-        <KitchenLobby kitchen={kitchen} onChanged={setKitchen} onLeft={() => setKitchen(null)} />
+        <KitchenLobby kitchen={kitchen} onChanged={setKitchen} onLeft={() => setKitchen(null)} onTabChange={onTabChange} />
       </section>
     );
   }
 
+  let phaseContent: React.ReactNode;
+
   if (phase === "propose") {
-    return (
+    phaseContent = (
       <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
         <ProposeScreen
           onBack={() => setPhase("browse")}
@@ -907,6 +864,17 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
                 reason: draft.reason,
               });
             }
+            const stock = JSE_STOCKS.find((s) => s.symbol === draft.symbol);
+            const notional = stock ? Math.round(stock.price * Number(draft.units) * 100) / 100 : null;
+            appendTerminalEvent({
+              kind: "recipe_submitted",
+              title: "Kitchen recipe receipt",
+              line: `${draft.side} ${draft.symbol} / ${draft.units} units sent to concealed Kitchen vote`,
+              ticker: draft.symbol,
+              side: draft.side,
+              amount: notional,
+              status: "pending",
+            });
             // After submit, refresh the active proposal from DB so all members see it.
             getActiveProposal().then((p) => { if (p) setActiveProposal(p); }).catch(() => {});
             setTimeout(() => setPhase("browse"), 2000);
@@ -914,32 +882,34 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         />
       </section>
     );
-  }
-
-  if (phase === "vote") {
+  } else if (phase === "vote") {
     const proposal = activeProposal ?? DEMO_PROPOSAL;
-    return (
+    phaseContent = (
       <section style={{ display: "grid", gap: 0 }} aria-labelledby="kitchen-heading">
-        <VoteScreen proposal={proposal} members={members} onVote={castVote} onBack={() => setPhase("browse")} />
+        <VoteScreen proposal={proposal} members={members} governance={kitchen.governance} onVote={castVote} onBack={() => setPhase("browse")} />
       </section>
     );
-  }
+  } else {
+    /* Browse / floor view */
+    const tally = membersToVoteTally(members);
+    const consensus = kitchen.governance === "hedge"
+      ? calculateWeightedConsensus({
+          yesSay: members.filter((m) => m.vote === "FOR").reduce((sum, m) => sum + (m.chefSay ?? 1), 0),
+          totalSay: members.reduce((sum, m) => sum + (m.chefSay ?? 1), 0),
+        })
+      : calculateConsensus(tally);
+    const result = {
+      forCount: tally.yes,
+      againstCount: tally.no,
+      castCount: tally.yes + tally.no + tally.abstain,
+      quorumMet: consensus.quorumMet,
+      forRatio: consensus.yesRatio,
+      passes: consensus.approved,
+    };
+    const passes = result.passes;
+    const floorProposal = activeProposal ?? DEMO_PROPOSAL;
 
-  /* Browse / floor view */
-  const tally = membersToVoteTally(members);
-  const consensus = calculateConsensus(tally);
-  const result = {
-    forCount: tally.yes,
-    againstCount: tally.no,
-    castCount: tally.yes + tally.no + tally.abstain,
-    quorumMet: consensus.quorumMet,
-    forRatio: consensus.yesRatio,
-    passes: consensus.approved,
-  };
-  const passes = result.passes;
-  const floorProposal = activeProposal ?? DEMO_PROPOSAL;
-
-  return (
+    phaseContent = (
     <section style={{ display: "grid", gap: 22 }} aria-labelledby="kitchen-heading">
 
       {/* Header */}
@@ -1057,6 +1027,65 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
       </div>
       </RevealBox>
 
+      <TransactionTerminal surface="kitchen" kitchenVault={kitchenVault} maxRows={6} />
+
+      {/* Kitchen Vault — receipts + net holdings from recipes that already passed */}
+      <RevealBox
+        symbol={<Vault size={15} strokeWidth={1.8} aria-hidden />}
+        title="Kitchen Vault"
+        meta={kitchenVault.receipts.length > 0 ? `${kitchenVault.receipts.length} receipt${kitchenVault.receipts.length !== 1 ? "s" : ""}` : "No recipes executed yet"}
+        defaultOpen={kitchenVault.receipts.length > 0}
+      >
+        {kitchenVault.receipts.length === 0 ? (
+          <p style={{ fontFamily: "var(--font-archivo), system-ui, sans-serif", fontSize: "0.86rem", color: "var(--yi-copy)", lineHeight: 1.55, margin: 0 }}>
+            Once a recipe crosses the 60% Rule, it lands here as a paper accounting receipt and rolls up into the Kitchen&apos;s holdings below. The public terminal mirrors the commitment while concealing Kitchen identity.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div>
+              <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
+                Net holdings
+              </p>
+              <div style={{ display: "grid", gap: 6 }}>
+                {kitchenVault.holdings.map((h) => (
+                  <div key={h.ticker} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--yi-frame)", padding: "8px 12px" }}>
+                    <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.78rem", fontWeight: 700 }}>{h.ticker}</span>
+                    <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.7rem", color: "var(--yi-muted)" }}>
+                      {h.netUnits > 0 ? "+" : ""}{h.netUnits} units · {formatRand(h.netNotional)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
+                Accounting receipts · newest first
+              </p>
+              <div style={{ display: "grid", gap: 8 }}>
+                {kitchenVault.receipts.slice(0, 5).map((r) => (
+                  <div key={r.id} style={{ border: "1px solid var(--yi-frame)", padding: "10px 12px", background: "var(--yi-card-bg)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", fontWeight: 700 }}>
+                        {r.side} {r.ticker}
+                      </span>
+                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", color: "var(--yi-muted)" }}>
+                        {new Date(r.executedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.62rem", color: "var(--yi-muted)", margin: "4px 0 0" }}>
+                      {r.units} units{r.notional != null ? ` · ${formatRand(r.notional)}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.54rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
+              Mock execution · Paper accounting receipts only · See the full ledger in your Vault
+            </p>
+          </div>
+        )}
+      </RevealBox>
+
       {submittedDraft && (
         <div style={{ border: "1px solid #167a3a", padding: "14px 16px", background: "var(--yi-card-bg)" }}>
           <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "#167a3a", margin: "0 0 6px" }}>
@@ -1077,13 +1106,6 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
         >
           + Propose a Recipe
         </button>
-        <button
-          type="button"
-          onClick={() => setChatOpen(true)}
-          style={{ minHeight: 48, padding: "0 22px", background: "transparent", color: "var(--yi-ink)", border: "1px solid var(--yi-frame)", fontFamily: "var(--font-mono), monospace", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer" }}
-        >
-          Kitchen Chat
-        </button>
       </div>
 
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
@@ -1100,10 +1122,30 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           </button>
         </div>
       )}
+    </section>
+    );
+  }
 
-      {selectedMember && (
-        <ChefProfileSheet member={selectedMember} onClose={() => setSelectedMember(null)} />
-      )}
+  return (
+    <>
+      {phaseContent}
+
+      {/* Floating Table Chat — reachable from the Floor and while voting */}
+      <button
+        type="button"
+        onClick={() => setChatOpen(true)}
+        aria-label="Open Table Chat"
+        style={{
+          position: "fixed", right: 18, bottom: 88, zIndex: 110,
+          width: 52, height: 52, borderRadius: "50%",
+          background: "var(--yi-black)", color: "var(--yi-white)",
+          border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
+        }}
+      >
+        <MessageCircle size={22} strokeWidth={1.8} aria-hidden />
+      </button>
 
       {chatOpen && (
         <KitchenChatPanel
@@ -1111,6 +1153,15 @@ export function KitchenView({ clearance, onTabChange }: KitchenViewProps) {
           onClose={() => setChatOpen(false)}
         />
       )}
-    </section>
+
+      {selectedMember && (
+        <ChefIdentityCard
+          userId={selectedMember.id}
+          fallbackName={selectedMember.name}
+          fallbackIcon={selectedMember.profileIcon ?? "chef-default"}
+          onClose={() => setSelectedMember(null)}
+        />
+      )}
+    </>
   );
 }

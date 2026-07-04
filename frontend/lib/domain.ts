@@ -37,6 +37,67 @@ export function calculateConsensus(votes: VoteTally): ConsensusResult {
   };
 }
 
+/**
+ * Chef's Say — a Hedge Kitchen's vote weight. Mutual Kitchens never call this;
+ * every chef there counts as 1, by construction (the 60% Rule stays headcount-based).
+ * Rank (Academy mastery) leads; kitchen_score (participation + seasoning discipline,
+ * already tracked on profiles) can add at most +0.25 — an active Commis can close
+ * the gap on an idle Master Chef, but rank still leads.
+ */
+const SAY_MULTIPLIER: Record<string, number> = {
+  "Commis": 1.00,
+  "Demi Chef": 1.15,
+  "Chef de Partie": 1.30,
+  "Sous Chef": 1.50,
+  "Master Chef": 1.75,
+};
+
+export function sayMultiplier(rank: string): number {
+  return SAY_MULTIPLIER[rank] ?? 1;
+}
+
+export function computeChefSay(rank: string, kitchenScore: number): number {
+  const clampedScore = Math.max(0, Math.min(100, kitchenScore));
+  return sayMultiplier(rank) + (clampedScore / 100) * 0.25;
+}
+
+export interface WeightedVoteTally {
+  yesSay: number;
+  totalSay: number;
+}
+
+/** Hedge Kitchen version of calculateConsensus: same 60% threshold, measured in
+ * Chef's Say instead of headcount. Mutual Kitchens use calculateConsensus above. */
+export function calculateWeightedConsensus(tally: WeightedVoteTally): ConsensusResult {
+  const yesRatio = tally.totalSay === 0 ? 0 : tally.yesSay / tally.totalSay;
+  const thresholdMet = yesRatio >= CONSENSUS_THRESHOLD;
+  return {
+    yesRatio,
+    yesPercent: Math.round(yesRatio * 100),
+    quorumVotes: tally.yesSay,
+    quorumMet: thresholdMet,
+    thresholdMet,
+    approved: thresholdMet,
+  };
+}
+
+export type ContributionKind = "deposit" | "withdrawal";
+export type ContributionStatus = "requested" | "approved" | "rejected";
+
+/**
+ * A Kitchen Vault contribution is a joint-account paper intent (YI_UNIFIED_VISION.md
+ * §3): it needs a co-signer who is not the requester, and can only move once it's
+ * still "requested". A Personal Vault contribution has no co-signer requirement —
+ * it's the chef's own paper capital — so this only governs Kitchen-level intents.
+ */
+export function canApproveContribution(
+  requesterId: string,
+  approverId: string,
+  status: ContributionStatus
+): boolean {
+  return status === "requested" && requesterId !== approverId;
+}
+
 export function formatMoney(money: Money): string {
   return new Intl.NumberFormat("en-ZA", {
     style: "currency",

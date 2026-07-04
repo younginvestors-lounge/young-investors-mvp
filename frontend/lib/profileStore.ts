@@ -18,6 +18,7 @@
 
 import { isSupabaseConfigured, requireSupabase } from "./supabaseClient";
 import { rememberGordonChefReason } from "./gordonKnowledgeBank";
+import { computeChefSay } from "./domain";
 import {
   computeGordonScoreFromQuanta,
   quantumScoresFromAnswers,
@@ -141,9 +142,13 @@ export class AttemptLimitError extends Error {
 
 /* ── Pure helpers ── */
 
-/** Kitchen-brigade rank from a best Academy score. A calm status ladder for the Lounge. */
+/**
+ * Kitchen-brigade rank from a best Academy score. A calm status ladder for the Lounge.
+ * Master Chef is the ceiling of the score-driven ladder; the Lounge's 5/6/7-Star tiers
+ * sit above it and are earned by beating Gordon, not by score alone.
+ */
 export function computeRank(score: number): string {
-  if (score >= 95) return "Head Chef";
+  if (score >= 95) return "Master Chef";
   if (score >= 80) return "Sous Chef";
   if (score >= PASS_THRESHOLD) return "Chef de Partie";
   if (score >= 40) return "Demi Chef";
@@ -687,6 +692,8 @@ export interface KitchenMemberLite {
   isYou: boolean;
   /** A local-demo practice co-chef (never on the real Supabase deploy). */
   simulated?: boolean;
+  /** Chef's Say — only meaningful in a Hedge Kitchen; Mutual Kitchens ignore it. */
+  chefSay?: number;
 }
 
 export interface KitchenState {
@@ -716,6 +723,7 @@ function youMember(p: ChefProfile): KitchenMemberLite {
     memberNumber: p.member_number,
     role: "founder",
     isYou: true,
+    chefSay: computeChefSay(p.rank, p.kitchen_score),
   };
 }
 
@@ -755,6 +763,7 @@ async function sbGetMyKitchen(): Promise<KitchenState | null> {
     memberNumber: (r.member_number as number) ?? null,
     role: (r.member_role as string) ?? "chef",
     isYou: auth.id === String(r.member_user),
+    chefSay: computeChefSay((r.member_rank as string) ?? "Commis", Number(r.member_kitchen_score) || 0),
   }));
   return {
     id: String(first.kitchen_id),
@@ -904,6 +913,8 @@ export async function submitProposal(draft: {
   units: number;
   thesis: string;
   seasoning: string;
+  price?: number;
+  notional?: number;
 }): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
   const sb = requireSupabase();
@@ -914,6 +925,8 @@ export async function submitProposal(draft: {
     p_units: draft.units,
     p_thesis: draft.thesis,
     p_seasoning: draft.seasoning,
+    p_price: draft.price ?? null,
+    p_notional: draft.notional ?? null,
   });
   if (error) throw error;
   return data as string;
@@ -1196,5 +1209,260 @@ export async function getKitchenVotes(ticker: string): Promise<Record<string, st
     return out;
   } catch {
     return {};
+  }
+}
+
+/* ── Kitchen Vault — receipts + net holdings from passed recipes ─────────────── */
+
+export interface KitchenExecution {
+  id: string;
+  kitchenId: string;
+  proposalId: string;
+  ticker: string;
+  assetName: string | null;
+  side: "BUY" | "SELL";
+  units: number;
+  price: number | null;
+  notional: number | null;
+  executedAt: string;
+}
+
+export interface KitchenHolding {
+  ticker: string;
+  netUnits: number;
+  netNotional: number;
+}
+
+export interface KitchenVaultLedger {
+  receipts: KitchenExecution[];
+  holdings: KitchenHolding[];
+}
+
+const EMPTY_LEDGER: KitchenVaultLedger = { receipts: [], holdings: [] };
+
+/** Receipts + simple net holdings for the caller's Kitchen. Best-effort — never throws. */
+export async function getKitchenVaultLedger(): Promise<KitchenVaultLedger> {
+  if (!isSupabaseConfigured()) return EMPTY_LEDGER;
+  try {
+    const sb = requireSupabase();
+    const { data, error } = await sb.rpc("kitchen_vault_ledger");
+    if (error) return EMPTY_LEDGER;
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return EMPTY_LEDGER;
+    const row = rows[0];
+    const receiptsRaw = (row.receipts as Array<Record<string, unknown>>) ?? [];
+    const holdingsRaw = (row.holdings as Array<Record<string, unknown>>) ?? [];
+    return {
+      receipts: receiptsRaw.map((r) => ({
+        id: String(r.id),
+        kitchenId: String(r.kitchen_id),
+        proposalId: String(r.proposal_id),
+        ticker: String(r.ticker),
+        assetName: (r.asset_name as string) ?? null,
+        side: String(r.side) === "SELL" ? "SELL" : "BUY",
+        units: Number(r.units) || 0,
+        price: r.price != null ? Number(r.price) : null,
+        notional: r.notional != null ? Number(r.notional) : null,
+        executedAt: String(r.executed_at),
+      })),
+      holdings: holdingsRaw.map((h) => ({
+        ticker: String(h.ticker),
+        netUnits: Number(h.net_units) || 0,
+        netNotional: Number(h.net_notional) || 0,
+      })),
+    };
+  } catch {
+    return EMPTY_LEDGER;
+  }
+}
+
+/* ── Chef Card — public identity for any chef ─────────────────────────────────── */
+
+export interface ChefCard {
+  userId: string;
+  chefAlias: string;
+  profileIcon: string;
+  profilePictureUrl: string | null;
+  memberNumber: number | null;
+  rank: string;
+  academyScore: number;
+  kitchenScore: number;
+  jseMarketScore: number;
+  personalPredictionScore: number;
+  kitchenPredictionScore: number;
+  credentialStatus: string;
+  currentKitchen: string | null;
+}
+
+/** The public, safe subset of any chef's profile (never email/age/intent). */
+export async function getChefCard(userId: string): Promise<ChefCard | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = requireSupabase();
+    const { data, error } = await sb.rpc("chef_card", { p_user_id: userId });
+    if (error) return null;
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      userId: String(r.user_id),
+      chefAlias: String(r.chef_alias ?? "Chef"),
+      profileIcon: String(r.profile_icon ?? "chef-default"),
+      profilePictureUrl: (r.profile_picture_url as string) ?? null,
+      memberNumber: (r.member_number as number) ?? null,
+      rank: String(r.rank ?? "Commis"),
+      academyScore: Number(r.academy_score) || 0,
+      kitchenScore: Number(r.kitchen_score) || 0,
+      jseMarketScore: Number(r.jse_market_score) || 0,
+      personalPredictionScore: Number(r.personal_prediction_score) || 0,
+      kitchenPredictionScore: Number(r.kitchen_prediction_score) || 0,
+      credentialStatus: String(r.credential_status ?? "not_started"),
+      currentKitchen: (r.current_kitchen as string) ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* ── Lounge — real Kitchens, ranked ────────────────────────────────────────────── */
+
+export interface LoungeKitchenRow {
+  kitchenId: string;
+  name: string;
+  governance: Governance;
+  memberCount: number;
+  founderUserId: string | null;
+  founderAlias: string;
+  createdAt: string;
+}
+
+/** Real Kitchens for the Lounge leaderboard. Empty array when none exist yet. */
+export async function getLoungeKitchenRankings(): Promise<LoungeKitchenRow[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const sb = requireSupabase();
+    const { data, error } = await sb.rpc("lounge_kitchen_rankings");
+    if (error) return [];
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      kitchenId: String(r.kitchen_id),
+      name: String(r.name ?? "Kitchen"),
+      governance: (r.governance as string) === "hedge" ? "hedge" : "mutual",
+      memberCount: Number(r.member_count) || 0,
+      founderUserId: (r.founder_user_id as string) ?? null,
+      founderAlias: String(r.founder_alias ?? "Chef"),
+      createdAt: String(r.created_at ?? ""),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/* ── Vault Contributions — production-shaped paper deposit/withdrawal intents ── */
+
+export type ContributionKind = "deposit" | "withdrawal";
+export type ContributionStatus = "requested" | "approved" | "rejected";
+
+export interface VaultContribution {
+  id: string;
+  kitchenId: string | null;
+  userId: string;
+  kind: ContributionKind;
+  amount: number;
+  status: ContributionStatus;
+  notes: string | null;
+  requestedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+}
+
+function mapContributionRow(row: Record<string, unknown>): VaultContribution {
+  return {
+    id: String(row.id),
+    kitchenId: (row.kitchen_id as string) ?? null,
+    userId: String(row.user_id),
+    kind: (row.kind as string) === "withdrawal" ? "withdrawal" : "deposit",
+    amount: Number(row.amount) || 0,
+    status: (row.status as ContributionStatus) ?? "requested",
+    notes: (row.notes as string) ?? null,
+    requestedAt: String(row.requested_at ?? ""),
+    approvedBy: (row.approved_by as string) ?? null,
+    approvedAt: (row.approved_at as string) ?? null,
+  };
+}
+
+/** Personal Vault: settles immediately — it's the chef's own paper capital. */
+export async function requestPersonalVaultContribution(
+  kind: ContributionKind,
+  amount: number,
+  notes?: string
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("request_personal_vault_contribution", {
+    p_kind: kind,
+    p_amount: amount,
+    p_notes: notes ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Kitchen Vault: a joint-account intent that needs a co-signer to settle. */
+export async function requestKitchenVaultContribution(
+  kind: ContributionKind,
+  amount: number,
+  notes?: string
+): Promise<void> {
+  if (!isSupabaseConfigured()) throw new Error("Kitchen Vault contributions need a live Kitchen.");
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("request_kitchen_vault_contribution", {
+    p_kind: kind,
+    p_amount: amount,
+    p_notes: notes ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Co-sign a Kitchen Vault contribution. Any other member may approve or reject. */
+export async function decideKitchenVaultContribution(id: string, approve: boolean): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const sb = requireSupabase();
+  const { error } = await sb.rpc("decide_kitchen_vault_contribution", { p_id: id, p_approve: approve });
+  if (error) throw new Error(error.message);
+}
+
+/** The caller's own Personal Vault contribution history. Best-effort. */
+export async function getPersonalVaultContributions(): Promise<VaultContribution[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const sb = requireSupabase();
+    const auth = await sbAuthUser();
+    if (!auth) return [];
+    const { data, error } = await sb
+      .from("vault_contributions")
+      .select("*")
+      .eq("user_id", auth.id)
+      .is("kitchen_id", null)
+      .order("requested_at", { ascending: false });
+    if (error) return [];
+    return ((data ?? []) as Array<Record<string, unknown>>).map(mapContributionRow);
+  } catch {
+    return [];
+  }
+}
+
+/** The caller's Kitchen's contribution intents (requested/approved/rejected). Best-effort. */
+export async function getKitchenVaultContributions(): Promise<VaultContribution[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const sb = requireSupabase();
+    const { data, error } = await sb
+      .from("vault_contributions")
+      .select("*")
+      .not("kitchen_id", "is", null)
+      .order("requested_at", { ascending: false });
+    if (error) return [];
+    return ((data ?? []) as Array<Record<string, unknown>>).map(mapContributionRow);
+  } catch {
+    return [];
   }
 }

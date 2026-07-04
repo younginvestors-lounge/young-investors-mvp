@@ -12,7 +12,8 @@ import { LoungeView } from "@/components/LoungeView";
 import { Reveal } from "@/components/Reveal";
 import { ShopView } from "@/components/ShopView";
 import { TopBar } from "@/components/TopBar";
-import { VaultLocked, VaultStart } from "@/components/VaultGate";
+import { VaultLocked } from "@/components/VaultGate";
+import { VaultView } from "@/components/VaultView";
 import { getDashboardSnapshot } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { profileIsOnboarded } from "@/lib/profileStore";
@@ -251,8 +252,8 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
           )}
           {activeTab === "vault" && (
             clearance.complete
-              ? <VaultStart chefName={chefName || "Chef"} />
-              : <VaultLocked passedCount={modules.filter((m) => m.passed).length} totalCount={modules.length} />
+              ? <VaultView portfolio={seed.portfolio} onTabChange={setActiveTab} />
+              : <VaultLocked passedCount={modules.filter((m) => m.passed).length} totalCount={modules.length} onTabChange={setActiveTab} />
           )}
           {activeTab === "shop" && (
             <ShopView
@@ -260,6 +261,7 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
               secondaryArticles={seed.timesSecondary}
               tickers={seed.marketTickers}
               news={seed.macroNews}
+              onTabChange={setActiveTab}
             />
           )}
           {activeTab === "lounge" && <LoungeView rankings={seed.rankings} onTabChange={setActiveTab} />}

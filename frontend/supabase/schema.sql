@@ -199,6 +199,11 @@ create table if not exists public.kitchen_votes (
   created_at       timestamptz default now()
 );
 
+-- Chef's Say (Hedge Kitchens only) snapshotted at cast-time — see chef_say()
+-- below. Mutual Kitchens never set this; it stays at the default of 1, which is
+-- exactly headcount math, so every existing (Mutual) vote row is unaffected.
+alter table public.kitchen_votes add column if not exists chef_say numeric not null default 1;
+
 -- The shared recipe proposal the Kitchen is currently voting on.
 -- Declared before cast_kitchen_vote so %rowtype resolves at compile time.
 create table if not exists public.kitchen_proposals (
@@ -214,6 +219,12 @@ create table if not exists public.kitchen_proposals (
   status       text not null default 'voting',  -- 'voting' | 'passed' | 'rejected' | 'withdrawn'
   created_at   timestamptz default now()
 );
+
+-- Idempotent column additions: price/notional captured at propose-time so a
+-- passed recipe can be turned into a paper accounting receipt (see KITCHEN
+-- EXECUTIONS bond below). Nullable and additive — existing rows are unaffected.
+alter table public.kitchen_proposals add column if not exists price numeric;
+alter table public.kitchen_proposals add column if not exists notional numeric;
 
 alter table public.kitchens enable row level security;
 alter table public.kitchen_members enable row level security;
@@ -306,10 +317,13 @@ begin
 end;
 $$;
 
+drop function if exists public.my_kitchen();
+
 create or replace function public.my_kitchen()
 returns table (
   kitchen_id uuid, name text, governance text, join_code text,
-  member_user uuid, member_alias text, member_icon text, member_number integer, member_role text
+  member_user uuid, member_alias text, member_icon text, member_number integer, member_role text,
+  member_rank text, member_kitchen_score integer
 )
 language plpgsql security definer set search_path = public
 as $$
@@ -323,7 +337,8 @@ begin
   if v_kid is null then return; end if;
   return query
     select k.id, k.name, k.governance, k.join_code,
-           p.id, p.chef_alias, p.profile_icon, p.member_number, m.role
+           p.id, p.chef_alias, p.profile_icon, p.member_number, m.role,
+           p.rank, p.kitchen_score
     from public.kitchens k
     join public.kitchen_members m on m.kitchen_id = k.id
     join public.profiles p on p.id = m.user_id
@@ -332,11 +347,31 @@ begin
 end;
 $$;
 
--- Each member's latest vote on a ticker within the caller's Kitchen.
--- SECURITY DEFINER so members can see each other's votes without loosening
--- kitchen_votes' own-row RLS.
+-- Chef's Say — a Hedge Kitchen's vote weight. Rank (Academy mastery) leads;
+-- kitchen_score (participation + seasoning discipline) adds at most +0.25.
+-- Mutual Kitchens never call this. Mirrors frontend/lib/domain.ts's
+-- sayMultiplier/computeChefSay exactly — keep both in sync if either changes.
+create or replace function public.chef_say(p_rank text, p_kitchen_score integer)
+returns numeric
+language sql immutable
+as $$
+  select (case p_rank
+    when 'Commis' then 1.00
+    when 'Demi Chef' then 1.15
+    when 'Chef de Partie' then 1.30
+    when 'Sous Chef' then 1.50
+    when 'Master Chef' then 1.75
+    else 1.00
+  end) + (greatest(0, least(100, coalesce(p_kitchen_score, 0)))::numeric / 100) * 0.25;
+$$;
+
+-- Each member's latest vote (and Chef's Say) on a ticker within the caller's
+-- Kitchen. SECURITY DEFINER so members can see each other's votes without
+-- loosening kitchen_votes' own-row RLS.
+drop function if exists public.kitchen_votes_for(text);
+
 create or replace function public.kitchen_votes_for(p_ticker text)
-returns table (member_user uuid, vote text)
+returns table (member_user uuid, vote text, chef_say numeric)
 language plpgsql security definer set search_path = public
 as $$
 declare v_uid uuid := auth.uid(); v_kid uuid;
@@ -346,7 +381,7 @@ begin
   from public.kitchen_members where user_id = v_uid order by joined_at limit 1;
   if v_kid is null then return; end if;
   return query
-    select distinct on (kv.user_id) kv.user_id, kv.vote
+    select distinct on (kv.user_id) kv.user_id, kv.vote, kv.chef_say
     from public.kitchen_votes kv
     join public.kitchen_members m on m.user_id = kv.user_id and m.kitchen_id = v_kid
     where kv.proposal_ticker = p_ticker
@@ -355,8 +390,13 @@ end;
 $$;
 
 -- ◈ 60% RULE BOND — cast a vote and evaluate the recipe against the threshold.
--- Approval = ceil(60% × kitchen size) YES votes. Defined after kitchen_proposals
--- so the %rowtype reference compiles correctly.
+-- Mutual Kitchens: approval = ceil(60% × kitchen size) YES votes (headcount,
+-- unchanged). Hedge Kitchens: approval = 60% of the table's total Chef's Say
+-- (see chef_say() above) — the threshold itself never changes, only what "the
+-- table" is measured in. Defined after kitchen_proposals so the %rowtype
+-- reference compiles correctly.
+drop function if exists public.cast_kitchen_vote(uuid, text, text);
+
 create or replace function public.cast_kitchen_vote(
   p_proposal_id uuid,
   p_vote text,
@@ -369,21 +409,29 @@ returns table (
   decisive_votes integer,
   yes_ratio      numeric,
   threshold_met  boolean,
-  proposal_status text
+  proposal_status text,
+  yes_say        numeric,
+  total_say      numeric
 )
 language plpgsql security definer set search_path = public
 as $$
 declare
-  v_uid     uuid := auth.uid();
-  v_kid     uuid;
-  v_proposal public.kitchen_proposals%rowtype;
-  v_vote    text := upper(trim(coalesce(p_vote, '')));
-  v_yes     integer := 0;
-  v_no      integer := 0;
-  v_total   integer := 0;
-  v_members integer := 0;
-  v_ratio   numeric := 0;
-  v_status  text;
+  v_uid        uuid := auth.uid();
+  v_kid        uuid;
+  v_governance text;
+  v_rank       text;
+  v_kscore     integer;
+  v_say        numeric := 1;
+  v_proposal   public.kitchen_proposals%rowtype;
+  v_vote       text := upper(trim(coalesce(p_vote, '')));
+  v_yes        integer := 0;
+  v_no         integer := 0;
+  v_total      integer := 0;
+  v_members    integer := 0;
+  v_ratio      numeric := 0;
+  v_yes_say    numeric := 0;
+  v_total_say  numeric := 0;
+  v_status     text;
 begin
   if v_uid is null then raise exception 'Not authenticated'; end if;
   if v_vote not in ('FOR', 'AGAINST', 'ABSTAIN') then
@@ -394,6 +442,8 @@ begin
   from public.kitchen_members km where km.user_id = v_uid order by km.joined_at limit 1;
   if v_kid is null then raise exception 'You must be in a Kitchen to vote.'; end if;
 
+  select governance into v_governance from public.kitchens where id = v_kid;
+
   select * into v_proposal
   from public.kitchen_proposals p
   where p.id = p_proposal_id and p.kitchen_id = v_kid
@@ -403,16 +453,22 @@ begin
     raise exception 'This recipe is no longer open for voting.';
   end if;
 
-  insert into public.kitchen_votes (user_id, kitchen_name, proposal_ticker, vote, seasoning_reason)
-  select v_uid, k.name, v_proposal.ticker, v_vote, p_seasoning_reason
+  if v_governance = 'hedge' then
+    select rank, kitchen_score into v_rank, v_kscore from public.profiles where id = v_uid;
+    v_say := public.chef_say(v_rank, v_kscore);
+  end if;
+
+  insert into public.kitchen_votes (user_id, kitchen_name, proposal_ticker, vote, seasoning_reason, chef_say)
+  select v_uid, k.name, v_proposal.ticker, v_vote, p_seasoning_reason, v_say
   from public.kitchens k where k.id = v_kid;
 
   select
     count(*) filter (where latest.vote = 'FOR')::integer,
-    count(*) filter (where latest.vote = 'AGAINST')::integer
-  into v_yes, v_no
+    count(*) filter (where latest.vote = 'AGAINST')::integer,
+    coalesce(sum(latest.chef_say) filter (where latest.vote = 'FOR'), 0)
+  into v_yes, v_no, v_yes_say
   from (
-    select distinct on (kv.user_id) kv.user_id, kv.vote
+    select distinct on (kv.user_id) kv.user_id, kv.vote, kv.chef_say
     from public.kitchen_votes kv
     join public.kitchen_members km on km.user_id = kv.user_id and km.kitchen_id = v_kid
     where kv.proposal_ticker = v_proposal.ticker
@@ -421,8 +477,24 @@ begin
 
   v_total := v_yes + v_no;
   select count(*)::integer into v_members from public.kitchen_members where kitchen_id = v_kid;
-  if v_members > 0 then
-    v_ratio := round((v_yes::numeric / v_members::numeric), 4);
+
+  if v_governance = 'hedge' then
+    -- Denominator is every CURRENT member's live Say (not just those who've
+    -- voted) — "60% of the table," exactly as Mutual measures 60% of headcount.
+    select coalesce(sum(public.chef_say(p.rank, p.kitchen_score)), 0)
+    into v_total_say
+    from public.kitchen_members km
+    join public.profiles p on p.id = km.user_id
+    where km.kitchen_id = v_kid;
+    if v_total_say > 0 then
+      v_ratio := round((v_yes_say / v_total_say), 4);
+    end if;
+  else
+    v_total_say := v_members;
+    v_yes_say := v_yes;
+    if v_members > 0 then
+      v_ratio := round((v_yes::numeric / v_members::numeric), 4);
+    end if;
   end if;
 
   v_status := case
@@ -433,18 +505,24 @@ begin
 
   update public.kitchen_proposals set status = v_status where id = v_proposal.id;
   return query
-    select v_proposal.id, v_yes, v_no, v_total, v_ratio, (v_ratio >= 0.60), v_status;
+    select v_proposal.id, v_yes, v_no, v_total, v_ratio, (v_ratio >= 0.60), v_status, v_yes_say, v_total_say;
 end;
 $$;
 
 -- Submit a proposal (verifies membership before inserting).
+-- Dropped first: adding p_price/p_notional changes the argument signature, and
+-- Postgres treats a changed signature as a new overload rather than a replace.
+drop function if exists public.submit_proposal(text, text, text, integer, text, text);
+
 create or replace function public.submit_proposal(
   p_ticker     text,
   p_asset_name text,
   p_side       text,
   p_units      integer,
   p_thesis     text,
-  p_seasoning  text
+  p_seasoning  text,
+  p_price      numeric default null,
+  p_notional   numeric default null
 )
 returns uuid
 language plpgsql security definer set search_path = public
@@ -462,11 +540,11 @@ begin
   from public.kitchen_members km where km.user_id = v_uid order by km.joined_at limit 1;
   if v_kid is null then raise exception 'You must be in a Kitchen to propose a recipe.'; end if;
   insert into public.kitchen_proposals
-    (kitchen_id, proposer_id, ticker, asset_name, side, units, thesis, seasoning, status)
+    (kitchen_id, proposer_id, ticker, asset_name, side, units, thesis, seasoning, status, price, notional)
   values (v_kid, v_uid,
           upper(trim(p_ticker)), p_asset_name,
           case when upper(p_side) = 'SELL' then 'SELL' else 'BUY' end,
-          p_units, p_thesis, p_seasoning, 'voting')
+          p_units, p_thesis, p_seasoning, 'voting', p_price, p_notional)
   returning id into v_id;
   return v_id;
 end;
@@ -503,8 +581,92 @@ grant execute on function public.join_kitchen_by_code(text)                  to 
 grant execute on function public.my_kitchen()                                to authenticated;
 grant execute on function public.kitchen_votes_for(text)                     to authenticated;
 grant execute on function public.cast_kitchen_vote(uuid, text, text)         to authenticated;
-grant execute on function public.submit_proposal(text, text, text, integer, text, text) to authenticated;
+grant execute on function public.submit_proposal(text, text, text, integer, text, text, numeric, numeric) to authenticated;
 grant execute on function public.active_proposal()                           to authenticated;
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- ◈  KITCHEN EXECUTIONS — the receipt bond between the Kitchen and its Vault.
+--    A recipe that crosses the 60% Rule becomes a paper, timestamped accounting receipt.
+--    Pure addition: cast_kitchen_vote's threshold math above is untouched.
+-- ══════════════════════════════════════════════════════════════════════════════
+create table if not exists public.kitchen_executions (
+  id           uuid primary key default gen_random_uuid(),
+  kitchen_id   uuid not null references public.kitchens(id) on delete cascade,
+  proposal_id  uuid not null unique references public.kitchen_proposals(id) on delete cascade,
+  ticker       text not null,
+  asset_name   text,
+  side         text not null,
+  units        integer,
+  price        numeric,
+  notional     numeric,
+  executed_at  timestamptz default now()
+);
+
+alter table public.kitchen_executions enable row level security;
+
+drop policy if exists "executions_select_member" on public.kitchen_executions;
+create policy "executions_select_member" on public.kitchen_executions
+  for select using (
+    exists (select 1 from public.kitchen_members m
+            where m.kitchen_id = kitchen_executions.kitchen_id and m.user_id = auth.uid())
+  );
+
+-- Fires exactly once per proposal: cast_kitchen_vote rejects further votes once a
+-- proposal is no longer 'voting', so 'passed' is a one-way transition.
+create or replace function public.execute_passed_proposal()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  insert into public.kitchen_executions (kitchen_id, proposal_id, ticker, asset_name, side, units, price, notional)
+  values (new.kitchen_id, new.id, new.ticker, new.asset_name, new.side, new.units, new.price, new.notional)
+  on conflict (proposal_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_execute_passed_proposal on public.kitchen_proposals;
+create trigger trg_execute_passed_proposal
+  after update of status on public.kitchen_proposals
+  for each row
+  when (new.status = 'passed' and old.status is distinct from 'passed')
+  execute function public.execute_passed_proposal();
+
+-- Receipts + simple net holdings for the caller's Kitchen. Same recursion-free,
+-- RPC-only access pattern as the other Kitchen functions above.
+create or replace function public.kitchen_vault_ledger()
+returns table (receipts jsonb, holdings jsonb)
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+begin
+  if v_uid is null then return; end if;
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km where km.user_id = v_uid order by km.joined_at limit 1;
+  if v_kid is null then return; end if;
+
+  return query
+  select
+    coalesce((select jsonb_agg(to_jsonb(e) order by e.executed_at desc)
+              from public.kitchen_executions e where e.kitchen_id = v_kid), '[]'::jsonb),
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'ticker', h.ticker, 'net_units', h.net_units, 'net_notional', h.net_notional
+      ))
+      from (
+        select e.ticker,
+               sum(case when e.side = 'BUY' then e.units else -e.units end) as net_units,
+               sum(case when e.side = 'BUY' then e.notional else -e.notional end) as net_notional
+        from public.kitchen_executions e
+        where e.kitchen_id = v_kid
+        group by e.ticker
+      ) h
+    ), '[]'::jsonb);
+end;
+$$;
+
+grant execute on function public.kitchen_vault_ledger() to authenticated;
 
 -- ── VAULT vertex ── what you own · track · compound ──────────────────────────
 -- Prediction logs are the Vault's primary signal: every market call the chef
@@ -528,6 +690,125 @@ create policy "predictions_select_own" on public.prediction_logs
 drop policy if exists "predictions_insert_own" on public.prediction_logs;
 create policy "predictions_insert_own" on public.prediction_logs
   for insert with check (auth.uid() = user_id);
+
+-- ── VAULT CONTRIBUTIONS — production-shaped paper deposit/withdrawal intents ──
+-- YI_UNIFIED_VISION.md §3: "build the full product workflow, disable only
+-- real-money settlement." A Personal Vault contribution is the chef's own paper
+-- capital — no co-signer needed, it settles immediately. A Kitchen Vault
+-- contribution is a joint-account intent (kitchen_id set): it needs a co-signer
+-- who is not the requester before it settles. No real money ever moves.
+create table if not exists public.vault_contributions (
+  id           uuid primary key default gen_random_uuid(),
+  kitchen_id   uuid references public.kitchens(id) on delete cascade,  -- null = Personal Vault
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  kind         text not null check (kind in ('deposit', 'withdrawal')),
+  amount       numeric not null check (amount > 0),
+  status       text not null default 'requested' check (status in ('requested', 'approved', 'rejected')),
+  notes        text,
+  requested_at timestamptz default now(),
+  approved_by  uuid references auth.users(id) on delete set null,
+  approved_at  timestamptz
+);
+
+alter table public.vault_contributions enable row level security;
+
+drop policy if exists "contributions_select_own_or_kitchen" on public.vault_contributions;
+create policy "contributions_select_own_or_kitchen" on public.vault_contributions
+  for select using (
+    auth.uid() = user_id
+    or (kitchen_id is not null and exists (
+      select 1 from public.kitchen_members m
+      where m.kitchen_id = vault_contributions.kitchen_id and m.user_id = auth.uid()
+    ))
+  );
+
+-- Direct inserts are only for Personal Vault contributions (kitchen_id is null);
+-- Kitchen Vault contributions go through request_kitchen_vault_contribution()
+-- below so the requester can never set their own kitchen_id or skip the co-sign step.
+drop policy if exists "contributions_insert_personal" on public.vault_contributions;
+create policy "contributions_insert_personal" on public.vault_contributions
+  for insert with check (auth.uid() = user_id and kitchen_id is null);
+
+-- Personal Vault: self-serve, settles immediately (it's the chef's own paper money).
+create or replace function public.request_personal_vault_contribution(
+  p_kind   text,
+  p_amount numeric,
+  p_notes  text default null
+)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_id  uuid;
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  if p_kind not in ('deposit', 'withdrawal') then raise exception 'Kind must be deposit or withdrawal.'; end if;
+  if p_amount <= 0 then raise exception 'Amount must be greater than zero.'; end if;
+  insert into public.vault_contributions (kitchen_id, user_id, kind, amount, status, notes, approved_by, approved_at)
+  values (null, v_uid, p_kind, p_amount, 'approved', p_notes, v_uid, now())
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+-- Kitchen Vault: joint-account intent. Requester's own kitchen is resolved
+-- server-side — never trust a client-supplied kitchen_id here.
+create or replace function public.request_kitchen_vault_contribution(
+  p_kind   text,
+  p_amount numeric,
+  p_notes  text default null
+)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_kid uuid;
+  v_id  uuid;
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  if p_kind not in ('deposit', 'withdrawal') then raise exception 'Kind must be deposit or withdrawal.'; end if;
+  if p_amount <= 0 then raise exception 'Amount must be greater than zero.'; end if;
+  select km.kitchen_id into v_kid
+  from public.kitchen_members km where km.user_id = v_uid order by km.joined_at limit 1;
+  if v_kid is null then raise exception 'You must be in a Kitchen to request a Kitchen Vault contribution.'; end if;
+  insert into public.vault_contributions (kitchen_id, user_id, kind, amount, status, notes)
+  values (v_kid, v_uid, p_kind, p_amount, 'requested', p_notes)
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+-- Co-sign: any OTHER member of the same Kitchen may approve or reject —
+-- mirrors frontend/lib/domain.ts's canApproveContribution rule.
+create or replace function public.decide_kitchen_vault_contribution(p_id uuid, p_approve boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_row public.vault_contributions%rowtype;
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  select * into v_row from public.vault_contributions where id = p_id for update;
+  if not found or v_row.kitchen_id is null then raise exception 'Kitchen contribution not found.'; end if;
+  if v_row.status <> 'requested' then raise exception 'This contribution has already been decided.'; end if;
+  if v_row.user_id = v_uid then raise exception 'The requester cannot co-sign their own contribution.'; end if;
+  if not exists (select 1 from public.kitchen_members m where m.kitchen_id = v_row.kitchen_id and m.user_id = v_uid) then
+    raise exception 'Only a member of this Kitchen may decide on its contributions.';
+  end if;
+  update public.vault_contributions
+    set status = case when p_approve then 'approved' else 'rejected' end,
+        approved_by = v_uid,
+        approved_at = now()
+    where id = p_id;
+end;
+$$;
+
+grant execute on function public.request_personal_vault_contribution(text, numeric, text) to authenticated;
+grant execute on function public.request_kitchen_vault_contribution(text, numeric, text)   to authenticated;
+grant execute on function public.decide_kitchen_vault_contribution(uuid, boolean)          to authenticated;
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- ◿  SICILIA'S TRIANGLE — meaning · the why
@@ -680,7 +961,7 @@ create trigger trg_notify_proposal
 --                  in cast_kitchen_vote and the domain layer (domain.ts).
 --                  No separate table needed.
 --
---  ◈ Ranks       — Commis → Sous Chef → Head Chef. Computed from
+--  ◈ Ranks       — Commis → Sous Chef → Master Chef. Computed from
 --                  academy_score and stored in profiles.rank.
 --                  No separate table needed.
 --
@@ -718,6 +999,78 @@ create policy "guide_upsert_own" on public.gordon_guide
 drop policy if exists "guide_update_own" on public.gordon_guide;
 create policy "guide_update_own" on public.gordon_guide
   for update using (user_id = auth.uid());
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- ⬟  CHEF CARD & LOUNGE IDENTITY — public identity, viewable beyond your own row
+-- ══════════════════════════════════════════════════════════════════════════════
+
+-- The Chef Card: the public, safe subset of a profile — viewable for ANY chef by
+-- any authenticated caller (this is the one deliberate exception to "select own
+-- row only" on profiles). Never returns email, age, or intent — those stay
+-- private per SECURITY_GUARDRAILS.md.
+create or replace function public.chef_card(p_user_id uuid)
+returns table (
+  user_id                    uuid,
+  chef_alias                 text,
+  profile_icon               text,
+  profile_picture_url        text,
+  member_number              integer,
+  rank                       text,
+  academy_score              integer,
+  kitchen_score              integer,
+  jse_market_score           integer,
+  personal_prediction_score  integer,
+  kitchen_prediction_score   integer,
+  credential_status          text,
+  current_kitchen            text
+)
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then return; end if;
+  return query
+    select p.id, p.chef_alias, p.profile_icon, p.profile_picture_url, p.member_number,
+           p.rank, p.academy_score, p.kitchen_score, p.jse_market_score,
+           p.personal_prediction_score, p.kitchen_prediction_score,
+           p.credential_status, p.current_kitchen
+    from public.profiles p
+    where p.id = p_user_id;
+end;
+$$;
+
+grant execute on function public.chef_card(uuid) to authenticated;
+
+-- Real Kitchens, ranked, so a newly formed Kitchen gets an identity in the Lounge
+-- instead of the honest empty state. No fabricated performance numbers — that
+-- arrives once kitchen_executions has enough data to be honest about.
+create or replace function public.lounge_kitchen_rankings()
+returns table (
+  kitchen_id      uuid,
+  name            text,
+  governance      text,
+  member_count    integer,
+  founder_user_id uuid,
+  founder_alias   text,
+  created_at      timestamptz
+)
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then return; end if;
+  return query
+    select k.id, k.name, k.governance,
+           (select count(*)::integer from public.kitchen_members m where m.kitchen_id = k.id),
+           k.created_by,
+           coalesce(p.chef_alias, 'Chef'),
+           k.created_at
+    from public.kitchens k
+    left join public.profiles p on p.id = k.created_by
+    order by (select count(*) from public.kitchen_members m where m.kitchen_id = k.id) desc,
+             k.created_at asc;
+end;
+$$;
+
+grant execute on function public.lounge_kitchen_rankings() to authenticated;
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- ⬡  SUPPORT — operational tables that serve the whole house

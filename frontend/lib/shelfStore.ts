@@ -1,6 +1,7 @@
 "use client";
 
 import type { JseStock } from "@/lib/jseMarket";
+import { appendTerminalEvent } from "@/lib/transactionTerminal";
 
 export type ShelfDecision = "BUY" | "SELL" | "HOLD";
 
@@ -68,13 +69,47 @@ export function addShelfReceipt(input: {
   };
   const existing = readRaw().filter((item) => item.symbol !== receipt.symbol);
   writeRaw([receipt, ...existing]);
+  appendTerminalEvent({
+    kind: "shelf_receipt",
+    title: "Personal ledger receipt",
+    line: `${receipt.decision} ${receipt.symbol} / ${receipt.weightPercent}% paper plate statement`,
+    ticker: receipt.symbol,
+    side: receipt.decision,
+    amount: receipt.notional,
+    status: "pending",
+    id: `shelf-create-${receipt.id}`,
+    createdAt: receipt.createdAt,
+  });
   return receipt;
 }
 
 export function removeShelfReceipt(id: string): void {
-  writeRaw(readRaw().filter((item) => item.id !== id));
+  const existing = readRaw();
+  const receipt = existing.find((item) => item.id === id);
+  writeRaw(existing.filter((item) => item.id !== id));
+  if (receipt) {
+    appendTerminalEvent({
+      kind: "shelf_removed",
+      title: "Receipt moved to Kitchen",
+      line: `${receipt.symbol} moved from personal ledger into concealed Kitchen accounting`,
+      ticker: receipt.symbol,
+      side: receipt.decision,
+      amount: receipt.notional,
+      status: "info",
+      id: `shelf-remove-${receipt.id}`,
+    });
+  }
 }
 
 export function clearShelfReceipts(): void {
+  const count = readRaw().length;
   writeRaw([]);
+  if (count > 0) {
+    appendTerminalEvent({
+      kind: "shelf_cleared",
+      title: "Personal shelf cleared",
+      line: `${count} local paper receipt${count !== 1 ? "s" : ""} cleared from the personal view`,
+      status: "info",
+    });
+  }
 }

@@ -26,14 +26,16 @@ import {
   Vault as VaultIcon,
 } from "lucide-react";
 import { FocusNag } from "@/components/FocusNag";
+import { TransactionTerminal } from "@/components/TransactionTerminal";
 import { useAuth } from "@/lib/auth-context";
 import { tap } from "@/lib/haptics";
 import { getProfileIcon } from "@/lib/profileIcons";
-import { profileIsOnboarded } from "@/lib/profileStore";
+import { getKitchenVaultLedger, profileIsOnboarded, type KitchenVaultLedger } from "@/lib/profileStore";
 
 // The two parents of the house — the only place these accents appear.
 const GORDON_TEAL = "#1D9E75";
 const SICILIA_CORAL = "#D85A30";
+const EMPTY_LEDGER: KitchenVaultLedger = { receipts: [], holdings: [] };
 
 interface Room {
   name: string;
@@ -102,12 +104,22 @@ export default function LobbyPage() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const [confirmExit, setConfirmExit] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const [kitchenVault, setKitchenVault] = useState<KitchenVaultLedger>(EMPTY_LEDGER);
 
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) { router.replace("/login"); return; }
     if (!profileIsOnboarded(user)) router.replace("/onboarding");
   }, [isLoading, isAuthenticated, user, router]);
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !profileIsOnboarded(user)) return;
+    let cancelled = false;
+    getKitchenVaultLedger().then((ledger) => {
+      if (!cancelled) setKitchenVault(ledger);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isLoading, isAuthenticated, user]);
 
   if (isLoading || !isAuthenticated || !profileIsOnboarded(user)) {
     return (
@@ -194,6 +206,8 @@ export default function LobbyPage() {
           </span>
           <Settings size={16} strokeWidth={1.7} aria-hidden style={{ color: "var(--yi-muted)", flexShrink: 0 }} />
         </Link>
+
+        <TransactionTerminal surface="lobby" kitchenVault={kitchenVault} compact maxRows={5} />
 
         {/* Gordon's triangle — craft, the how */}
         <div>

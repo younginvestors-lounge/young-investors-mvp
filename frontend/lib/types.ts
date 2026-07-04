@@ -2,6 +2,11 @@ export const EXECUTION_MODE = "MOCK_MVP_PAPER_TRADING_ONLY" as const;
 
 export type ExecutionMode = typeof EXECUTION_MODE;
 
+/** Per YI_UNIFIED_VISION.md §5 — no live bank/broker/PSP/wallet/custody adapter may be
+ * wired in while this is true. Only the CEO, via a separate live-money architecture
+ * review, flips it. */
+export const LIVE_MONEY_REVIEW_REQUIRED = true as const;
+
 export type DashboardTab = "kitchen" | "academy" | "vault" | "shop" | "lounge";
 
 export type AcademyTrack = "follow-money" | "follow-mind";
@@ -146,6 +151,8 @@ export interface KitchenMember {
   profileIcon?: string;
   clearanceLevel?: string;
   recipesProposed?: number;
+  /** Chef's Say — only meaningful in a Hedge Kitchen; Mutual Kitchens ignore it. */
+  chefSay?: number;
 }
 
 export interface DashboardSnapshot {

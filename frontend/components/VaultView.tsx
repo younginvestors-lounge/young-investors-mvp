@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Line,
   LineChart,
@@ -10,14 +11,20 @@ import {
 } from "recharts";
 import { Gauge, Vault } from "lucide-react";
 import { BrutalistCard } from "@/components/BrutalistCard";
+import { KitchenContributionIntents, PersonalContributionIntents } from "@/components/ContributionIntents";
 import { GordonPanel } from "@/components/GordonPanel";
 import { InflationEroderCard } from "@/components/InflationEroder";
 import { RevealBox } from "@/components/RevealBox";
 import { formatMoney, formatPercent } from "@/lib/domain";
-import type { PortfolioSnapshot } from "@/lib/types";
+import { formatRand } from "@/lib/jseMarket";
+import { getKitchenVaultLedger, type KitchenVaultLedger } from "@/lib/profileStore";
+import type { DashboardTab, PortfolioSnapshot } from "@/lib/types";
+
+const EMPTY_LEDGER: KitchenVaultLedger = { receipts: [], holdings: [] };
 
 interface VaultViewProps {
   portfolio: PortfolioSnapshot;
+  onTabChange?: (tab: DashboardTab) => void;
 }
 
 function metricToneClass(value: number): string {
@@ -79,7 +86,19 @@ function SectorAllocationChart({ holdings }: { holdings: PortfolioSnapshot["hold
   );
 }
 
-export function VaultView({ portfolio }: VaultViewProps) {
+export function VaultView({ portfolio, onTabChange }: VaultViewProps) {
+  const [kitchenVault, setKitchenVault] = useState<KitchenVaultLedger>(EMPTY_LEDGER);
+
+  // The Kitchen vote is the gate: what the table approves shows up here.
+  useEffect(() => {
+    let cancelled = false;
+    getKitchenVaultLedger().then((ledger) => { if (!cancelled) setKitchenVault(ledger); });
+    const t = setInterval(() => {
+      getKitchenVaultLedger().then((ledger) => { if (!cancelled) setKitchenVault(ledger); });
+    }, 10000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
   const equityLineColor = portfolio.roiPercent >= 0 ? "#167a3a" : "#b42318";
   const vaultLevel = portfolio.roiPercent >= 8 ? "Level 03" : portfolio.roiPercent >= 4 ? "Level 02" : "Level 01";
   const levelProgress = Math.min(Math.max(Math.round((portfolio.roiPercent / 12) * 100), 0), 100);
@@ -99,13 +118,40 @@ export function VaultView({ portfolio }: VaultViewProps) {
   return (
     <section className="stack" aria-labelledby="vault-heading">
       <div>
-        <p className="eyebrow">Paper simulation · Kitchen snapshot · No real funds</p>
+        <p className="eyebrow">Production-shaped Vault · Paper only · No real deposits</p>
         <h2 id="vault-heading" className="view-title">The Vault</h2>
         <p className="subtitle">
-          Every chef starts with R1,001 in practice capital. A Kitchen of 3 opens with a
-          minimum vault of R3,003 — your collective starting point. Cook recipes, watch it
-          move. Leave it idle and inflation eats the real value. No real money.
+          One page, two vaults: your Personal Vault and your Kitchen Vault. In production,
+          the Kitchen Vault is the joint escrow/trust-account view. In this tester build,
+          every balance, receipt, allocation, and execution state is paper-only.
         </p>
+      </div>
+
+      <div className="grid grid-three">
+        <BrutalistCard>
+          <p className="meta">Personal Vault</p>
+          <p className="metric-number">R1,001</p>
+          <p className="copy">
+            Your individual practice capital, personal receipts, and readiness state. Paper
+            deposit/withdrawal intents settle immediately below — no real money moves.
+          </p>
+        </BrutalistCard>
+        <BrutalistCard>
+          <p className="meta">Kitchen Vault</p>
+          <p className="metric-number">{formatMoney(portfolio.totalSyndicateCapital)}</p>
+          <p className="copy">
+            The shared Kitchen vault: pooled mandate, voted allocations, paper receipts,
+            and future joint escrow/trust-account state governed by the 60% Rule.
+          </p>
+        </BrutalistCard>
+        <BrutalistCard>
+          <p className="meta">Regulated rail</p>
+          <p className="metric-number metric-watch">Off</p>
+          <p className="copy">
+            Bank, PSP, broker, FICA, escrow, and custody adapters remain disconnected until
+            live-money review and regulatory approval exist.
+          </p>
+        </BrutalistCard>
       </div>
 
       {/* Inflation eroder: visible when no holdings are cooked yet */}
@@ -114,6 +160,66 @@ export function VaultView({ portfolio }: VaultViewProps) {
         isIdle={isIdleCapital}
         currency={portfolio.totalSyndicateCapital.currency}
       />
+
+      {/* Kitchen Vault — nothing appears here that the table did not vote through. */}
+      <RevealBox
+        symbol={<Vault size={15} strokeWidth={1.8} aria-hidden />}
+        title="Kitchen Vault"
+        meta={kitchenVault.receipts.length > 0 ? `${kitchenVault.receipts.length} recipe${kitchenVault.receipts.length !== 1 ? "s" : ""} executed` : "No recipes executed yet"}
+        defaultOpen={kitchenVault.receipts.length > 0}
+      >
+        {kitchenVault.receipts.length === 0 ? (
+          <p className="copy" style={{ margin: 0 }}>
+            Your Kitchen&apos;s shared holdings will show up here once a recipe crosses the 60% Rule. Vote a recipe through in the Kitchen tab to see it land as a paper receipt.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div className="grid grid-three">
+              {kitchenVault.holdings.map((h) => (
+                <BrutalistCard key={h.ticker}>
+                  <p className="meta">Kitchen holding</p>
+                  <p className="proposal-symbol ticker">{h.ticker}</p>
+                  <p className="metric-number">{formatRand(h.netNotional)}</p>
+                  <p className="meta">{h.netUnits > 0 ? "+" : ""}{h.netUnits} net units</p>
+                </BrutalistCard>
+              ))}
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {kitchenVault.receipts.slice(0, 5).map((r) => (
+                <div key={r.id} style={{ display: "flex", justifyContent: "space-between", border: "1px solid var(--yi-frame)", padding: "8px 12px" }}>
+                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.7rem" }}>{r.side} {r.ticker} · {r.units} units</span>
+                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.66rem", color: "var(--yi-muted)" }}>
+                    {r.notional != null ? formatRand(r.notional) : ""} · {new Date(r.executedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </RevealBox>
+
+      {/* Contribution intents — the production-shaped deposit/withdrawal workflow,
+          paper-only until a live-money review approves real settlement. */}
+      <RevealBox
+        symbol={<Vault size={15} strokeWidth={1.8} aria-hidden />}
+        title="Contribution Intents"
+        meta="Personal settles instantly · Kitchen needs a co-signer"
+      >
+        <div style={{ display: "grid", gap: 20 }}>
+          <div>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
+              Personal Vault
+            </p>
+            <PersonalContributionIntents />
+          </div>
+          <div style={{ borderTop: "1px solid var(--yi-hairline)", paddingTop: 16 }}>
+            <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--yi-muted)", margin: "0 0 10px" }}>
+              Kitchen Vault
+            </p>
+            <KitchenContributionIntents />
+          </div>
+        </div>
+      </RevealBox>
 
       <RevealBox symbol={<Vault size={15} strokeWidth={1.8} aria-hidden />} title="Vault Summary" meta="Paper balance, lift, level, heat" defaultOpen tone={portfolio.roiPercent >= 0 ? "positive" : "negative"}>
       <div className="grid grid-three">
@@ -218,6 +324,17 @@ export function VaultView({ portfolio }: VaultViewProps) {
       </RevealBox>
 
       <GordonPanel read={portfolio.gordonMarketRead} />
+
+      {onTabChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onTabChange("kitchen")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Vote another recipe in the Kitchen →
+          </button>
+          <button type="button" onClick={() => onTabChange("lounge")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Compare in the Lounge →
+          </button>
+        </div>
+      )}
     </section>
   );
 }
