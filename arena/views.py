@@ -1,11 +1,13 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 
 from core.domain import DomainError
 from kitchen.models import Kitchen
+from kitchen.services import assert_user_is_active_member
 
 from .models import TradeProposal
 from .serializers import (
@@ -20,9 +22,14 @@ class KitchenRecipeListView(ListAPIView):
     serializer_class = KitchenRecipeSerializer
 
     def get_queryset(self):
-        kitchen_id = self.kwargs["kitchen_id"]
+        kitchen = get_object_or_404(Kitchen, pk=self.kwargs["kitchen_id"], is_active=True)
+        try:
+            assert_user_is_active_member(self.request.user, kitchen)
+        except DomainError as exc:
+            raise PermissionDenied(exc.message)
+
         return (
-            TradeProposal.objects.filter(kitchen_id=kitchen_id)
+            TradeProposal.objects.filter(kitchen_id=kitchen.pk)
             .select_related("kitchen", "created_by")
             .order_by("-created_at")
         )

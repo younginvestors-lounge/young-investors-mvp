@@ -27,6 +27,10 @@ class DomainError(Exception):
 
 MOCK_MVP_PAPER_TRADING_ONLY = "MOCK_MVP_PAPER_TRADING_ONLY"
 
+# YI_UNIFIED_VISION.md §5 — no live bank/broker/PSP/wallet/custody adapter may be
+# wired in while this is True. Only a separate live-money architecture review flips it.
+LIVE_MONEY_REVIEW_REQUIRED = True
+
 CONSENSUS_THRESHOLD = Decimal("0.60")
 MAX_ALLOCATION_PCT = Decimal("0.10")
 STOP_LOSS_PCT = Decimal("0.05")

@@ -111,6 +111,8 @@ elif os.environ.get("DATABASE_URL"):
         }
     }
 elif os.environ.get("DB_HOST") or not DEBUG:
+    if not DEBUG and not os.environ.get("DB_PASSWORD"):
+        raise RuntimeError("DB_PASSWORD must be set when DEBUG=False.")
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -208,4 +210,3 @@ else:
     SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@younginvestors.co")
-EMAIL_HOST_USER = os.environ.get("SENDGRID_API_KEY", "")

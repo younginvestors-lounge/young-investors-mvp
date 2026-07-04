@@ -118,6 +118,15 @@ class KitchenGovernanceTests(TestCase):
         self.assertEqual(len(response.json()), 1)
         self.assertEqual(response.json()[0]["id"], str(proposal.id))
 
+    def test_kitchen_recipe_list_rejects_non_member(self) -> None:
+        outsider = get_user_model().objects.create_user(username="outsider", password="test-password")
+        self._proposal(quorum_required=2, total_members_snapshot=3)
+
+        self._authenticate(outsider)
+        response = self.client.get(reverse("kitchen-recipe-list", kwargs={"kitchen_id": self.kitchen.id}))
+
+        self.assertEqual(response.status_code, 403)
+
     def test_vote_route_rejects_recipe_from_different_kitchen(self) -> None:
         voter = self._cleared_member("route-voter")
         proposal = self._proposal(quorum_required=2, total_members_snapshot=3)
