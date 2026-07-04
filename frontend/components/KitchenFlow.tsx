@@ -23,6 +23,7 @@ import {
   type Governance,
   type KitchenState,
 } from "@/lib/profileStore";
+import type { DashboardTab } from "@/lib/types";
 
 const mono = (rem: number, color: string): React.CSSProperties => ({
   fontFamily: "var(--font-mono), monospace",
@@ -32,8 +33,22 @@ const mono = (rem: number, color: string): React.CSSProperties => ({
   color,
 });
 
+function ExploreMeanwhile({ onTabChange }: { onTabChange?: (tab: DashboardTab) => void }) {
+  if (!onTabChange) return null;
+  return (
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <button type="button" onClick={() => onTabChange("academy")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+        Explore the Academy meanwhile →
+      </button>
+      <button type="button" onClick={() => onTabChange("shop")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+        Browse the Shop →
+      </button>
+    </div>
+  );
+}
+
 /* ── Form a Kitchen (create or join), guided + progress bar ── */
-export function FormKitchen({ onDone }: { onDone: (k: KitchenState) => void }) {
+export function FormKitchen({ onDone, onTabChange }: { onDone: (k: KitchenState) => void; onTabChange?: (tab: DashboardTab) => void }) {
   const { user } = useAuth();
   const [mode, setMode] = useState<"choose" | "create" | "join">("choose");
   const [step, setStep] = useState(0); // create: 0 name, 1 governance
@@ -90,6 +105,7 @@ export function FormKitchen({ onDone }: { onDone: (k: KitchenState) => void }) {
           </button>
         </div>
         <Disclaimer />
+        <ExploreMeanwhile onTabChange={onTabChange} />
       </section>
     );
   }
@@ -116,6 +132,7 @@ export function FormKitchen({ onDone }: { onDone: (k: KitchenState) => void }) {
           <button type="button" onClick={() => { tap(); setMode("choose"); setErr(null); }} style={ghostBtn}>Back</button>
         </div>
         <Disclaimer />
+        <ExploreMeanwhile onTabChange={onTabChange} />
       </section>
     );
   }
@@ -192,6 +209,7 @@ export function FormKitchen({ onDone }: { onDone: (k: KitchenState) => void }) {
         </button>
       </div>
       <Disclaimer />
+      <ExploreMeanwhile onTabChange={onTabChange} />
     </section>
   );
 }
@@ -201,10 +219,12 @@ export function KitchenLobby({
   kitchen,
   onChanged,
   onLeft,
+  onTabChange,
 }: {
   kitchen: KitchenState;
   onChanged: (k: KitchenState) => void;
   onLeft: () => void;
+  onTabChange?: (tab: DashboardTab) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -316,6 +336,7 @@ export function KitchenLobby({
       )}
 
       <p style={mono(0.55, "var(--yi-muted)")}>Kitchen votes are mock governance signals · No live execution</p>
+      <ExploreMeanwhile onTabChange={onTabChange} />
     </section>
   );
 }

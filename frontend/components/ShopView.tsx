@@ -6,13 +6,14 @@ import { JSEMarket } from "@/components/JSEMarket";
 import { RevealBox } from "@/components/RevealBox";
 import { useLiveTickers } from "@/lib/useLiveTickers";
 import { formatMoney, formatPercent } from "@/lib/domain";
-import type { MacroNewsCard, MarketTicker, TimesFeature } from "@/lib/types";
+import type { DashboardTab, MacroNewsCard, MarketTicker, TimesFeature } from "@/lib/types";
 
 interface ShopViewProps {
   feature: TimesFeature;
   secondaryArticles: TimesFeature[];
   tickers: MarketTicker[];
   news: MacroNewsCard[];
+  onTabChange?: (tab: DashboardTab) => void;
 }
 
 function toneColor(v: number) {
@@ -29,7 +30,7 @@ const SHOP_AISLES: { id: ShopAisle; label: string; Icon: typeof CandlestickChart
   { id: "future", label: "Future Markets", Icon: PackageOpen },
 ];
 
-export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers, news }: ShopViewProps) {
+export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers, news, onTabChange }: ShopViewProps) {
   const { tickers } = useLiveTickers(fallbackTickers);
   const [aisle, setAisle] = useState<ShopAisle>("stocks");
 
@@ -198,6 +199,17 @@ export function ShopView({ feature, secondaryArticles, tickers: fallbackTickers,
       <p style={{ fontFamily: "var(--font-mono), monospace", fontSize: "clamp(0.46rem,1.6vw,0.56rem)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--yi-muted)", margin: 0 }}>
         Simulated prices · MOCK_MVP_PAPER_TRADING_ONLY · Not financial advice
       </p>
+
+      {onTabChange && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onTabChange("kitchen")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Send it to your Shelf, then open the Kitchen →
+          </button>
+          <button type="button" onClick={() => onTabChange("vault")} style={{ background: "transparent", border: "none", fontFamily: "var(--font-mono), monospace", fontSize: "0.58rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--yi-muted)", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            Check your Vault →
+          </button>
+        </div>
+      )}
     </section>
   );
 }
