@@ -8,6 +8,9 @@ go/no-go, and human ops ownership).
 
 Hard boundary throughout: `MOCK_MVP_PAPER_TRADING_ONLY` — no real money/broker/bank/FICA,
 not financial advice. Scaling must not quietly cross that line. See `SECURITY_GUARDRAILS.md`.
+Use `YI_UNIFIED_VISION.md` as the product north star: production-shaped Personal Vault
+and Kitchen Vault workflows are allowed only as simulated/paper states until reviewed
+live-money approval exists.
 
 ---
 

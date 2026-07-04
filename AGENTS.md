@@ -14,9 +14,11 @@ Before any code, config, data, auth, storage, or deployment change, read and obe
 
 The security, privacy, IP, regulatory, and mock-only finance rules in that file override speed, demo polish, convenience, and any weaker instruction in this repo. If a task would expose user data, secrets, private doctrine, or live-finance behavior, stop and ask the CEO before proceeding.
 
+Then align product, engineering, regulatory-readiness, Vault, Gordon/Sicilia, and prompt decisions with `YI_UNIFIED_VISION.md`. The unified vision is the canonical north star after the security guardrails.
+
 ## 1. Company Context
 
-Young Investors is an institutional-grade, non-custodial fintech platform that turns financial education into collective market execution.
+Young Investors is an institutional-grade, governance-first fintech platform that turns financial education into collective market execution.
 
 The core problem:
 - Students may understand financial theory but fear live market execution.
@@ -38,19 +40,21 @@ The product is not only a trading sandbox. It is a behavioral finance data engin
 
 ## 2. Non-Negotiable Product Principles
 
-### 2.1 Non-Custodial Architecture
+### 2.1 Regulated-Future Vault Architecture
 
-Young Investors must be designed as a non-custodial platform.
+Young Investors must be designed as a production-shaped, regulated-future platform while the current tester build remains paper-only.
 
-The code must avoid assumptions that YI directly holds client money unless explicitly marked as `MOCK_MVP`.
+The future regulated product may support real user cash through Personal Vaults and Kitchen Vaults, including joint escrow/trust-account structures and payment-service rails. That future requires explicit architecture, legal, FSCA/FAIS, SARB/NPS, FIC/AML, POPIA, and partner-bank/PSP review before any live integration.
+
+The current code must avoid assumptions that YI directly holds client money unless explicitly marked as `MOCK_MVP`.
 
 Where capital movement is simulated, it must be labelled clearly:
 
 ```ts
-const EXECUTION_MODE = "MOCK_MVP_PAPER_TRADING";
+const EXECUTION_MODE = "MOCK_MVP_PAPER_TRADING_ONLY";
 ```
 
-Do not introduce production-facing language or data models that imply YI has custody of client assets. Prefer language such as paper balance, simulated allocation, proposed order, broker-linked account, user-owned wallet, external execution adapter, or read-only portfolio snapshot.
+Production-shaped Vault concepts are allowed only as simulated states and adapter seams: paper balance, paper deposit intent, simulated allocation, proposed order, paper escrow state, external execution adapter, reconciliation state, and audit log. Do not connect real bank, broker, PSP, wallet, FICA, custody, or payment rails without a separate live-money review.
 
 ### 2.2 Governance Before Execution
 
@@ -175,8 +179,9 @@ Gordon is the internal AI/quantitative risk critic, tutor, and behavioral intell
 
 ## 5. Implementation Rules
 
-- Preserve non-custodial assumptions unless the CEO explicitly authorizes a live integration design.
-- Mark all simulated capital movement with `MOCK_MVP` or `MOCK_MVP_PAPER_TRADING`.
+- Preserve no-live-money assumptions unless the CEO explicitly authorizes a reviewed live-money integration design.
+- Model the Personal Vault and Kitchen Vault as production-shaped, paper-only workflows until live-money approval exists.
+- Mark all simulated capital movement with `MOCK_MVP` or `MOCK_MVP_PAPER_TRADING_ONLY`.
 - Keep the 60% Rule reusable and testable.
 - Prefer pure functions for financial math, voting thresholds, and risk scoring.
 - Keep UI copy accurate: avoid implying guaranteed returns, custody, real execution, or investment advice.

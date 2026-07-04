@@ -1,19 +1,22 @@
 # Young Investors Copilot Instructions
 
-Build this repo as Young Investors, a non-custodial fintech MVP for education-led peer investment Kitchens.
+Read `SECURITY_GUARDRAILS.md` first. Then use `YI_UNIFIED_VISION.md` as the canonical product and prompt north star for Young Investors / We Cook.
+
+Build this repo as Young Investors, a production-shaped, paper-only fintech tester build for education-led peer investment Kitchens. The regulated future includes Personal Vaults and Kitchen Vaults, but live money is disabled until a reviewed approval path exists.
 
 Core product surfaces:
 - Academy: eligibility and clearance before trading participation.
 - Kitchen: peer syndicates, roles, member status, and pooled micro-capital simulation.
 - Arena: trade proposals, discussion, voting, and the 60% Rule.
-- Vault: portfolio tracking, positions, and performance analytics.
+- Vault: Personal Vault and Kitchen Vault, portfolio tracking, positions, ledger states, receipts, and performance analytics.
 - Shop: cultural and market-intelligence hub.
 - Lounge: Kitchen leaderboard with Gordon as benchmark.
 - Gordon: AI/quant risk critic, tutor, and behavioral intelligence layer.
 
 Non-negotiable constraints:
-- Do not imply Young Investors directly holds client money unless code is explicitly marked `MOCK_MVP`.
-- Label simulated execution clearly with `MOCK_MVP_PAPER_TRADING`.
+- Do not imply Young Investors currently holds client money unless code is explicitly marked `MOCK_MVP`.
+- Label simulated execution and simulated Vault money movement clearly with `MOCK_MVP_PAPER_TRADING_ONLY`.
+- Model escrow, payment, contribution, withdrawal, and reconciliation concepts as paper-only states or adapter seams until live-money approval exists.
 - Keep the 60% Rule in reusable domain logic, not only UI components.
 - Gate execution behind Academy clearance, Kitchen governance, vote threshold checks, and Gordon risk review.
 - Keep mock data isolated behind interfaces that can later be replaced with APIs, database persistence, broker adapters, wallet integrations, or market-data providers.

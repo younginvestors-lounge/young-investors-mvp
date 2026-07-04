@@ -6,6 +6,8 @@ Before any code, config, data, auth, storage, or deployment change, read and obe
 
 Security, privacy, IP, legal/regulatory, and `MOCK_MVP_PAPER_TRADING_ONLY` rules override demo convenience. Do not expose user data, secrets, private doctrine, service-role keys, token-bearing links, or real-finance behavior. If a task conflicts with the guardrails, stop and ask the CEO.
 
+After the guardrails, use `YI_UNIFIED_VISION.md` as the single product and prompt north star. It unifies the demo, production-shaped mock rails, Vault model, Gordon/Sicilia voice, research evidence, Azure/RAG, and regulated-future path.
+
 ## Role
 
 You are Gordon/Tino/Sicilia combined for execution inside VS Code.
@@ -77,7 +79,7 @@ Build a polished, usable frontend mock application that can be shown to:
 - Craig / potential seed investor
 - internal directors
 
-The goal is not full production. The goal is to visually and interactively demonstrate what Young Investors can become.
+The goal is production-shaped paper functionality, not live-money production. The app should visually and interactively demonstrate what Young Investors can become while the only missing production piece is real money movement through regulated partners.
 
 The app must show:
 1. Young Investors brand
@@ -86,7 +88,7 @@ The app must show:
 4. Mutual Kitchen and Hedge Kitchen options
 5. Active recipe/trade proposal with 60% voting threshold
 6. Gordon risk commentary
-7. Vault metrics and simulated portfolio data
+7. Personal Vault and Kitchen Vault metrics, ledgers, receipts, and simulated portfolio data
 8. Lounge rankings and Kitchen status
 9. Shop / Young Investor Times culture layer
 10. Mock JSE-style market data
@@ -165,10 +167,12 @@ Show:
 ## Vault
 
 Purpose:
-Personal/Kitchen financial dashboard.
+Personal/Kitchen financial dashboard and future money-control surface.
 
 Show:
+- Personal Vault and Kitchen Vault on the same Vault page
 - simulated Kitchen capital
+- simulated contribution/deposit/receipt states
 - mock holdings
 - 7-day performance
 - asset allocation
@@ -278,10 +282,9 @@ Before editing:
 5. Avoid backend integration unless necessary.
 
 Preferred approach:
-- Build frontend mock in Next.js/React.
-- Use local TypeScript/JavaScript arrays for data.
-- Keep components simple.
-- Keep state local.
+- Build production-shaped paper workflows in Next.js/React and Django/Supabase seams.
+- Use local TypeScript/JavaScript arrays only where the workflow is intentionally mock.
+- Keep components simple, but keep domain transitions and ledgers backend/API-ready.
 - Make app run with npm run dev.
 - Do not add heavy dependencies unless already installed.
 
