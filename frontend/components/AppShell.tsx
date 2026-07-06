@@ -253,7 +253,7 @@ export default function AppShell({ initialTab = "kitchen" }: AppShellProps) {
           {activeTab === "vault" && (
             clearance.complete
               ? <VaultView portfolio={seed.portfolio} onTabChange={setActiveTab} />
-              : <VaultLocked passedCount={modules.filter((m) => m.passed).length} totalCount={modules.length} onTabChange={setActiveTab} />
+              : <VaultLocked passedCount={clearance.requiredModuleIds.length - clearance.missingModuleIds.length} totalCount={clearance.requiredModuleIds.length} onTabChange={setActiveTab} />
           )}
           {activeTab === "shop" && (
             <ShopView
